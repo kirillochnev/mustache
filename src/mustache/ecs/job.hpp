@@ -143,11 +143,12 @@ namespace mustache {
                 const uint32_t end = (rest < elements_per_chunk) ? rest : elements_per_chunk;
 
                 ArchetypeInternalEntityLocation location;
-                location.chunk = archetype.getChunk<Unsafe>(chunk_index);
+                location.chunk = archetype.getChunk<FunctionSafety::kUnsafe>(chunk_index);
                 operation_helper.updateComponentsVersion(world_version, *location.chunk);
                 location.index = ChunkEntityIndex::make(begin);
-                forEachArrayGenerated(end - begin, invocation_index, operation_helper.getEntity<Unsafe>(location),
-                                      operation_helper.getComponent<_ARGS, Unsafe>(location)...);
+                forEachArrayGenerated(end - begin, invocation_index,
+                                      operation_helper.getEntity<FunctionSafety::kUnsafe>(location),
+                                      operation_helper.getComponent<_ARGS, FunctionSafety::kUnsafe>(location)...);
             }
         }
 

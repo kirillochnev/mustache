@@ -72,9 +72,9 @@ namespace mustache {
             static const auto component_id = ComponentFactory::registerComponent<T>();
             return mask_.has(component_id);
         }
-        template<typename _Safety = DefaultSafety>
+        template<FunctionSafety _Safety = FunctionSafety::kDefault>
         Chunk* getChunk(uint32_t chunk_index) const noexcept { // TODO: use ChunkIndex
-            if constexpr (IsSafe<_Safety>()) {
+            if constexpr (isSafe(_Safety)) {
                 if (chunk_index >= chunks_.size()) {
                     return nullptr;
                 }
@@ -107,12 +107,12 @@ namespace mustache {
             }
             return result;
         }
-        template<typename _Safety = DefaultSafety>
+        template<FunctionSafety _Safety = FunctionSafety::kDefault>
         MUSTACHE_INLINE void* getComponentFromArchetype(ArchetypeEntityIndex entity, ComponentIndex component) const noexcept {
             const auto location = entityIndexToInternalLocation(entity);
             return operation_helper_.getComponent<_Safety>(component, location);
         }
-        template<typename _Safety = DefaultSafety>
+        template<FunctionSafety _Safety = FunctionSafety::kDefault>
         MUSTACHE_INLINE void* getComponentFromArchetype(ArchetypeEntityIndex entity, ComponentId component) const noexcept {
             return getComponentFromArchetype<_Safety>(entity, componentIndex(component));
         }

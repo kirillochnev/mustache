@@ -4,25 +4,16 @@
 #include <cstdint>
 
 namespace mustache {
-
-    struct Unsafe {
-        static constexpr bool is_unsafe = true;
-        static constexpr bool is_safe = false;
+    enum class FunctionSafety : uint32_t {
+         kUnsafe = 0,
+         kSafe = 1,
+         kDefault = kSafe
     };
 
-    struct Safe {
-        static constexpr bool is_unsafe = false;
-        static constexpr bool is_safe = true;
-    };
-
-    template<typename T>
-    constexpr bool IsSafe() noexcept {
-        static_assert(std::is_same<T, Unsafe>::value || std::is_same<T, Safe>::value,
-                "Safety type must be Safe or Unsafe");
-        return T::is_safe;
+    constexpr bool isSafe(FunctionSafety safety) noexcept {
+        return safety == FunctionSafety::kSafe;
     }
 
-    using DefaultSafety = Safe;
 }
 
 #define MUSTACHE_INLINE inline __attribute__((always_inline))
