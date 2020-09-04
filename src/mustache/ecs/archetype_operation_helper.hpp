@@ -19,15 +19,15 @@ namespace mustache {
     struct TArchetypeOperationHelper {
         using SeftType = _Derived;
 
-        template<typename T, bool _Unsafe = kDefaultUnsafeValue>
+        template<typename T, FunctionSafety _Safety = FunctionSafety::kDefault>
         MUSTACHE_INLINE ComponentIndex componentIndex() const noexcept {
             static const auto component_id = ComponentFactory::registerComponent<T>();
-            return self().template componentIndex<_Unsafe>(component_id);
+            return self().template componentIndex<_Safety>(component_id);
         }
 
-        template<typename T, bool _Unsafe = kDefaultUnsafeValue>
+        template<typename T, FunctionSafety _Safety = FunctionSafety::kDefault>
         MUSTACHE_INLINE T* getComponent(const ArchetypeInternalEntityLocation& location) const noexcept {
-            return reinterpret_cast<T*>(self().template getComponent<_Unsafe>(componentIndex<T>(), location));
+            return reinterpret_cast<T*>(self().template getComponent<_Safety>(componentIndex<T>(), location));
         }
 
     private:
@@ -58,9 +58,9 @@ namespace mustache {
             uint32_t size;
         };
 
-        template<bool _Unsafe = kDefaultUnsafeValue>
+        template<FunctionSafety _Safety = FunctionSafety::kDefault>
         Entity* getEntity(const ArchetypeInternalEntityLocation& location) const noexcept {
-            if constexpr (!_Unsafe) {
+            if constexpr (isSafe(_Safety)) {
                 if (location.chunk == nullptr || !location.index.isValid() ||
                     location.index.toInt() >= get.capacity()) {
                     return nullptr;
@@ -69,9 +69,9 @@ namespace mustache {
             return location.chunk->dataPointerWithOffset<Entity>(entity_offset) + location.index.toInt();
         }
 
-        template<bool _Unsafe = kDefaultUnsafeValue>
+        template<FunctionSafety _Safety = FunctionSafety::kDefault>
         void* getComponent(ComponentIndex component_index, const ArchetypeInternalEntityLocation& location) const noexcept {
-            if constexpr (!_Unsafe) {
+            if constexpr (isSafe(_Safety)) {
                 if (component_index.isNull() || get.size() <= component_index.toInt() ||
                     location.chunk == nullptr || !location.index.isValid() ||
                     location.index.toInt() >= get.capacity()) {
@@ -83,9 +83,9 @@ namespace mustache {
             return location.chunk->dataPointerWithOffset(offset);
         }
 
-        template<bool _Unsafe = kDefaultUnsafeValue>
+        template<FunctionSafety _Safety = FunctionSafety::kDefault>
         ComponentIndex componentIndex(ComponentId component_id) const noexcept {
-            if constexpr (!_Unsafe) {
+            if constexpr (isSafe(_Safety)) {
                 if (component_id.isNull() || component_id.toInt() >= component_index_to_component_id.size()) {
                     return ComponentIndex::null();
                 }

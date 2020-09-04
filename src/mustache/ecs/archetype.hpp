@@ -72,7 +72,13 @@ namespace mustache {
             static const auto component_id = ComponentFactory::registerComponent<T>();
             return mask_.has(component_id);
         }
-        Chunk* getChunkUnsafe(uint32_t chunk_index) const noexcept { // TODO: use ChunkIndex and unsafe as template arg
+        template<FunctionSafety _Safety = FunctionSafety::kDefault>
+        Chunk* getChunk(uint32_t chunk_index) const noexcept { // TODO: use ChunkIndex
+            if constexpr (isSafe(_Safety)) {
+                if (chunk_index >= chunks_.size()) {
+                    return nullptr;
+                }
+            }
             return chunks_[chunk_index];
         }
         size_t chunkCount() const noexcept {
@@ -101,17 +107,14 @@ namespace mustache {
             }
             return result;
         }
-
-        void* getComponentFromArchetypeUnsafe(ArchetypeEntityIndex entity, ComponentIndex component) const noexcept {
+        template<FunctionSafety _Safety = FunctionSafety::kDefault>
+        MUSTACHE_INLINE void* getComponentFromArchetype(ArchetypeEntityIndex entity, ComponentIndex component) const noexcept {
             const auto location = entityIndexToInternalLocation(entity);
-//            return operation_helper_.getComponent<true>(component, location);
-            const auto& info = operation_helper_.get[component.toInt()];
-            const ComponentOffset offset = info.offset.add(info.size * location.index.toInt());
-            return location.chunk->dataPointerWithOffset<void>(offset);
+            return operation_helper_.getComponent<_Safety>(component, location);
         }
-
-        void* getComponentFromArchetypeUnsafe(ArchetypeEntityIndex entity, ComponentId component) const noexcept {
-            return getComponentFromArchetypeUnsafe(entity, componentIndex(component));
+        template<FunctionSafety _Safety = FunctionSafety::kDefault>
+        MUSTACHE_INLINE void* getComponentFromArchetype(ArchetypeEntityIndex entity, ComponentId component) const noexcept {
+            return getComponentFromArchetype<_Safety>(entity, componentIndex(component));
         }
         void allocateChunk();
         World& world_;

@@ -60,9 +60,9 @@ namespace mustache {
             return archetypes_.size();
         }
 
-        template<bool _Unsafe = kDefaultUnsafeValue>
-        [[nodiscard]] MUSTACHE_INLINE Archetype& getArchetype(ArchetypeIndex index) noexcept (_Unsafe) {
-            if constexpr (!_Unsafe) {
+        template<FunctionSafety _Safety = FunctionSafety::kDefault>
+        [[nodiscard]] MUSTACHE_INLINE Archetype& getArchetype(ArchetypeIndex index) noexcept (!isSafe(_Safety)) {
+            if constexpr (isSafe(_Safety)) {
                 if (index.toInt() >= archetypes_.size()) {
                     throw std::runtime_error("Index is out of bound");
                 }
@@ -81,7 +81,7 @@ namespace mustache {
             if (!arch->hasComponent(component_id)) {
                 return nullptr;
             }
-            auto ptr = arch->getComponentFromArchetypeUnsafe(location.index, component_id);
+            auto ptr = arch->getComponentFromArchetype<FunctionSafety::kUnsafe>(location.index, component_id);
             return reinterpret_cast<T*>(ptr);
         }
 
