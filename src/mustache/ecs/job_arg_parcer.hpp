@@ -25,8 +25,13 @@ namespace mustache {
     };
 
     template <typename T>
-    struct IsArgJobJobInvocationIndex {
+    struct IsArgJobInvocationIndex {
         static constexpr bool value = IsOneOfTypes<T, JobInvocationIndex, const JobInvocationIndex&>::value;
+    };
+
+    template <typename T>
+    struct IsArgComponentArraySize {
+        static constexpr bool value = IsOneOfTypes<T, ComponentArraySize, const ComponentArraySize&>::value;
     };
 
     template <typename Element, typename... ARGS>
@@ -45,7 +50,8 @@ namespace mustache {
     template <typename... ARGS>
     struct PositionOf {
         static constexpr int32_t entity = elementIndex(true, IsArgEntity<ARGS>::value...);
-        static constexpr int32_t job_invocation = elementIndex(true, IsArgJobJobInvocationIndex<ARGS>::value...);
+        static constexpr int32_t job_invocation = elementIndex(true, IsArgJobInvocationIndex<ARGS>::value...);
+        static constexpr int32_t array_size = elementIndex(true, IsArgComponentArraySize<ARGS>::value...);
     };
 
     template<size_t I, typename T, typename... ARGS>
@@ -107,6 +113,10 @@ namespace mustache {
             if constexpr (Position::job_invocation >= 0) {
                 --result;
             }
+            if constexpr (Position::array_size >= 0) {
+                --result;
+            }
+
             return result;
         }
 
@@ -118,6 +128,9 @@ namespace mustache {
                 ++component_index;
             }
             if (component_index >= static_cast<size_t>(Position::job_invocation)) {
+                ++component_index;
+            }
+            if (component_index >= static_cast<size_t>(Position::array_size)) {
                 ++component_index;
             }
             return component_index;
@@ -172,14 +185,7 @@ namespace mustache {
                 return JobFunctionInfo<T>{};
             }
         }
-//
-//        template<typename... ARGS>
-//        static constexpr auto callForEachArray(T& job, ARGS&&... args) {
-//            if constexpr (has_for_each_array) {
-//                job.
-//            }
-//        }
-
+        
     public:
         JobInfo() = delete;
         ~JobInfo() = delete;

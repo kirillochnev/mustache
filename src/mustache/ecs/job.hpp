@@ -93,7 +93,7 @@ namespace mustache {
             invocation_index.entity_index_in_task = PerEntityJobEntityIndexInTask::make(0);
             world.entities().forEachArchetype([this, &invocation_index](Archetype& archetype) {
                 if (archetype.isMatch(mask)) {
-                    const auto size = archetype.size();
+                    const auto size = ComponentArraySize::make(archetype.size());
                     constexpr auto entity_index = ArchetypeEntityIndex::make(0);
                     applyPerArrayFunction<typename ComponentType<typename
                         Info::FunctionInfo:: template Component<_I>::type>::type...>(archetype, entity_index, size, invocation_index);
@@ -109,13 +109,13 @@ namespace mustache {
 
     protected:
         template<typename... _ARGS>
-        MUSTACHE_INLINE void forEachArrayGenerated(uint32_t count, JobInvocationIndex& invocation_index,
+        MUSTACHE_INLINE void forEachArrayGenerated(ComponentArraySize count, JobInvocationIndex& invocation_index,
                                    _ARGS MUSTACHE_RESTRICT_PTR ... pointers) {
             T& self = *static_cast<T*>(this);
             if constexpr (Info::has_for_each_array) {
                 invokeMethod(self, &T::forEachArray, count, invocation_index, pointers...);
             } else {
-                for(uint32_t i = 0; i < count; ++i) {
+                for(uint32_t i = 0; i < count.toInt(); ++i) {
                     invoke(self, invocation_index, pointers[i]...);
                     ++invocation_index.entity_index_in_task;
                 }
@@ -123,14 +123,14 @@ namespace mustache {
         }
 
         template<typename... _ARGS>
-        MUSTACHE_INLINE void applyPerArrayFunction(Archetype& archetype, ArchetypeEntityIndex first, uint32_t count,
+        MUSTACHE_INLINE void applyPerArrayFunction(Archetype& archetype, ArchetypeEntityIndex first, ComponentArraySize count,
                                                    JobInvocationIndex invocation_index) {
-            if (count < 1) {
+            if (count.toInt() < 1) {
                 return;
             }
 
             const auto i1 = first.toInt();
-            const auto i2 = first.toInt() + count;
+            const auto i2 = first.toInt() + count.toInt();
             const auto operation_helper = archetype.operations();
             const auto elements_per_chunk = operation_helper.capacity;
             const ChunkIndex first_chunk = ChunkIndex::make(i1 / elements_per_chunk);
@@ -146,7 +146,7 @@ namespace mustache {
                 location.chunk = archetype.getChunk<FunctionSafety::kUnsafe>(chunk_index);
                 operation_helper.updateComponentsVersion(world_version, *location.chunk);
                 location.index = ChunkEntityIndex::make(begin);
-                forEachArrayGenerated(end - begin, invocation_index,
+                forEachArrayGenerated(ComponentArraySize::make(end - begin), invocation_index,
                                       operation_helper.getEntity<FunctionSafety::kUnsafe>(location),
                                       operation_helper.getComponent<_ARGS, FunctionSafety::kUnsafe>(location)...);
             }
@@ -165,8 +165,10 @@ namespace mustache {
                 archetype_index = TaskArchetypeIndex::make(archetype_index.toInt() + 1);
                 const uint32_t num_free_entities_in_arch = archetype_info.entities_count - begin.toInt();
                 const uint32_t objects_to_iterate = count < num_free_entities_in_arch ? count : num_free_entities_in_arch;
+                const auto array_size = ComponentArraySize::make(objects_to_iterate);
                 applyPerArrayFunction<typename ComponentType<typename
-                Info::FunctionInfo:: template Component<_I>::type>::type...>(*archetype_info.archetype, begin, objects_to_iterate, invocation_index);
+                Info::FunctionInfo:: template Component<_I>::type>::type...>(*archetype_info.archetype,
+                        begin, array_size, invocation_index);
                 count -= objects_to_iterate;
                 begin = ArchetypeEntityIndex::make(0);
             }
