@@ -1,5 +1,6 @@
 #include "benchmark.hpp"
 #include <algorithm>
+#include <cmath>
 
 using namespace mustache;
 
@@ -17,8 +18,15 @@ void Benchmark::show() {
     if(times_.size() % 2 == 0) {
         med = (med + times_[times_.size() / 2 - 1]) * 0.5;
     }
-    std::cout<<"Avr: " <<  sum / times_.size() << "ms, med: " << med << "ms, min: "
-             << times_.front() << "ms, max: "<< times_.back()<<"ms"<< std::endl;
+    const auto avr = sum / times_.size();
+    double variance = 0.0;
+    for (auto x : times_) {
+        variance += (avr - x) * (avr - x) / times_.size();
+    }
+
+    std::cout<<"Avr: " <<  avr << "ms, med: " << med << "ms, min: "
+             << times_.front() << "ms, max: "<< times_.back()<<"ms, variance: " << variance
+             << ", sigma: " << sqrt(variance) << std::endl;
 }
 
 void Benchmark::reset() {
