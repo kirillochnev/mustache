@@ -33,6 +33,10 @@ namespace mustache {
     /// index(position) of component in archetype
     struct ComponentIndex : public IndexLike<uint32_t, ComponentIndex>{};
 
+    // size of component array for Job::forEachArray function, this allows to use int-types as components
+    struct ComponentArraySize : public IndexLike<uint32_t, ComponentArraySize>{};
+
+    // offset of component data in the chunk
     struct ComponentOffset : public IndexLike<uint32_t, ComponentOffset> {
         template <typename T = std::byte>
         MUSTACHE_INLINE constexpr ComponentOffset add(size_t i) const noexcept {
