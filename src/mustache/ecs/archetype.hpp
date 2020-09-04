@@ -73,13 +73,13 @@ namespace mustache {
             return mask_.has(component_id);
         }
         template<FunctionSafety _Safety = FunctionSafety::kDefault>
-        Chunk* getChunk(uint32_t chunk_index) const noexcept { // TODO: use ChunkIndex
+        Chunk* getChunk(ChunkIndex index) const noexcept {
             if constexpr (isSafe(_Safety)) {
-                if (chunk_index >= chunks_.size()) {
+                if (!index.isValid() || index.toInt() >= chunks_.size()) {
                     return nullptr;
                 }
             }
-            return chunks_[chunk_index];
+            return chunks_[index.toInt()];
         }
         size_t chunkCount() const noexcept {
             return chunks_.size();

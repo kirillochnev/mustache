@@ -54,6 +54,6 @@ ArchetypeOperationHelper::ArchetypeOperationHelper(const ComponentMask& mask):
             });
         }
 
-        component_index = component_index.nextIndex();
+        ++component_index;
     }
 }

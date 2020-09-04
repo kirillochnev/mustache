@@ -66,6 +66,17 @@ namespace mustache {
         [[nodiscard]] MUSTACHE_INLINE constexpr _Type next() const noexcept {
             return _Type::make(value_ + 1);
         }
+
+        MUSTACHE_INLINE constexpr _Type& operator++() noexcept {
+            ++value_;
+            return *static_cast<_Type*>(this);
+        }
+
+        MUSTACHE_INLINE constexpr _Type operator++(int) noexcept {
+            _Type copy = *this;
+            ++value_;
+            return copy;
+        }
     protected:
         T value_{kNull};
     };

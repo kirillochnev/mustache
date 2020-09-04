@@ -24,18 +24,14 @@ namespace mustache {
     /// index of entity in archetype
     struct ArchetypeEntityIndex : public IndexLike<uint32_t, ArchetypeEntityIndex> {};
 
-    /// index of entity in archetype
+    /// index of chunk in archetype
     struct ChunkIndex : public IndexLike<uint32_t, ChunkIndex> {};
 
     /// index of entity in chunk
     struct ChunkEntityIndex : public IndexLike<uint32_t, ChunkEntityIndex> {};
 
     /// index(position) of component in archetype
-    struct ComponentIndex : public IndexLike<uint32_t, ComponentIndex>{
-        [[nodiscard]] MUSTACHE_INLINE constexpr ComponentIndex nextIndex() const noexcept {
-            return ComponentIndex::make(value_ + 1);
-        }
-    };
+    struct ComponentIndex : public IndexLike<uint32_t, ComponentIndex>{};
 
     struct ComponentOffset : public IndexLike<uint32_t, ComponentOffset> {
         template <typename T = std::byte>

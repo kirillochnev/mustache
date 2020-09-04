@@ -62,15 +62,15 @@ namespace mustache {
             TaskArchetypeIndex first_a = TaskArchetypeIndex::make(0u);
             ArchetypeEntityIndex first_i = ArchetypeEntityIndex::make(0u);
 
-            for(uint32_t task = 0; task < task_count; ++task) {
-                const uint32_t current_task_size = task < tasks_with_extra_item ? ept + 1 : ept;
+            for(auto task = PerEntityJobTaskId::make(0); task < PerEntityJobTaskId::make(task_count); ++task) {
+                const uint32_t current_task_size = task.toInt() < tasks_with_extra_item ? ept + 1 : ept;
                 dispatcher.addParallelTask([first_a, first_i, task, current_task_size, this] {
                     constexpr auto index_sequence = std::make_index_sequence<Info::FunctionInfo::components_count>();
-                    singleTask(PerEntityJobTaskId::make(task), first_a, first_i, current_task_size, index_sequence);
+                    singleTask(task, first_a, first_i, current_task_size, index_sequence);
                 });
                 uint32_t num_entities_to_iterate = current_task_size;
                 // iterate over archetypes and collect their entities until, ept was get
-                while (first_a.toInt() < num_archetypes && task != task_count - 1) {
+                while (first_a.toInt() < num_archetypes && task.toInt() != task_count - 1) {
                     const auto& archetype_info = filter_result_.filtered_archetypes[first_a.toInt()];
                     const uint32_t num_free_entities_in_arch = archetype_info.entities_count - first_i.toInt();
                     if(num_free_entities_in_arch > num_entities_to_iterate) {
@@ -117,7 +117,7 @@ namespace mustache {
             } else {
                 for(uint32_t i = 0; i < count; ++i) {
                     invoke(self, invocation_index, pointers[i]...);
-                    invocation_index.entity_index_in_task = invocation_index.entity_index_in_task.next();
+                    ++invocation_index.entity_index_in_task;
                 }
             }
         }
@@ -133,12 +133,12 @@ namespace mustache {
             const auto i2 = first.toInt() + count;
             const auto operation_helper = archetype.operations();
             const auto elements_per_chunk = operation_helper.capacity;
-            const uint32_t first_chunk = i1 / elements_per_chunk;
-            const uint32_t last_chunk = i2 / elements_per_chunk;
+            const ChunkIndex first_chunk = ChunkIndex::make(i1 / elements_per_chunk);
+            const ChunkIndex last_chunk = ChunkIndex::make(i2 / elements_per_chunk);
 
             const auto world_version = archetype.worldVersion();
-            for(uint32_t chunk_index =  first_chunk; chunk_index <= last_chunk; ++chunk_index) {
-                const uint32_t rest = i2 - chunk_index * elements_per_chunk;
+            for(ChunkIndex chunk_index =  first_chunk; chunk_index <= last_chunk; ++chunk_index) {
+                const uint32_t rest = i2 - chunk_index.toInt() * elements_per_chunk;
                 const uint32_t begin = chunk_index == first_chunk ? i1 % elements_per_chunk : 0u;
                 const uint32_t end = (rest < elements_per_chunk) ? rest : elements_per_chunk;
 

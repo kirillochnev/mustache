@@ -10,8 +10,8 @@ void DefaultWorldFilterResult::apply(World &world) {
     const auto num_archetypes = entities.getArchetypesCount();
     filtered_archetypes.reserve(num_archetypes);
 
-    for(uint32_t i = 0; i < num_archetypes; ++i) {
-        auto& arch = entities.getArchetype<>(ArchetypeIndex::make(i));
+    for(ArchetypeIndex index = ArchetypeIndex::make(0); index < ArchetypeIndex::make(num_archetypes); ++index) {
+        auto& arch = entities.getArchetype(index);
         if(arch.size() > 0u && arch.isMatch(mask_)) {
             total_entity_count += arch.size();
             ArchetypeFilterResult item;
