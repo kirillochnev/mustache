@@ -9,6 +9,12 @@ EntityManager::EntityManager(World& world):
 
 }
 
+EntityManager::~EntityManager() {
+    for(const auto& arch : archetypes_) {
+        clearArchetype(*arch);
+    }
+}
+
 Archetype& EntityManager::getArchetype(const ComponentMask& mask) {
     auto& result = mask_to_arch_[mask];
     if(result) {
@@ -67,3 +73,4 @@ void EntityManager::clearArchetype(Archetype& archetype) {
     });
     archetype.clear();
 }
+

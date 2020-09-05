@@ -128,16 +128,20 @@ namespace mustache {
 
         template<typename _F>
         void forEachEntity(_F&& callback) {
+            if (size_ < 1) {
+                return;
+            }
             auto num_items = size_;
             ArchetypeInternalEntityLocation location;
             const auto chunk_last_index = ChunkEntityIndex::make(operation_helper_.capacity);
             for (auto chunk : chunks_) {
                 location.chunk = chunk;
                 for (location.index = ChunkEntityIndex::make(0); location.index < chunk_last_index; ++location.index) {
-                    callback(*operation_helper_.getEntity(location));
-                    if (--num_items == 0) {
+                    if (num_items == 0) {
                         return;
                     }
+                    callback(*operation_helper_.getEntity(location));
+                    --num_items;
                 }
             }
         }

@@ -30,6 +30,9 @@ Archetype::Archetype(World& world, ArchetypeIndex id, const ComponentMask& mask)
 }
 
 Archetype::~Archetype() {
+    if (size_ > 0) {
+        Logger{}.error("Destroying non-empty archetype");
+    }
     for(auto chunk : chunks_) {
         freeChunk(chunk);
     }

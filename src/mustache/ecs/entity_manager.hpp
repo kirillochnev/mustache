@@ -19,6 +19,7 @@ namespace mustache {
     class EntityManager : public Uncopiable {
     public:
         explicit EntityManager(World& world);
+        ~EntityManager();
 
         [[nodiscard]] Entity create();
 
