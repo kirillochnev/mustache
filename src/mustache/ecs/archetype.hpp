@@ -19,9 +19,7 @@ namespace mustache {
     class EntityManager;
     /// Location in world's entity manager
     struct EntityLocationInWorld { // TODO: add version here?
-        enum : uint32_t {
-            kDefaultArchetype = static_cast<uint32_t>(-1)
-        };
+        constexpr static ArchetypeIndex kDefaultArchetype = ArchetypeIndex::null();
         EntityLocationInWorld() = default;
         EntityLocationInWorld(ArchetypeEntityIndex i, ArchetypeIndex arch ) noexcept :
             index{i},
@@ -29,22 +27,40 @@ namespace mustache {
 
         }
         ArchetypeEntityIndex index = ArchetypeEntityIndex::make(0u);
-        ArchetypeIndex archetype = ArchetypeIndex::make(kDefaultArchetype);
+        ArchetypeIndex archetype = kDefaultArchetype;
     };
 
     /**
      * Stores Entities with same component set
+     * NOTE: It is has no information about entity manager, so Archetype's methods don't effects entity location.
      */
     class Archetype : public Uncopiable {
     public:
         Archetype(World& world, ArchetypeIndex id, const ComponentMask& mask);
-
+        ~Archetype();
         [[nodiscard]] Entity create();
 
         /// Entity must belong to default(empty) archetype
         ArchetypeEntityIndex insert(Entity entity);
 
-        void clear();
+        /**
+         * removes entity from archetype, calls destructor for each trivially destructible component
+         * moves last entity at index.
+         * returns new entity at index.
+         */
+        Entity remove(ArchetypeEntityIndex index);
+
+        template<FunctionSafety _Safety = FunctionSafety::kDefault>
+        Entity entityAt(ArchetypeEntityIndex index) const noexcept {
+            if constexpr (isSafe(_Safety)) {
+                if (!index.isValid() || index.toInt() >= size_) {
+                    return Entity{};
+                }
+            }
+            ArchetypeInternalEntityLocation location = entityIndexToInternalLocation(index);
+            auto entity_ptr = operation_helper_.getEntity<_Safety>(location);
+            return entity_ptr ? *entity_ptr : Entity{};
+        }
 
         [[nodiscard]] EntityGroup createGroup(size_t count);
 
@@ -87,18 +103,46 @@ namespace mustache {
         const ArchetypeOperationHelper& operations() const noexcept {
             return operation_helper_;
         }
+
+        template<FunctionSafety _Safety = FunctionSafety::kDefault>
         MUSTACHE_INLINE ArchetypeInternalEntityLocation entityIndexToInternalLocation(ArchetypeEntityIndex index) const noexcept {
-            const auto capacity = operation_helper_.capacity;
-            return ArchetypeInternalEntityLocation {
-                    chunks_[index.toInt() / capacity],
-                    ChunkEntityIndex::make(index.toInt() % capacity)
+            ArchetypeInternalEntityLocation result {
+                    nullptr,
+                    ChunkEntityIndex::null()
             };
+            if constexpr (isSafe(_Safety)) {
+                if (index.toInt() >= size_) {
+                    return result;
+                }
+            }
+            const auto capacity = operation_helper_.capacity;
+            result.chunk = chunks_[index.toInt() / capacity];
+            result.index = ChunkEntityIndex::make(index.toInt() % capacity);
+            return result;
         }
 
         uint32_t worldVersion() const noexcept;
 
     private:
         friend class EntityManager;
+
+        template<typename _F>
+        void forEachEntity(_F&& callback) {
+            auto num_items = size_;
+            ArchetypeInternalEntityLocation location;
+            const auto chunk_last_index = ChunkEntityIndex::make(operation_helper_.capacity);
+            for (auto chunk : chunks_) {
+                location.chunk = chunk;
+                for (location.index = ChunkEntityIndex::make(0); location.index < chunk_last_index; ++location.index) {
+                    callback(*operation_helper_.getEntity(location));
+                    if (--num_items == 0) {
+                        return;
+                    }
+                }
+            }
+        }
+
+        void clear();
 
         MUSTACHE_INLINE ComponentIndex componentIndex(ComponentId id) const noexcept {
             auto result = ComponentIndex::null();
@@ -117,6 +161,7 @@ namespace mustache {
             return getComponentFromArchetype<_Safety>(entity, componentIndex(component));
         }
         void allocateChunk();
+        void freeChunk(Chunk* chunk);
         World& world_;
         ComponentMask mask_;
         ArchetypeOperationHelper operation_helper_;

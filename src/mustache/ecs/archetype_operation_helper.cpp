@@ -53,7 +53,20 @@ ArchetypeOperationHelper::ArchetypeOperationHelper(const ComponentMask& mask):
                     info.functions.create
             });
         }
-
+        if (info.functions.destroy) {
+            destroy.push_back(DestroyInfo {
+                    offsets[component_index.toInt()],
+                    static_cast<uint32_t>(info.size),
+                    info.functions.destroy
+            });
+        }
+        if (info.functions.move) {
+            move.push_back(MoveInfo {
+                    offsets[component_index.toInt()],
+                    static_cast<uint32_t>(info.size),
+                    info.functions.move
+            });
+        }
         ++component_index;
     }
 }

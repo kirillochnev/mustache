@@ -1,9 +1,11 @@
 #include "entity_manager.hpp"
+#include <mustache/ecs/world.hpp>
 
 using namespace mustache;
 
 EntityManager::EntityManager(World& world):
-        world_{world} {
+        world_{world},
+        this_world_id_{world.id()} {
 
 }
 
@@ -28,11 +30,11 @@ Entity EntityManager::create() {
 
     Entity entity;
     const auto id = next_slot_;
-    const auto version = entities_[id].version();
-    next_slot_ = entities_[id].id().toInt();
-    entity.reset(EntityId::make(id), version);
-    entities_[id] = entity;
-    locations_[id] = EntityLocationInWorld{};
+    const auto version = entities_[id.toInt()].version();
+    next_slot_ = entities_[id.toInt()].id();
+    entity.reset(id, version);
+    entities_[id.toInt()] = entity;
+    locations_[id.toInt()] = EntityLocationInWorld{};
     --empty_slots_;
 
     return entity;
@@ -41,9 +43,27 @@ Entity EntityManager::create() {
 void EntityManager::clear() {
     entities_.clear();
     locations_.clear();
-    next_slot_ = 0u;
+    next_slot_ = EntityId::make(0);
     empty_slots_ = 0u;
     for(auto& arh : archetypes_) {
         arh->clear();
     }
+}
+
+void EntityManager::update() {
+    if (marked_for_delete_.empty()) {
+        return;
+    }
+}
+
+void EntityManager::clearArchetype(Archetype& archetype) {
+    archetype.forEachEntity([this](Entity entity) {
+        const auto id = entity.id();
+        auto& location = locations_[id.toInt()];
+        location.archetype = ArchetypeIndex::null();
+        entities_[id.toInt()].reset(empty_slots_ ? next_slot_ : id.next(), entity.version().next());
+        next_slot_ = id;
+        ++empty_slots_;
+    });
+    archetype.clear();
 }

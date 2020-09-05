@@ -53,6 +53,16 @@ namespace mustache {
             uint32_t component_size;
             TypeInfo::Constructor constructor;
         };
+        struct DestroyInfo {
+            ComponentOffset offset;
+            uint32_t component_size;
+            TypeInfo::Destructor destructor;
+        };
+        struct MoveInfo {
+            ComponentOffset offset;
+            uint32_t component_size;
+            TypeInfo::MoveFunction move;
+        };
         struct GetComponentInfo {
             ComponentOffset offset;
             uint32_t size;
@@ -62,7 +72,7 @@ namespace mustache {
         Entity* getEntity(const ArchetypeInternalEntityLocation& location) const noexcept {
             if constexpr (isSafe(_Safety)) {
                 if (location.chunk == nullptr || !location.index.isValid() ||
-                    location.index.toInt() >= get.capacity()) {
+                    location.index.toInt() >= capacity) {
                     return nullptr;
                 }
             }
@@ -104,6 +114,8 @@ namespace mustache {
         std::vector<ComponentIndex> component_id_to_component_index;
         std::vector<GetComponentInfo> get; // ComponentIndex -> {offset, size}
         std::vector<InsertInfo> insert; // only non null init functions
+        std::vector<DestroyInfo> destroy; // only non null destroy functions
+        std::vector<MoveInfo> move; // move or copy function
         uint32_t num_components;
         uint32_t capacity;
         ComponentOffset entity_offset;
