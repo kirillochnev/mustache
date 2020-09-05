@@ -1,12 +1,15 @@
 cmake_minimum_required(VERSION 3.10)
-project(mustache_test)
 
+include(GoogleTest)
+
+project(mustache_test)
 find_package(GTest REQUIRED)
 find_package(Threads REQUIRED)
 
 add_executable(${PROJECT_NAME}
         entity_manager.cpp
 )
+gtest_add_tests(mustache_test "${FooTestArgs}" AUTO)
 
 target_link_libraries(${PROJECT_NAME} ${GTEST_BOTH_LIBRARIES})
 target_link_libraries(${PROJECT_NAME} ${GTEST_BOTH_LIBRARIES})

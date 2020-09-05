@@ -19,7 +19,6 @@ namespace mustache {
     class EntityManager : public Uncopiable {
     public:
         explicit EntityManager(World& world);
-        ~EntityManager();
 
         [[nodiscard]] Entity create();
 
@@ -151,13 +150,15 @@ namespace mustache {
     private:
         World& world_;
         std::map<ComponentMask , Archetype* > mask_to_arch_;
-        std::vector<std::unique_ptr<Archetype> > archetypes_;
-
         EntityId next_slot_ = EntityId::make(0);
+
         uint32_t empty_slots_{0};
         std::vector<Entity> entities_;
         std::vector<EntityLocationInWorld> locations_;
         std::set<Entity> marked_for_delete_;
         WorldId this_world_id_;
+        // TODO: replace shared pointed with some kind of unique_ptr but with deleter calling clearArchetype
+        // NOTE: must be the last field(for correct default destructor).
+        std::vector<std::shared_ptr<Archetype> > archetypes_;
     };
 }

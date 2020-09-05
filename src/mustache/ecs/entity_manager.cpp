@@ -9,20 +9,17 @@ EntityManager::EntityManager(World& world):
 
 }
 
-EntityManager::~EntityManager() {
-    for(const auto& arch : archetypes_) {
-        clearArchetype(*arch);
-    }
-}
-
 Archetype& EntityManager::getArchetype(const ComponentMask& mask) {
     auto& result = mask_to_arch_[mask];
     if(result) {
         return *result;
     }
-    auto unique_ptr = std::make_unique<Archetype>(world_, ArchetypeIndex::make(archetypes_.size()), mask);
-    result = unique_ptr.get();
-    archetypes_.emplace_back(std::move(unique_ptr));
+    auto deleter = [this](Archetype* archetype) {
+        clearArchetype(*archetype);
+        delete archetype;
+    };
+    result = new Archetype(world_, ArchetypeIndex::make(archetypes_.size()), mask);
+    archetypes_.emplace_back(result, deleter);
     return *result;
 }
 
@@ -73,4 +70,3 @@ void EntityManager::clearArchetype(Archetype& archetype) {
     });
     archetype.clear();
 }
-
