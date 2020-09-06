@@ -21,7 +21,7 @@ namespace {
 }
 
 
-void LogWriter::onMessage(const Context& ctx, LogLevel lvl, std::string&& str, ...) {
+void LogWriter::onMessage(const Context& ctx, LogLevel lvl, std::string str, ...) {
     if(ctx.show_context_) {
         printf("%s: ", toStr(lvl));
     }

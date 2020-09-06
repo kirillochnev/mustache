@@ -1,14 +1,7 @@
 #pragma once
 
 #include <string>
-#include <experimental/source_location>
-//
-#define ART_FILE std::experimental::source_location::current().file_name()
-#define ART_FUNCTION std::experimental::source_location::current().function_name()
-#define ART_LINE std::experimental::source_location::current().line()
-//#define ART_FILE __FILE__
-//#define ART_FUNCTION __FUNCTION__
-//#define ART_LINE __LINE__
+#include <mustache/utils/default_settings.hpp>
 
 namespace mustache {
     enum class LogLevel : uint32_t {
@@ -32,7 +25,7 @@ namespace mustache {
             bool show_context_{true};
         };
 
-        virtual void onMessage(const Context& ctx, LogLevel, std::string&&, ...);
+        virtual void onMessage(const Context& ctx, LogLevel, std::string, ...);
 
 
     };
@@ -76,7 +69,7 @@ namespace mustache {
         void onMsg(LogLevel lvl, _Msg&& msg, _ARGS&&... args) const {
             // TODO: add compile time arg check if possible
             LogWriter::active().onMessage(context_,
-                    lvl, toMsgFormat(std::move(msg)), forwardArg(args)...);
+                    lvl, toMsgFormat(msg), forwardArg(args)...);
         }
 
         static std::string toMsgFormat(const std::string& str) noexcept {
