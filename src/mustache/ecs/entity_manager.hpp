@@ -19,7 +19,20 @@ namespace mustache {
     class EntityManager : public Uncopiable {
     public:
         explicit EntityManager(World& world);
+
         [[nodiscard]] Entity create();
+
+        void update();
+
+        // Checks if entity is valid for this World
+        MUSTACHE_INLINE bool isEntityValid(Entity entity) const noexcept {
+            const auto id = entity.id();  // it is ok to get id for no-valid entity, null id will be returned
+            if (entity.isNull() || entity.worldId() != this_world_id_ ||
+                id.toInt() >= entities_.size() || entities_[id.toInt()].version() != entity.version()) {
+                return false;
+            }
+            return true;
+        }
 
         template<typename _F>
         void forEachArchetype(_F&& func) noexcept (noexcept(func)) {
@@ -35,19 +48,51 @@ namespace mustache {
                 locations_.emplace_back(archetype.insert(entity), archetype.id());
             } else {
                 const auto id = next_slot_;
-                const auto version = entities_[id].version();
-                next_slot_ = entities_[id].id().toInt();
-                entity.reset(EntityId::make(id), version);
-                entities_[id] = entity;
-                locations_[id].archetype = archetype.id();
-                locations_[id].index = archetype.insert(entity);
+                const auto version = entities_[id.toInt()].version();
+                next_slot_ = entities_[id.toInt()].id();
+                entity.reset(id, version);
+                entities_[id.toInt()] = entity;
+                locations_[id.toInt()].archetype = archetype.id();
+                locations_[id.toInt()].index = archetype.insert(entity);
                 --empty_slots_;
             }
             return entity;
         }
 
         void clear();
-        void destroy(Entity entity);
+
+        void clearArchetype(Archetype& archetype);
+
+        void destroy(Entity entity) {
+            marked_for_delete_.insert(entity);
+        }
+
+        template<FunctionSafety _Safety = FunctionSafety::kSafe>
+        void destroyNow(Entity entity) {
+            if constexpr (isSafe(_Safety)) {
+                if (!isEntityValid(entity)) {
+                    return;
+                }
+            }
+            const auto id = entity.id();
+            auto& location = locations_[id.toInt()];
+            if (!location.archetype.isNull()) {
+                if constexpr (isSafe(_Safety)) {
+                    if (location.archetype.toInt() >= archetypes_.size()) {
+                        throw std::runtime_error("Invalid archetype index");
+                    }
+                }
+                auto& archetype = archetypes_[location.archetype.toInt()];
+                auto moved_entity =  archetype->remove(location.index);
+                if (!moved_entity.isNull()) {
+                    locations_[moved_entity.id().toInt()] = location;
+                }
+                location.archetype = ArchetypeIndex::null();
+            }
+            entities_[id.toInt()].reset(empty_slots_ ? next_slot_ : id.next(), entity.version().next());
+            next_slot_ = id;
+            ++empty_slots_;
+        }
 
         Archetype& getArchetype(const ComponentMask&);
 
@@ -105,12 +150,15 @@ namespace mustache {
     private:
         World& world_;
         std::map<ComponentMask , Archetype* > mask_to_arch_;
-        std::vector<std::unique_ptr<Archetype> > archetypes_;
+        EntityId next_slot_ = EntityId::make(0);
 
-        uint64_t next_slot_{0};
         uint32_t empty_slots_{0};
         std::vector<Entity> entities_;
         std::vector<EntityLocationInWorld> locations_;
+        std::set<Entity> marked_for_delete_;
+        WorldId this_world_id_;
+        // TODO: replace shared pointed with some kind of unique_ptr but with deleter calling clearArchetype
+        // NOTE: must be the last field(for correct default destructor).
+        std::vector<std::shared_ptr<Archetype> > archetypes_;
     };
-
 }

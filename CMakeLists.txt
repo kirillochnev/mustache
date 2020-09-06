@@ -50,13 +50,16 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fdiagnostics-show-option")
 
 
 if(MUSTACHE_SANITIZE)
-
     set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-omit-frame-pointer -fsanitize=address")
     set (CMAKE_LINKER_FLAGS "${CMAKE_LINKER_FLAGS} -fno-omit-frame-pointer -fsanitize=address")
 endif()
+
 #include_directories("third_party")
 add_subdirectory(src)
+if (MUSTACHE_BUILD_TESTS)
+    enable_testing()
+    add_subdirectory(tests)
+endif()
 #add_subdirectory(benchmark)
 #add_subdirectory(debug_app)
 #add_subdirectory(lua_systems)
-#add_subdirectory(tests)

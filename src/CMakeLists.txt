@@ -5,7 +5,7 @@ project(mustache VERSION 0.1 LANGUAGES CXX)
 
 find_package(Threads REQUIRED)
 
-add_executable(${PROJECT_NAME} main.cpp
+add_library(${PROJECT_NAME} STATIC
         mustache/utils/timer.cpp
         mustache/utils/timer.hpp
         mustache/utils/logger.cpp
@@ -56,4 +56,9 @@ target_link_libraries(${PROJECT_NAME} ${CMAKE_THREAD_LIBS_INIT})
 
 if (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Emscripten")
     target_link_libraries(${PROJECT_NAME} stdc++fs)
+endif()
+
+if (MUSTACHE_BUILD_BENCHMARK)
+    add_executable(mustache_exe main.cpp)
+    target_link_libraries(mustache_exe mustache)
 endif()
