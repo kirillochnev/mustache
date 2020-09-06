@@ -241,7 +241,7 @@ void Dispatcher::setSingleThreadMode(bool on) noexcept {
 }
 
 uint32_t mustache::Dispatcher::threadCount() const noexcept {
-    return data_->threads.size();
+    return static_cast<uint32_t>(data_->threads.size());
 }
 
 void Queue::async(Job&& job) {

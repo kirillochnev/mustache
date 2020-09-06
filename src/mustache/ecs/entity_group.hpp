@@ -60,13 +60,12 @@ namespace mustache {
         [[nodiscard]] Iterator begin() const;
         [[nodiscard]] Iterator end() const;
 
-        [[nodiscard]] uint32_t size() const noexcept {
-            return count_ + fragmented_.size();
-        }
         [[nodiscard]] uint32_t numFragmented() const noexcept {
-            return fragmented_.size();
+            return static_cast<uint32_t>(fragmented_.size());
         }
-
+        [[nodiscard]] uint32_t size() const noexcept {
+            return count_ + numFragmented();
+        }
     private:
         std::vector<Entity> fragmented_;
         uint32_t first_{0u};

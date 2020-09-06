@@ -25,12 +25,12 @@ ArchetypeOperationHelper::ArchetypeOperationHelper(const ComponentMask& mask):
         version_offset{versionOffset()} {
 
     std::vector<ComponentOffset> offsets;
-    size_t element_size {sizeof(Entity)};
+    uint32_t element_size {static_cast<uint32_t>(sizeof(Entity))};
     for(auto id : component_index_to_component_id) {
         const auto& info = ComponentFactory::componentInfo(id);
         element_size = alignComponentOffset(ComponentOffset::make(element_size), info.align).toInt();
         offsets.push_back(ComponentOffset::make(element_size));
-        element_size += info.size;
+        element_size += static_cast<uint32_t>(info.size);
     }
     capacity = (Chunk::kChunkSize - entity_offset.toInt()) / element_size;
     for(auto& offset : offsets) {
