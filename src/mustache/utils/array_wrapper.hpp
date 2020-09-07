@@ -1,6 +1,7 @@
 #pragma once
 
 #include <mustache/utils/default_settings.hpp>
+#include <cstddef>
 #include <utility>
 
 namespace mustache {
@@ -15,6 +16,12 @@ namespace mustache {
         }
         MUSTACHE_INLINE auto size() const noexcept {
             return array_.size();
+        }
+        MUSTACHE_INLINE auto resize(size_t new_size) {
+            return array_.resize(new_size);
+        }
+        MUSTACHE_INLINE auto reserve(size_t new_capacity) {
+            return array_.reserve(new_capacity);
         }
         MUSTACHE_INLINE decltype(auto) operator[](_IndexType i) noexcept {
             return array_[i.toInt()];
