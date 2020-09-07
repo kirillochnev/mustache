@@ -128,8 +128,8 @@ namespace mustache {
         ArrayWrapper<std::vector<GetComponentInfo>, ComponentIndex> get; // ComponentIndex -> {offset, size}
         std::vector<InsertInfo> insert; // only non null init functions
         std::vector<DestroyInfo> destroy; // only non null destroy functions
-        std::vector<ExternalMoveInfo> external_move;
-        std::vector<InternalMoveInfo> internal_move; // move or copy function
+        ArrayWrapper<std::vector<ExternalMoveInfo>, ComponentIndex> external_move;
+        ArrayWrapper<std::vector<InternalMoveInfo>, ComponentIndex> internal_move; // move or copy function
         uint32_t num_components;
         uint32_t capacity;
         ComponentOffset entity_offset;

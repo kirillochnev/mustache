@@ -58,7 +58,6 @@ Archetype::~Archetype() {
 
 ArchetypeEntityIndex Archetype::insert(Entity entity, Archetype& prev_archetype, ArchetypeEntityIndex prev_index,
         bool initialize_missing_components) {
-    static decltype(ArchetypeOperationHelper::internal_move) empty_move;
     reserve(size() + 1);
     const auto index = ArchetypeEntityIndex::make(size_++);
 
