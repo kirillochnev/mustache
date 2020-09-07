@@ -1,12 +1,14 @@
 #pragma once
 
+#include <mustache/utils/type_info.hpp>
+#include <mustache/utils/array_wrapper.hpp>
+#include <mustache/utils/default_settings.hpp>
+
 #include <mustache/ecs/chunk.hpp>
 #include <mustache/ecs/id_deff.hpp>
-#include <mustache/utils/type_info.hpp>
 #include <mustache/ecs/component_factory.hpp>
 
 #include <vector>
-#include <mustache/utils/default_settings.hpp>
 
 namespace mustache {
 
@@ -106,7 +108,7 @@ namespace mustache {
         template<FunctionSafety _Safety = FunctionSafety::kDefault>
         ComponentIndex componentIndex(ComponentId component_id) const noexcept {
             if constexpr (isSafe(_Safety)) {
-                if (component_id.isNull() || component_id.toInt() >= component_index_to_component_id.size()) {
+                if (component_id.isNull() || component_id.toInt() >= component_id_to_component_index.size()) {
                     return ComponentIndex::null();
                 }
             }
@@ -120,7 +122,8 @@ namespace mustache {
             }
         }
 
-        std::vector<ComponentId> component_index_to_component_id;
+        // NOTE: can be removed?
+        ArrayWrapper<std::vector<ComponentId>, ComponentIndex> component_index_to_component_id;
         std::vector<ComponentIndex> component_id_to_component_index;
         std::vector<GetComponentInfo> get; // ComponentIndex -> {offset, size}
         std::vector<InsertInfo> insert; // only non null init functions
