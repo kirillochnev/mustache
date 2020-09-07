@@ -80,5 +80,4 @@ namespace mustache {
     protected:
         T value_{kNull};
     };
-
 }

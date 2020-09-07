@@ -19,7 +19,8 @@ add_library(${PROJECT_NAME} STATIC
         mustache/utils/memory_manager.hpp
         mustache/utils/dispatch.cpp
         mustache/utils/dispatch.hpp
-
+        mustache/utils/index_like.hpp
+        mustache/utils/array_wrapper.hpp
 
         mustache/ecs/entity.cpp
         mustache/ecs/entity.hpp
