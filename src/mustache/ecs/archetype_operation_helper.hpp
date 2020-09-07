@@ -58,11 +58,21 @@ namespace mustache {
             uint32_t component_size;
             TypeInfo::Destructor destructor;
         };
-        struct MoveInfo {
+
+        struct InternalMoveInfo {
             ComponentOffset offset;
             uint32_t component_size;
             TypeInfo::MoveFunction move;
         };
+
+        struct ExternalMoveInfo {
+            TypeInfo::Constructor constructor;
+            TypeInfo::MoveFunction move;
+            ComponentOffset offset;
+            uint32_t size;
+            ComponentId id;
+        };
+
         struct GetComponentInfo {
             ComponentOffset offset;
             uint32_t size;
@@ -115,7 +125,8 @@ namespace mustache {
         std::vector<GetComponentInfo> get; // ComponentIndex -> {offset, size}
         std::vector<InsertInfo> insert; // only non null init functions
         std::vector<DestroyInfo> destroy; // only non null destroy functions
-        std::vector<MoveInfo> move; // move or copy function
+        std::vector<ExternalMoveInfo> external_move;
+        std::vector<InternalMoveInfo> internal_move; // move or copy function
         uint32_t num_components;
         uint32_t capacity;
         ComponentOffset entity_offset;

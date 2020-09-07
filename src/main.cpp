@@ -70,29 +70,9 @@ namespace {
                 -2.0f * (q.y * q.z - q.w * q.x),
                 -1.0f + 2.0f * (q.x * q.x + q.y * q.y),
         };
-
     }
-
 }
 
-void foo() {
-    for (uint32_t i = 0; i < 1000; ++i) {
-        mustache::ComponentFactory::registerComponent<TestComponent<0> >();
-        mustache::ComponentFactory::registerComponent<Component2>();
-        mustache::ComponentFactory::registerComponent<TestComponent<1> >();
-        mustache::ComponentFactory::registerComponent<Component0>();
-    }
-    mustache::ComponentMask mask;
-    mask.add(mustache::ComponentId::make(0));
-//    mask.add(mustache::ComponentId::make(1));
-    mask.add(mustache::ComponentId::make(2));
-
-
-    mustache::World world{mustache::WorldId::make(0)};
-    mustache::Entity entity{0};
-    world.entities().getArchetype(mask).insert(entity);
-
-}
 void create1m() {
     enum : uint32_t {
         kNumObjects = 1000000,
@@ -111,8 +91,6 @@ void create1m() {
     auto& archetype = entities.getArchetype(mask);
     mustache::Benchmark benchmark;
     for(uint32_t i = 0; i < kNumIteration; ++i) {
-        const auto& info = archetype.operations();
-        const auto component_index = info.componentIndex<Position>();
         benchmark.add([&] {
             for (uint32_t j = 0; j < kNumObjects; ++j) {
                 (void)entities.create(archetype);
@@ -172,19 +150,44 @@ void iterate500k() {
     mustache::Benchmark benchmark;
 
     mustache::Dispatcher dispatcher;
+    const auto task_count = dispatcher.threadCount() + 1;
     for (uint32_t i = 0; i < kNumIteration; ++i) {
 //        update_pos_job.count = 0;
         update_pos_job.count.clear();
-        update_pos_job.count.resize(dispatcher.threadCount(), 0);
-        benchmark.add([&world, &update_pos_job, &dispatcher] {
+        update_pos_job.count.resize(task_count, 0);
+        benchmark.add([&world, &update_pos_job, &dispatcher, task_count] {
 //            update_pos_job.run(world, dispatcher);
-            update_pos_job.runParallel(world, dispatcher.threadCount(), dispatcher);
+            update_pos_job.runParallel(world, task_count, dispatcher);
         });
         if (update_pos_job.totalCount() != kNumObjects) {
             throw std::runtime_error(std::to_string(update_pos_job.totalCount()) + " vs " + std::to_string(static_cast<uint32_t>(kNumObjects)));
         }
     }
     benchmark.show();
+}
+void createEmptyAndAssign() {
+    enum : uint32_t {
+        kNumObjects = 1000000,
+        kNumIteration = 100,
+    };
+
+    mustache::World world{mustache::WorldId::make(0)};
+    auto& entities = world.entities();
+    mustache::Benchmark benchmark;
+    for(uint32_t i = 0; i < kNumIteration; ++i) {
+        benchmark.add([&] {
+            for (uint32_t j = 0; j < kNumObjects; ++j) {
+                auto e = entities.create();
+                entities.assign<Velocity>(e);
+                entities.assign<Position>(e);
+                entities.assign<Rotation>(e);
+            }
+        });
+        entities.clear();
+    }
+    benchmark.show();
+
+
 }
 
 void testComponent() {
@@ -238,6 +241,7 @@ int main() {
 
 //    foo();
 //    create1m();
-    iterate500k();
+    createEmptyAndAssign();
+//    iterate500k();
     return 0;
 }

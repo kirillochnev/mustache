@@ -53,7 +53,7 @@ namespace mustache {
         }
 
         [[nodiscard]] MUSTACHE_INLINE constexpr bool operator >=(const IndexLike& rhs) const noexcept {
-            return value_ <= rhs.value_;
+            return value_ >= rhs.value_;
         }
 
         [[nodiscard]] MUSTACHE_INLINE constexpr bool operator ==(const IndexLike& rhs) const noexcept {

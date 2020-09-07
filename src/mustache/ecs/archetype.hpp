@@ -38,17 +38,6 @@ namespace mustache {
     public:
         Archetype(World& world, ArchetypeIndex id, const ComponentMask& mask);
         ~Archetype();
-        [[nodiscard]] Entity create();
-
-        /// Entity must belong to default(empty) archetype
-        ArchetypeEntityIndex insert(Entity entity);
-
-        /**
-         * removes entity from archetype, calls destructor for each trivially destructible component
-         * moves last entity at index.
-         * returns new entity at index.
-         */
-        Entity remove(ArchetypeEntityIndex index);
 
         template<FunctionSafety _Safety = FunctionSafety::kDefault>
         Entity entityAt(ArchetypeEntityIndex index) const noexcept {
@@ -104,6 +93,20 @@ namespace mustache {
             return operation_helper_;
         }
 
+        uint32_t worldVersion() const noexcept;
+
+        [[nodiscard]] MUSTACHE_INLINE ComponentOffset getComponentOffset(ComponentId id) const noexcept {
+            ComponentOffset result;
+            if (hasComponent(id)) {
+                const auto index = operation_helper_.component_id_to_component_index[id.toInt()];
+                result = operation_helper_.get[index.toInt()].offset;
+            }
+            return result;
+        }
+
+    private:
+        friend class EntityManager;
+
         template<FunctionSafety _Safety = FunctionSafety::kDefault>
         MUSTACHE_INLINE ArchetypeInternalEntityLocation entityIndexToInternalLocation(ArchetypeEntityIndex index) const noexcept {
             ArchetypeInternalEntityLocation result {
@@ -120,11 +123,6 @@ namespace mustache {
             result.index = ChunkEntityIndex::make(index.toInt() % capacity);
             return result;
         }
-
-        uint32_t worldVersion() const noexcept;
-
-    private:
-        friend class EntityManager;
 
         template<typename _F>
         void forEachEntity(_F&& callback) {
@@ -147,6 +145,20 @@ namespace mustache {
         }
 
         void clear();
+        [[nodiscard]] Entity create();
+
+        /// Entity must belong to default(empty) archetype
+        ArchetypeEntityIndex insert(Entity entity, bool call_constructor = true);
+
+        ArchetypeEntityIndex insert(Entity entity, Archetype& prev_archetype,
+                ArchetypeEntityIndex prev_index, bool initialize_missing_components = true);
+
+        /**
+         * removes entity from archetype, calls destructor for each trivially destructible component
+         * moves last entity at index.
+         * returns new entity at index.
+         */
+        Entity remove(ArchetypeEntityIndex index);
 
         MUSTACHE_INLINE ComponentIndex componentIndex(ComponentId id) const noexcept {
             auto result = ComponentIndex::null();

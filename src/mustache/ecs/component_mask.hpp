@@ -30,11 +30,9 @@ namespace mustache {
 
         [[nodiscard]] std::vector<ComponentId > components() const noexcept {
             std::vector<ComponentId > result;
-            for(size_t i = 0u; i < value_.size(); ++i) {
-                if(value_.test(i)) {
-                    result.push_back(ComponentId::make(i));
-                }
-            }
+            forEachComponent([&result](auto id) {
+                result.push_back(id);
+            });
             return result;
         }
 
@@ -69,7 +67,14 @@ namespace mustache {
             return uint_value_ < rhs.uint_value_;
         }
 
-
+        template<typename _F>
+        void forEachComponent(_F&& function) const noexcept {
+            for(size_t i = 0u; i < value_.size(); ++i) {
+                if(value_.test(i)) {
+                    function(ComponentId::make(i));
+                }
+            }
+        }
     private:
         std::bitset<64> value_;
         uint64_t uint_value_{0u};
