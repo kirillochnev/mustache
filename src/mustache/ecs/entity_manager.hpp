@@ -54,8 +54,8 @@ namespace mustache {
                 next_slot_ = entities_[id.toInt()].id();
                 entity.reset(id, version);
                 entities_[id.toInt()] = entity;
-                locations_[id.toInt()].archetype = archetype.id();
-                locations_[id.toInt()].index = archetype.insert(entity);
+                locations_[id].archetype = archetype.id();
+                locations_[id].index = archetype.insert(entity);
                 --empty_slots_;
             }
             return entity;
@@ -77,7 +77,7 @@ namespace mustache {
                 }
             }
             const auto id = entity.id();
-            auto& location = locations_[id.toInt()];
+            auto& location = locations_[id];
             if (!location.archetype.isNull()) {
                 if constexpr (isSafe(_Safety)) {
                     if (!archetypes_.has(location.archetype)) {
@@ -87,7 +87,7 @@ namespace mustache {
                 auto& archetype = archetypes_[location.archetype];
                 auto moved_entity =  archetype->remove(location.index);
                 if (!moved_entity.isNull()) {
-                    locations_[moved_entity.id().toInt()] = location;
+                    locations_[moved_entity.id()] = location;
                 }
                 location.archetype = ArchetypeIndex::null();
             }
@@ -120,7 +120,7 @@ namespace mustache {
         template<typename T>
         MUSTACHE_INLINE T* getComponent(Entity entity) const noexcept {
             static const auto component_id = ComponentFactory::registerComponent<T>();
-            const auto& location = locations_[entity.id().toInt()];
+            const auto& location = locations_[entity.id()];
             if (!location.archetype.isValid()) {
                 return nullptr;
             }
@@ -140,7 +140,7 @@ namespace mustache {
                     return;
                 }
             }
-            auto& location = locations_[entity.id().toInt()];
+            auto& location = locations_[entity.id()];
             if constexpr (isSafe(_Safety)) {
                 if (location.archetype.isNull()) {
                     return;
@@ -166,8 +166,8 @@ namespace mustache {
             location.index = archetype.insert(entity, prev_archetype, prev_index, false);
             auto moved_entity = prev_archetype.entityAt(prev_index);
             if (!moved_entity.isNull()) {
-                locations_[moved_entity.id().toInt()].index = prev_index;
-                locations_[moved_entity.id().toInt()].archetype = location.archetype;
+                locations_[moved_entity.id()].index = prev_index;
+                locations_[moved_entity.id()].archetype = location.archetype;
             }
             location.archetype = archetype.id();
         }
@@ -175,7 +175,7 @@ namespace mustache {
         template<typename T, typename... _ARGS>
         MUSTACHE_INLINE T& assign(Entity e, _ARGS&&... args) {
             static const auto component_id = ComponentFactory::registerComponent<T>();
-            auto& location = locations_[e.id().toInt()];
+            auto& location = locations_[e.id()];
             constexpr bool use_custom_constructor = sizeof...(_ARGS) > 0;
             if (location.archetype.isNull()) {
                 static const ComponentMask mask{component_id};
@@ -202,8 +202,8 @@ namespace mustache {
             }
             auto moved_entity = prev_arch.entityAt(prev_index);
             if (!moved_entity.isNull()) {
-                locations_[moved_entity.id().toInt()].index = prev_index;
-                locations_[moved_entity.id().toInt()].archetype = location.archetype;
+                locations_[moved_entity.id()].index = prev_index;
+                locations_[moved_entity.id()].archetype = location.archetype;
             }
             location.archetype = arch.id();
             return *component_ptr;
@@ -216,7 +216,7 @@ namespace mustache {
                     return false;
                 }
             }
-            const auto& location = locations_[entity.id().toInt()];
+            const auto& location = locations_[entity.id()];
             if (location.archetype.isNull()) {
                 return false;
             }
@@ -231,7 +231,7 @@ namespace mustache {
 
         uint32_t empty_slots_{0};
         std::vector<Entity> entities_;
-        std::vector<EntityLocationInWorld> locations_;
+        ArrayWrapper<std::vector<EntityLocationInWorld>, EntityId> locations_;
         std::set<Entity> marked_for_delete_;
         WorldId this_world_id_;
         // TODO: replace shared pointed with some kind of unique_ptr but with deleter calling clearArchetype

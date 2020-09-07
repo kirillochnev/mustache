@@ -31,7 +31,7 @@ Entity EntityManager::create() {
     if(!empty_slots_) {
         Entity result{entities_.size()};
         entities_.push_back(result);
-        locations_.push_back({});
+        locations_.emplace_back();
         return result;
     }
 
@@ -41,7 +41,7 @@ Entity EntityManager::create() {
     next_slot_ = entities_[id.toInt()].id();
     entity.reset(id, version);
     entities_[id.toInt()] = entity;
-    locations_[id.toInt()] = EntityLocationInWorld{};
+    locations_[id] = EntityLocationInWorld{};
     --empty_slots_;
 
     return entity;
@@ -66,7 +66,7 @@ void EntityManager::update() {
 void EntityManager::clearArchetype(Archetype& archetype) {
     archetype.forEachEntity([this](Entity entity) {
         const auto id = entity.id();
-        auto& location = locations_[id.toInt()];
+        auto& location = locations_[id];
         location.archetype = ArchetypeIndex::null();
         entities_[id.toInt()].reset(empty_slots_ ? next_slot_ : id.next(), entity.version().next());
         next_slot_ = id;

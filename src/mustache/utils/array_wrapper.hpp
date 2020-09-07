@@ -91,5 +91,8 @@ namespace mustache {
         MUSTACHE_INLINE decltype(auto) front() const noexcept (noexcept(array_.front())) {
             return array_.front();
         }
+        MUSTACHE_INLINE decltype(auto) clear() noexcept (noexcept(array_.clear())){
+            array_.clear();
+        }
     };
 }
