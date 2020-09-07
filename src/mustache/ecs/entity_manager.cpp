@@ -22,7 +22,7 @@ Archetype& EntityManager::getArchetype(const ComponentMask& mask) {
         clearArchetype(*archetype);
         delete archetype;
     };
-    result = new Archetype(world_, ArchetypeIndex::make(archetypes_.size()), mask);
+    result = new Archetype(world_, archetypes_.back_index().next(), mask);
     archetypes_.emplace_back(result, deleter);
     return *result;
 }

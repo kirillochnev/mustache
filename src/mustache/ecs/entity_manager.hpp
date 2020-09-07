@@ -1,12 +1,14 @@
 #pragma once
 
+#include <mustache/utils/default_settings.hpp>
+#include <mustache/utils/array_wrapper.hpp>
 #include <mustache/utils/uncopiable.hpp>
 
 #include <mustache/ecs/entity.hpp>
 #include <mustache/ecs/archetype.hpp>
 #include <mustache/ecs/component_mask.hpp>
 #include <mustache/ecs/component_factory.hpp>
-#include <mustache/utils/default_settings.hpp>
+
 #include <memory>
 #include <map>
 #include <set>
@@ -78,11 +80,11 @@ namespace mustache {
             auto& location = locations_[id.toInt()];
             if (!location.archetype.isNull()) {
                 if constexpr (isSafe(_Safety)) {
-                    if (location.archetype.toInt() >= archetypes_.size()) {
+                    if (!archetypes_.has(location.archetype)) {
                         throw std::runtime_error("Invalid archetype index");
                     }
                 }
-                auto& archetype = archetypes_[location.archetype.toInt()];
+                auto& archetype = archetypes_[location.archetype];
                 auto moved_entity =  archetype->remove(location.index);
                 if (!moved_entity.isNull()) {
                     locations_[moved_entity.id().toInt()] = location;
@@ -108,11 +110,11 @@ namespace mustache {
         template<FunctionSafety _Safety = FunctionSafety::kDefault>
         [[nodiscard]] MUSTACHE_INLINE Archetype& getArchetype(ArchetypeIndex index) noexcept (!isSafe(_Safety)) {
             if constexpr (isSafe(_Safety)) {
-                if (index.toInt() >= archetypes_.size()) {
+                if (!archetypes_.has(index)) {
                     throw std::runtime_error("Index is out of bound");
                 }
             }
-            return *archetypes_[index.toInt()];
+            return *archetypes_[index];
         }
 
         template<typename T>
@@ -122,7 +124,7 @@ namespace mustache {
             if (!location.archetype.isValid()) {
                 return nullptr;
             }
-            const auto& arch = archetypes_[location.archetype.toInt()];
+            const auto& arch = archetypes_[location.archetype];
             if (!arch->hasComponent(component_id)) {
                 return nullptr;
             }
@@ -144,7 +146,7 @@ namespace mustache {
                     return;
                 }
             }
-            auto& prev_archetype = *archetypes_[location.archetype.toInt()];
+            auto& prev_archetype = *archetypes_[location.archetype];
             auto mask = prev_archetype.mask_;
             if constexpr (isSafe(_Safety)) {
                 if (!mask.has(component_id)) {
@@ -187,7 +189,7 @@ namespace mustache {
                 }
                 return *component_ptr;
             }
-            auto& prev_arch = *archetypes_[location.archetype.toInt()];
+            auto& prev_arch = *archetypes_[location.archetype];
             ComponentMask mask = prev_arch.mask_;
             mask.add(component_id);
             auto& arch = getArchetype(mask);
@@ -218,7 +220,7 @@ namespace mustache {
             if (location.archetype.isNull()) {
                 return false;
             }
-            const auto& archetype = *archetypes_[location.archetype.toInt()];
+            const auto& archetype = *archetypes_[location.archetype];
             return archetype.hasComponent<T>();
         }
     private:
@@ -234,6 +236,6 @@ namespace mustache {
         WorldId this_world_id_;
         // TODO: replace shared pointed with some kind of unique_ptr but with deleter calling clearArchetype
         // NOTE: must be the last field(for correct default destructor).
-        std::vector<std::shared_ptr<Archetype> > archetypes_;
+        ArrayWrapper<std::vector<std::shared_ptr<Archetype> >, ArchetypeIndex> archetypes_;
     };
 }
