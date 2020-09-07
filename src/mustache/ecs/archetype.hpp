@@ -80,11 +80,11 @@ namespace mustache {
         template<FunctionSafety _Safety = FunctionSafety::kDefault>
         Chunk* getChunk(ChunkIndex index) const noexcept {
             if constexpr (isSafe(_Safety)) {
-                if (!index.isValid() || index.toInt() >= chunks_.size()) {
+                if (!index.isValid() || !chunks_.has(index)) {
                     return nullptr;
                 }
             }
-            return chunks_[index.toInt()];
+            return chunks_[index];
         }
         size_t chunkCount() const noexcept {
             return chunks_.size();
@@ -119,7 +119,7 @@ namespace mustache {
                 }
             }
             const auto capacity = operation_helper_.capacity;
-            result.chunk = chunks_[index.toInt() / capacity];
+            result.chunk = chunks_[ChunkIndex::make(index.toInt() / capacity)];
             result.index = ChunkEntityIndex::make(index.toInt() % capacity);
             return result;
         }
@@ -182,7 +182,7 @@ namespace mustache {
         ComponentMask mask_;
         ArchetypeOperationHelper operation_helper_;
 
-        std::vector<Chunk*> chunks_;
+        ArrayWrapper<std::vector<Chunk*>, ChunkIndex> chunks_;
         uint32_t size_{0};
         uint32_t capacity_{0};
         ArchetypeIndex id_;

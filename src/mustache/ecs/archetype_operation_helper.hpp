@@ -96,7 +96,7 @@ namespace mustache {
             if constexpr (isSafe(_Safety)) {
                 if (component_index.isNull() || !get.has(component_index) ||
                     location.chunk == nullptr || !location.index.isValid() ||
-                    location.index.toInt() >= capacity) { // TODO: this line looks like a problem
+                    location.index.toInt() >= capacity) {
                     return nullptr;
                 }
             }

@@ -5,6 +5,7 @@
 using namespace mustache;
 namespace {
     ComponentOffset alignComponentOffset(ComponentOffset prev, size_t align) noexcept {
+        // TODO: use std::align
         const auto space = prev.toInt() % align;
         return prev.add(space > 0 ? align - space : 0);
     }
@@ -24,7 +25,7 @@ ArchetypeOperationHelper::ArchetypeOperationHelper(const ComponentMask& mask):
         entity_offset{entityOffset(num_components)},
         version_offset{versionOffset()} {
 
-    std::vector<ComponentOffset> offsets;
+    ArrayWrapper<std::vector<ComponentOffset>, ComponentIndex> offsets;
     uint32_t element_size {static_cast<uint32_t>(sizeof(Entity))};
     for(auto id : component_index_to_component_id) {
         const auto& info = ComponentFactory::componentInfo(id);
@@ -41,28 +42,28 @@ ArchetypeOperationHelper::ArchetypeOperationHelper(const ComponentMask& mask):
 
     for (auto component_id : component_index_to_component_id) {
         if (!component_id_to_component_index.has(component_id)) {
-            component_id_to_component_index.resize(component_id.toInt() + 1);
+            component_id_to_component_index.resize(component_id.next().toInt());
         }
         component_id_to_component_index[component_id] = component_index;
         const auto& info = ComponentFactory::componentInfo(component_id);
-        get.push_back(GetComponentInfo{offsets[component_index.toInt()], static_cast<uint32_t>(info.size)});
+        get.push_back(GetComponentInfo{offsets[component_index], static_cast<uint32_t>(info.size)});
         if (info.functions.create) {
             insert.push_back(InsertInfo {
-                    offsets[component_index.toInt()],
+                    offsets[component_index],
                     static_cast<uint32_t>(info.size),
                     info.functions.create
             });
         }
         if (info.functions.destroy) {
             destroy.push_back(DestroyInfo {
-                    offsets[component_index.toInt()],
+                    offsets[component_index],
                     static_cast<uint32_t>(info.size),
                     info.functions.destroy
             });
         }
         if (info.functions.move) {
             internal_move.push_back(InternalMoveInfo {
-                    offsets[component_index.toInt()],
+                    offsets[component_index],
                     static_cast<uint32_t>(info.size),
                     info.functions.move
             });
@@ -70,7 +71,7 @@ ArchetypeOperationHelper::ArchetypeOperationHelper(const ComponentMask& mask):
         ExternalMoveInfo external_move_info;
         external_move_info.constructor = info.functions.create;
         external_move_info.move = info.functions.move;
-        external_move_info.offset = offsets[component_index.toInt()];
+        external_move_info.offset = offsets[component_index];
         external_move_info.size = static_cast<uint32_t>(info.size);
         external_move_info.id = component_id;
         external_move.push_back(external_move_info);
