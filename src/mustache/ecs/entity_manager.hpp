@@ -130,6 +130,46 @@ namespace mustache {
             return reinterpret_cast<T*>(ptr);
         }
 
+        template<typename T, FunctionSafety _Safety = FunctionSafety::kSafe>
+        MUSTACHE_INLINE void removeComponent(Entity entity) {
+            static const auto component_id = ComponentFactory::registerComponent<T>();
+            if constexpr (isSafe(_Safety)) {
+                if (!isEntityValid(entity)) {
+                    return;
+                }
+            }
+            auto& location = locations_[entity.id().toInt()];
+            if constexpr (isSafe(_Safety)) {
+                if (location.archetype.isNull()) {
+                    return;
+                }
+            }
+            auto& prev_archetype = *archetypes_[location.archetype.toInt()];
+            auto mask = prev_archetype.mask_;
+            if constexpr (isSafe(_Safety)) {
+                if (!mask.has(component_id)) {
+                    return;
+                }
+            }
+            mask.set(component_id, false);
+            if (mask.isEmpty()) {
+                prev_archetype.remove(location.index);
+                location.archetype = ArchetypeIndex::null();
+                location.index = ArchetypeEntityIndex::null();
+                return;
+            }
+            auto& archetype = getArchetype(mask);
+            const auto prev_index = location.index;
+
+            location.index = archetype.insert(entity, prev_archetype, prev_index, false);
+            auto moved_entity = prev_archetype.entityAt(prev_index);
+            if (!moved_entity.isNull()) {
+                locations_[moved_entity.id().toInt()].index = prev_index;
+                locations_[moved_entity.id().toInt()].archetype = location.archetype;
+            }
+            location.archetype = archetype.id();
+        }
+
         template<typename T, typename... _ARGS>
         MUSTACHE_INLINE T& assign(Entity e, _ARGS&&... args) {
             static const auto component_id = ComponentFactory::registerComponent<T>();
@@ -166,7 +206,23 @@ namespace mustache {
             location.archetype = arch.id();
             return *component_ptr;
         }
+
+        template<typename T, FunctionSafety _Safety = FunctionSafety::kDefault>
+        bool hasComponent(Entity entity) const noexcept {
+            if constexpr (isSafe(_Safety)) {
+                if (!isEntityValid(entity)) {
+                    return false;
+                }
+            }
+            const auto& location = locations_[entity.id().toInt()];
+            if (location.archetype.isNull()) {
+                return false;
+            }
+            const auto& archetype = *archetypes_[location.archetype.toInt()];
+            return archetype.hasComponent<T>();
+        }
     private:
+
         World& world_;
         std::map<ComponentMask , Archetype* > mask_to_arch_;
         EntityId next_slot_ = EntityId::make(0);
