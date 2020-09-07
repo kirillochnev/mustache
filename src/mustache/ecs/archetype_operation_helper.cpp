@@ -61,12 +61,20 @@ ArchetypeOperationHelper::ArchetypeOperationHelper(const ComponentMask& mask):
             });
         }
         if (info.functions.move) {
-            move.push_back(MoveInfo {
+            internal_move.push_back(InternalMoveInfo {
                     offsets[component_index.toInt()],
                     static_cast<uint32_t>(info.size),
                     info.functions.move
             });
         }
+        ExternalMoveInfo external_move_info;
+        external_move_info.constructor = info.functions.create;
+        external_move_info.move = info.functions.move;
+        external_move_info.offset = offsets[component_index.toInt()];
+        external_move_info.size = static_cast<uint32_t>(info.size);
+        external_move_info.id = component_id;
+        external_move.push_back(external_move_info);
+
         ++component_index;
     }
 }

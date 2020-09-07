@@ -56,7 +56,43 @@ Archetype::~Archetype() {
     }
 }
 
-ArchetypeEntityIndex Archetype::insert(Entity entity) {
+ArchetypeEntityIndex Archetype::insert(Entity entity, Archetype& prev_archetype, ArchetypeEntityIndex prev_index,
+        bool initialize_missing_components) {
+    static decltype(ArchetypeOperationHelper::internal_move) empty_move;
+    reserve(size() + 1);
+    const auto index = ArchetypeEntityIndex::make(size_++);
+
+    // the item at this index has not been created yet,
+    // but memory has already been allocated, so an unsafe version of entityIndexToInternalLocation must be used
+    const auto location = entityIndexToInternalLocation<FunctionSafety::kUnsafe>(index);
+    updateVersion(world_.version(), operation_helper_.num_components,
+                  operation_helper_.version_offset, location.chunk);
+    const auto entity_offset = operation_helper_.entity_offset.add(location.index.toInt() * sizeof(Entity));
+    new (location.chunk->dataPointerWithOffset<Entity>(entity_offset)) Entity (entity);
+
+    const auto source_location = prev_archetype.entityIndexToInternalLocation(prev_index);
+    for (const auto& info : operation_helper_.external_move) {
+        const auto prev_offset = prev_archetype.getComponentOffset(info.id).add(source_location.index.toInt() * info.size);
+        if (!prev_offset.isNull()) {
+            auto prev_ptr = source_location.chunk->dataPointerWithOffset(prev_offset);
+            const auto component_offset = info.offset.add(location.index.toInt() * info.size);
+            auto component_ptr = location.chunk->dataPointerWithOffset(component_offset);
+            info.move(component_ptr, prev_ptr);
+            continue;
+        }
+        if (initialize_missing_components && info.constructor) {
+            const auto component_offset = info.offset.add(location.index.toInt() * info.size);
+            auto component_ptr = location.chunk->dataPointerWithOffset(component_offset);
+            info.constructor(component_ptr);
+        }
+    }
+    // TODO: use callback to update entity location for prev archetype!
+    prev_archetype.remove(prev_index);
+
+    return index;
+}
+
+ArchetypeEntityIndex Archetype::insert(Entity entity, bool call_constructor) {
     reserve(size() + 1);
     const auto index = ArchetypeEntityIndex::make(size_++);
     // the item at this index has not been created yet,
@@ -66,10 +102,12 @@ ArchetypeEntityIndex Archetype::insert(Entity entity) {
             operation_helper_.version_offset, location.chunk);
     const auto entity_offset = operation_helper_.entity_offset.add(location.index.toInt() * sizeof(Entity));
     new (location.chunk->dataPointerWithOffset<Entity>(entity_offset)) Entity (entity);
-    for (const auto& info : operation_helper_.insert) {
-        const auto component_offset = info.offset.add(location.index.toInt() * info.component_size);
-        auto component_ptr = location.chunk->dataPointerWithOffset(component_offset);
-        info.constructor(component_ptr);
+    if (call_constructor) {
+        for (const auto &info : operation_helper_.insert) {
+            const auto component_offset = info.offset.add(location.index.toInt() * info.component_size);
+            auto component_ptr = location.chunk->dataPointerWithOffset(component_offset);
+            info.constructor(component_ptr);
+        }
     }
     return index;
 }
@@ -92,12 +130,12 @@ Entity Archetype::remove(ArchetypeEntityIndex index) {
     }
     // moving last entity to index
     const auto source_location = entityIndexToInternalLocation(ArchetypeEntityIndex::make(size_ - 1));
-    for (auto& info : operation_helper_.move) {
+    for (auto& info : operation_helper_.internal_move) {
         const auto source_component_offset = info.offset.add(source_location.index.toInt() * info.component_size);
         const auto dest_component_offset = info.offset.add(location.index.toInt() * info.component_size);
         auto source_ptr = location.chunk->dataPointerWithOffset(source_component_offset);
         auto dest_ptr = location.chunk->dataPointerWithOffset(dest_component_offset);
-        info.move(source_ptr, dest_ptr);
+        info.move(dest_ptr, source_ptr);
     }
     auto entity_ptr = operation_helper_.getEntity(source_location);
     if (entity_ptr == nullptr) {
@@ -137,7 +175,6 @@ uint32_t Archetype::worldVersion() const noexcept {
 }
 
 void Archetype::clear() {
-    // TODO: entity manager need to update locations
     const auto for_each_location = [this, size = size_](auto&& f) {
         const auto chunk_last_index = ChunkEntityIndex::make(operation_helper_.capacity);
         auto num_items = size;

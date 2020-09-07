@@ -130,23 +130,42 @@ namespace mustache {
             return reinterpret_cast<T*>(ptr);
         }
 
-        /*template<typename T, typename... _ARGS>
+        template<typename T, typename... _ARGS>
         MUSTACHE_INLINE T& assign(Entity e, _ARGS&&... args) {
-            /// TODO: add entity version increment!
             static const auto component_id = ComponentFactory::registerComponent<T>();
             auto& location = locations_[e.id().toInt()];
-            if(location.archetype.isNull()) {
+            constexpr bool use_custom_constructor = sizeof...(_ARGS) > 0;
+            if (location.archetype.isNull()) {
                 static const ComponentMask mask{component_id};
                 auto& arch = getArchetype(mask);
                 location.archetype = arch.id();
-                if constexpr (sizeof...(_ARGS) < 1) {
-                    location.index = arch.insert(e);
-                    return *getComponentFromArchetypeUnsafe<T>(arch, location.index);
+                location.index = arch.insert(e, !use_custom_constructor);
+                const auto internal_location = arch.entityIndexToInternalLocation(location.index);
+                T* component_ptr = arch.operation_helper_.getComponent<T, FunctionSafety::kUnsafe>(internal_location);
+                if constexpr (use_custom_constructor) {
+                    *new(component_ptr) T{std::forward<_ARGS>(args)...};
                 }
-                location.index = arch.addEntityWithoutInit(e);
-                return *new(getComponentFromArchetypeUnsafe<T>(arch, location.index)) T{std::forward<_ARGS>(args)...};
+                return *component_ptr;
             }
-        }*/
+            auto& prev_arch = *archetypes_[location.archetype.toInt()];
+            ComponentMask mask = prev_arch.mask_;
+            mask.add(component_id);
+            auto& arch = getArchetype(mask);
+            const auto prev_index = location.index;
+            location.index = arch.insert(e, prev_arch, prev_index, !use_custom_constructor);
+            const auto internal_location = arch.entityIndexToInternalLocation(location.index);
+            T* component_ptr = arch.operation_helper_.getComponent<T, FunctionSafety::kUnsafe>(internal_location);
+            if constexpr (use_custom_constructor) {
+                *new(component_ptr) T{std::forward<_ARGS>(args)...};
+            }
+            auto moved_entity = prev_arch.entityAt(prev_index);
+            if (!moved_entity.isNull()) {
+                locations_[moved_entity.id().toInt()].index = prev_index;
+                locations_[moved_entity.id().toInt()].archetype = location.archetype;
+            }
+            location.archetype = arch.id();
+            return *component_ptr;
+        }
     private:
         World& world_;
         std::map<ComponentMask , Archetype* > mask_to_arch_;

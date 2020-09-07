@@ -154,3 +154,49 @@ TEST(EntityManager, destructor) {
     }
     ASSERT_EQ(created_components.size(), 0);
 }
+
+TEST(EntityManager, assign) {
+    static uint32_t num_0 = 0;
+    static uint32_t num_1 = 0;
+    struct UIntComponent0 {
+        uint32_t value = 777 + (++num_0);
+    };
+    struct UIntComponent1 {
+        uint32_t value = 999 + (++num_1);
+    };
+    mustache::World world{mustache::WorldId::make(0)};
+    auto& entities = world.entities();
+
+    for (uint32_t i = 0; i < 100; ++i) {
+        auto e = entities.create();
+
+        entities.assign<UIntComponent0>(e);
+        ASSERT_EQ(entities.getComponent<UIntComponent0>(e)->value, 777 + num_0);
+
+        entities.assign<UIntComponent1>(e);
+        ASSERT_EQ(entities.getComponent<UIntComponent1>(e)->value, 999 + num_1);
+        ASSERT_EQ(entities.getComponent<UIntComponent0>(e)->value, 777 + num_0);
+    }
+}
+
+TEST(EntityManager, assign_with_custom_constructor) {
+    struct UIntComponent0 {
+        uint32_t value = 777;
+    };
+    struct UIntComponent1 {
+        uint32_t value = 999;
+    };
+    mustache::World world{mustache::WorldId::make(0)};
+    auto& entities = world.entities();
+
+    for (uint32_t i = 0; i < 100; ++i) {
+        auto e = entities.create();
+
+        entities.assign<UIntComponent0>(e, UIntComponent0{123u + i});
+        ASSERT_EQ(entities.getComponent<UIntComponent0>(e)->value, 123 + i);
+
+        entities.assign<UIntComponent1>(e, 321u + i);
+        ASSERT_EQ(entities.getComponent<UIntComponent1>(e)->value, 321u + i);
+        ASSERT_EQ(entities.getComponent<UIntComponent0>(e)->value, 123u + i);
+    }
+}
