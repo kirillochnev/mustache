@@ -10,6 +10,10 @@ EntityManager::EntityManager(World& world):
 }
 
 Archetype& EntityManager::getArchetype(const ComponentMask& mask) {
+    if (mask.isEmpty()) {
+        // NOTE: it might make sense to create null value for the "empty" archetype
+        throw std::runtime_error("Mask is empty");
+    }
     auto& result = mask_to_arch_[mask];
     if(result) {
         return *result;
