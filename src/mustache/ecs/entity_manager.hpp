@@ -30,7 +30,7 @@ namespace mustache {
         MUSTACHE_INLINE bool isEntityValid(Entity entity) const noexcept {
             const auto id = entity.id();  // it is ok to get id for no-valid entity, null id will be returned
             if (entity.isNull() || entity.worldId() != this_world_id_ ||
-                id.toInt() >= entities_.size() || entities_[id.toInt()].version() != entity.version()) {
+                !entities_.has(entity.id()) || entities_[id].version() != entity.version()) {
                 return false;
             }
             return true;
@@ -50,10 +50,10 @@ namespace mustache {
                 locations_.emplace_back(archetype.insert(entity), archetype.id());
             } else {
                 const auto id = next_slot_;
-                const auto version = entities_[id.toInt()].version();
-                next_slot_ = entities_[id.toInt()].id();
+                const auto version = entities_[id].version();
+                next_slot_ = entities_[id].id();
                 entity.reset(id, version);
-                entities_[id.toInt()] = entity;
+                entities_[id] = entity;
                 locations_[id].archetype = archetype.id();
                 locations_[id].index = archetype.insert(entity);
                 --empty_slots_;
@@ -91,7 +91,7 @@ namespace mustache {
                 }
                 location.archetype = ArchetypeIndex::null();
             }
-            entities_[id.toInt()].reset(empty_slots_ ? next_slot_ : id.next(), entity.version().next());
+            entities_[id].reset(empty_slots_ ? next_slot_ : id.next(), entity.version().next());
             next_slot_ = id;
             ++empty_slots_;
         }
@@ -230,7 +230,7 @@ namespace mustache {
         EntityId next_slot_ = EntityId::make(0);
 
         uint32_t empty_slots_{0};
-        std::vector<Entity> entities_;
+        ArrayWrapper<std::vector<Entity>, EntityId> entities_;
         ArrayWrapper<std::vector<EntityLocationInWorld>, EntityId> locations_;
         std::set<Entity> marked_for_delete_;
         WorldId this_world_id_;

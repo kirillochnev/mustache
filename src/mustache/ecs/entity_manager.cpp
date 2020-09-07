@@ -37,10 +37,10 @@ Entity EntityManager::create() {
 
     Entity entity;
     const auto id = next_slot_;
-    const auto version = entities_[id.toInt()].version();
-    next_slot_ = entities_[id.toInt()].id();
+    const auto version = entities_[id].version();
+    next_slot_ = entities_[id].id();
     entity.reset(id, version);
-    entities_[id.toInt()] = entity;
+    entities_[id] = entity;
     locations_[id] = EntityLocationInWorld{};
     --empty_slots_;
 
@@ -68,7 +68,7 @@ void EntityManager::clearArchetype(Archetype& archetype) {
         const auto id = entity.id();
         auto& location = locations_[id];
         location.archetype = ArchetypeIndex::null();
-        entities_[id.toInt()].reset(empty_slots_ ? next_slot_ : id.next(), entity.version().next());
+        entities_[id].reset(empty_slots_ ? next_slot_ : id.next(), entity.version().next());
         next_slot_ = id;
         ++empty_slots_;
     });
