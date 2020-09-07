@@ -118,9 +118,9 @@ namespace mustache {
                     return result;
                 }
             }
-            const auto capacity = operation_helper_.capacity;
-            result.chunk = chunks_[ChunkIndex::make(index.toInt() / capacity)];
-            result.index = ChunkEntityIndex::make(index.toInt() % capacity);
+            const auto chunk_capacity = operation_helper_.chunkCapacity();
+            result.chunk = chunks_[ChunkIndex::make(index.toInt() / chunk_capacity)];
+            result.index = ChunkEntityIndex::make(index.toInt() % chunk_capacity);
             return result;
         }
 
@@ -131,10 +131,10 @@ namespace mustache {
             }
             auto num_items = size_;
             ArchetypeInternalEntityLocation location;
-            const auto chunk_last_index = ChunkEntityIndex::make(operation_helper_.capacity);
+            const auto chunk_last_index = operation_helper_.index_of_last_entity_in_chunk;
             for (auto chunk : chunks_) {
                 location.chunk = chunk;
-                for (location.index = ChunkEntityIndex::make(0); location.index < chunk_last_index; ++location.index) {
+                for (location.index = ChunkEntityIndex::make(0); location.index <= chunk_last_index; ++location.index) {
                     if (num_items == 0) {
                         return;
                     }

@@ -134,7 +134,7 @@ namespace mustache {
             const auto i1 = first.toInt();
             const auto i2 = first.toInt() + count.toInt();
             const auto operation_helper = archetype.operations();
-            const auto elements_per_chunk = operation_helper.capacity;
+            const auto elements_per_chunk = operation_helper.chunkCapacity();
             const ChunkIndex first_chunk = ChunkIndex::make(i1 / elements_per_chunk);
             const ChunkIndex last_chunk = ChunkIndex::make(i2 / elements_per_chunk);
 

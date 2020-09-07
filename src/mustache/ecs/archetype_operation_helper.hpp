@@ -84,7 +84,7 @@ namespace mustache {
         Entity* getEntity(const ArchetypeInternalEntityLocation& location) const noexcept {
             if constexpr (isSafe(_Safety)) {
                 if (location.chunk == nullptr || !location.index.isValid() ||
-                    location.index.toInt() >= capacity) {
+                    location.index > index_of_last_entity_in_chunk) {
                     return nullptr;
                 }
             }
@@ -96,7 +96,7 @@ namespace mustache {
             if constexpr (isSafe(_Safety)) {
                 if (component_index.isNull() || !get.has(component_index) ||
                     location.chunk == nullptr || !location.index.isValid() ||
-                    location.index.toInt() >= capacity) {
+                    location.index > index_of_last_entity_in_chunk) {
                     return nullptr;
                 }
             }
@@ -122,6 +122,9 @@ namespace mustache {
             }
         }
 
+        MUSTACHE_INLINE uint32_t chunkCapacity() const noexcept {
+            return index_of_last_entity_in_chunk.next().toInt();
+        }
         // NOTE: can be removed?
         ArrayWrapper<std::vector<ComponentId>, ComponentIndex> component_index_to_component_id;
         ArrayWrapper<std::vector<ComponentIndex>, ComponentId> component_id_to_component_index;
@@ -131,7 +134,7 @@ namespace mustache {
         ArrayWrapper<std::vector<ExternalMoveInfo>, ComponentIndex> external_move;
         ArrayWrapper<std::vector<InternalMoveInfo>, ComponentIndex> internal_move; // move or copy function
         uint32_t num_components;
-        uint32_t capacity;
+        ChunkEntityIndex index_of_last_entity_in_chunk;
         ComponentOffset entity_offset;
         ComponentOffset version_offset;
     };

@@ -33,7 +33,8 @@ ArchetypeOperationHelper::ArchetypeOperationHelper(const ComponentMask& mask):
         offsets.push_back(ComponentOffset::make(element_size));
         element_size += static_cast<uint32_t>(info.size);
     }
-    capacity = (Chunk::kChunkSize - entity_offset.toInt()) / element_size;
+    const auto capacity = (Chunk::kChunkSize - entity_offset.toInt()) / element_size;
+    index_of_last_entity_in_chunk = ChunkEntityIndex::make(capacity - 1);
     for(auto& offset : offsets) {
         offset = ComponentOffset::make(offset.toInt() * capacity + entity_offset.toInt());
     }

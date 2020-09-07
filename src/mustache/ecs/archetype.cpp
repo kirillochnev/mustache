@@ -44,7 +44,7 @@ Archetype::Archetype(World& world, ArchetypeIndex id, const ComponentMask& mask)
         Logger{}.debug("Offset of: %s = %d", info.name, operation_helper_.get[ComponentIndex::make(i++)].offset.toInt());
     }
     Logger{}.debug("New archetype created, components: %s | chunk size: %d",
-                   name_.c_str(), operation_helper_.capacity);
+                   name_.c_str(), operation_helper_.chunkCapacity());
 }
 
 Archetype::~Archetype() {
@@ -157,7 +157,7 @@ void Archetype::allocateChunk() {
     Chunk* chunk = reinterpret_cast<Chunk*>(aligned_alloc(alignof(Entity), sizeof(Chunk)));
 //    auto chunk = new Chunk{};
     chunks_.push_back(chunk);
-    capacity_ += operation_helper_.capacity;
+    capacity_ += operation_helper_.chunkCapacity();
 }
 
 void Archetype::freeChunk(Chunk* chunk) {
@@ -175,12 +175,12 @@ uint32_t Archetype::worldVersion() const noexcept {
 
 void Archetype::clear() {
     const auto for_each_location = [this, size = size_](auto&& f) {
-        const auto chunk_last_index = ChunkEntityIndex::make(operation_helper_.capacity);
+        const auto chunk_last_index = operation_helper_.index_of_last_entity_in_chunk;
         auto num_items = size;
         ArchetypeInternalEntityLocation location;
         for (auto chunk : chunks_) {
             location.chunk = chunk;
-            for (location.index = ChunkEntityIndex::make(0); location.index < chunk_last_index; ++location.index) {
+            for (location.index = ChunkEntityIndex::make(0); location.index <= chunk_last_index; ++location.index) {
                 f(location);
                 if (--num_items == 0) {
                     return;
