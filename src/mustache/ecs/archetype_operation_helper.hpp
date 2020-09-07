@@ -108,11 +108,11 @@ namespace mustache {
         template<FunctionSafety _Safety = FunctionSafety::kDefault>
         ComponentIndex componentIndex(ComponentId component_id) const noexcept {
             if constexpr (isSafe(_Safety)) {
-                if (component_id.isNull() || component_id.toInt() >= component_id_to_component_index.size()) {
+                if (component_id.isNull() || !component_id_to_component_index.has(component_id)) {
                     return ComponentIndex::null();
                 }
             }
-            return component_id_to_component_index[component_id.toInt()];
+            return component_id_to_component_index[component_id];
         }
 
         void updateComponentsVersion(uint32_t world_version, Chunk& chunk) const noexcept {
@@ -124,7 +124,7 @@ namespace mustache {
 
         // NOTE: can be removed?
         ArrayWrapper<std::vector<ComponentId>, ComponentIndex> component_index_to_component_id;
-        std::vector<ComponentIndex> component_id_to_component_index;
+        ArrayWrapper<std::vector<ComponentIndex>, ComponentId> component_id_to_component_index;
         std::vector<GetComponentInfo> get; // ComponentIndex -> {offset, size}
         std::vector<InsertInfo> insert; // only non null init functions
         std::vector<DestroyInfo> destroy; // only non null destroy functions

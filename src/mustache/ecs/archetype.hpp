@@ -98,7 +98,7 @@ namespace mustache {
         [[nodiscard]] MUSTACHE_INLINE ComponentOffset getComponentOffset(ComponentId id) const noexcept {
             ComponentOffset result;
             if (hasComponent(id)) {
-                const auto index = operation_helper_.component_id_to_component_index[id.toInt()];
+                const auto index = operation_helper_.component_id_to_component_index[id];
                 result = operation_helper_.get[index.toInt()].offset;
             }
             return result;
@@ -162,8 +162,8 @@ namespace mustache {
 
         MUSTACHE_INLINE ComponentIndex componentIndex(ComponentId id) const noexcept {
             auto result = ComponentIndex::null();
-            if (operation_helper_.component_id_to_component_index.size() > id.toInt()) {
-                result = operation_helper_.component_id_to_component_index[id.toInt()];
+            if (operation_helper_.component_id_to_component_index.has(id)) {
+                result = operation_helper_.component_id_to_component_index[id];
             }
             return result;
         }

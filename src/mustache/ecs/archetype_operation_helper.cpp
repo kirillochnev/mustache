@@ -40,10 +40,10 @@ ArchetypeOperationHelper::ArchetypeOperationHelper(const ComponentMask& mask):
     ComponentIndex component_index = ComponentIndex::make(0);
 
     for (auto component_id : component_index_to_component_id) {
-        if (component_id_to_component_index.size() <= component_id.toInt()) {
+        if (!component_id_to_component_index.has(component_id)) {
             component_id_to_component_index.resize(component_id.toInt() + 1);
         }
-        component_id_to_component_index[component_id.toInt()] = component_index;
+        component_id_to_component_index[component_id] = component_index;
         const auto& info = ComponentFactory::componentInfo(component_id);
         get.push_back(GetComponentInfo{offsets[component_index.toInt()], static_cast<uint32_t>(info.size)});
         if (info.functions.create) {
