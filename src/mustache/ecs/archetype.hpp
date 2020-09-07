@@ -99,7 +99,7 @@ namespace mustache {
             ComponentOffset result;
             if (hasComponent(id)) {
                 const auto index = operation_helper_.component_id_to_component_index[id];
-                result = operation_helper_.get[index.toInt()].offset;
+                result = operation_helper_.get[index].offset;
             }
             return result;
         }

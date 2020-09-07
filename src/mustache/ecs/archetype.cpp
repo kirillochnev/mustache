@@ -41,7 +41,7 @@ Archetype::Archetype(World& world, ArchetypeIndex id, const ComponentMask& mask)
     for (auto component_id : mask.components()) {
         const auto& info = ComponentFactory::componentInfo(component_id);
         name_ += " [" + info.name + "]";
-        Logger{}.debug("Offset of: %s = %d", info.name, operation_helper_.get[i++].offset.toInt());
+        Logger{}.debug("Offset of: %s = %d", info.name, operation_helper_.get[ComponentIndex::make(i++)].offset.toInt());
     }
     Logger{}.debug("New archetype created, components: %s | chunk size: %d",
                    name_.c_str(), operation_helper_.capacity);

@@ -94,13 +94,13 @@ namespace mustache {
         template<FunctionSafety _Safety = FunctionSafety::kDefault>
         void* getComponent(ComponentIndex component_index, const ArchetypeInternalEntityLocation& location) const noexcept {
             if constexpr (isSafe(_Safety)) {
-                if (component_index.isNull() || get.size() <= component_index.toInt() ||
+                if (component_index.isNull() || !get.has(component_index) ||
                     location.chunk == nullptr || !location.index.isValid() ||
-                    location.index.toInt() >= get.capacity()) {
+                    location.index.toInt() >= capacity) { // TODO: this line looks like a problem
                     return nullptr;
                 }
             }
-            const auto& info = get[component_index.toInt()];
+            const auto& info = get[component_index];
             const auto offset = info.offset.add(info.size * location.index.toInt());
             return location.chunk->dataPointerWithOffset(offset);
         }
@@ -125,7 +125,7 @@ namespace mustache {
         // NOTE: can be removed?
         ArrayWrapper<std::vector<ComponentId>, ComponentIndex> component_index_to_component_id;
         ArrayWrapper<std::vector<ComponentIndex>, ComponentId> component_id_to_component_index;
-        std::vector<GetComponentInfo> get; // ComponentIndex -> {offset, size}
+        ArrayWrapper<std::vector<GetComponentInfo>, ComponentIndex> get; // ComponentIndex -> {offset, size}
         std::vector<InsertInfo> insert; // only non null init functions
         std::vector<DestroyInfo> destroy; // only non null destroy functions
         std::vector<ExternalMoveInfo> external_move;

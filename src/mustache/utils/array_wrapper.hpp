@@ -17,6 +17,9 @@ namespace mustache {
         MUSTACHE_INLINE auto size() const noexcept {
             return array_.size();
         }
+        MUSTACHE_INLINE auto capacity() const noexcept {
+            return array_.capacity();
+        }
         MUSTACHE_INLINE auto resize(size_t new_size) {
             return array_.resize(new_size);
         }
