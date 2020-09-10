@@ -22,7 +22,7 @@ Archetype& EntityManager::getArchetype(const ComponentMask& mask) {
         clearArchetype(*archetype);
         delete archetype;
     };
-    result = new Archetype(world_, ArchetypeIndex::make(archetypes_.size()), mask);
+    result = new Archetype(world_, archetypes_.back_index().next(), mask);
     archetypes_.emplace_back(result, deleter);
     return *result;
 }
@@ -31,17 +31,17 @@ Entity EntityManager::create() {
     if(!empty_slots_) {
         Entity result{entities_.size()};
         entities_.push_back(result);
-        locations_.push_back({});
+        locations_.emplace_back();
         return result;
     }
 
     Entity entity;
     const auto id = next_slot_;
-    const auto version = entities_[id.toInt()].version();
-    next_slot_ = entities_[id.toInt()].id();
+    const auto version = entities_[id].version();
+    next_slot_ = entities_[id].id();
     entity.reset(id, version);
-    entities_[id.toInt()] = entity;
-    locations_[id.toInt()] = EntityLocationInWorld{};
+    entities_[id] = entity;
+    locations_[id] = EntityLocationInWorld{};
     --empty_slots_;
 
     return entity;
@@ -66,9 +66,9 @@ void EntityManager::update() {
 void EntityManager::clearArchetype(Archetype& archetype) {
     archetype.forEachEntity([this](Entity entity) {
         const auto id = entity.id();
-        auto& location = locations_[id.toInt()];
+        auto& location = locations_[id];
         location.archetype = ArchetypeIndex::null();
-        entities_[id.toInt()].reset(empty_slots_ ? next_slot_ : id.next(), entity.version().next());
+        entities_[id].reset(empty_slots_ ? next_slot_ : id.next(), entity.version().next());
         next_slot_ = id;
         ++empty_slots_;
     });

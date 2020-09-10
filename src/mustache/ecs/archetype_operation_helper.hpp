@@ -1,12 +1,14 @@
 #pragma once
 
+#include <mustache/utils/type_info.hpp>
+#include <mustache/utils/array_wrapper.hpp>
+#include <mustache/utils/default_settings.hpp>
+
 #include <mustache/ecs/chunk.hpp>
 #include <mustache/ecs/id_deff.hpp>
-#include <mustache/utils/type_info.hpp>
 #include <mustache/ecs/component_factory.hpp>
 
 #include <vector>
-#include <mustache/utils/default_settings.hpp>
 
 namespace mustache {
 
@@ -82,7 +84,7 @@ namespace mustache {
         Entity* getEntity(const ArchetypeInternalEntityLocation& location) const noexcept {
             if constexpr (isSafe(_Safety)) {
                 if (location.chunk == nullptr || !location.index.isValid() ||
-                    location.index.toInt() >= capacity) {
+                    location.index > index_of_last_entity_in_chunk) {
                     return nullptr;
                 }
             }
@@ -92,13 +94,13 @@ namespace mustache {
         template<FunctionSafety _Safety = FunctionSafety::kDefault>
         void* getComponent(ComponentIndex component_index, const ArchetypeInternalEntityLocation& location) const noexcept {
             if constexpr (isSafe(_Safety)) {
-                if (component_index.isNull() || get.size() <= component_index.toInt() ||
+                if (component_index.isNull() || !get.has(component_index) ||
                     location.chunk == nullptr || !location.index.isValid() ||
-                    location.index.toInt() >= get.capacity()) {
+                    location.index > index_of_last_entity_in_chunk) {
                     return nullptr;
                 }
             }
-            const auto& info = get[component_index.toInt()];
+            const auto& info = get[component_index];
             const auto offset = info.offset.add(info.size * location.index.toInt());
             return location.chunk->dataPointerWithOffset(offset);
         }
@@ -106,11 +108,11 @@ namespace mustache {
         template<FunctionSafety _Safety = FunctionSafety::kDefault>
         ComponentIndex componentIndex(ComponentId component_id) const noexcept {
             if constexpr (isSafe(_Safety)) {
-                if (component_id.isNull() || component_id.toInt() >= component_index_to_component_id.size()) {
+                if (component_id.isNull() || !component_id_to_component_index.has(component_id)) {
                     return ComponentIndex::null();
                 }
             }
-            return component_id_to_component_index[component_id.toInt()];
+            return component_id_to_component_index[component_id];
         }
 
         void updateComponentsVersion(uint32_t world_version, Chunk& chunk) const noexcept {
@@ -120,15 +122,19 @@ namespace mustache {
             }
         }
 
-        std::vector<ComponentId> component_index_to_component_id;
-        std::vector<ComponentIndex> component_id_to_component_index;
-        std::vector<GetComponentInfo> get; // ComponentIndex -> {offset, size}
+        MUSTACHE_INLINE uint32_t chunkCapacity() const noexcept {
+            return index_of_last_entity_in_chunk.next().toInt();
+        }
+        // NOTE: can be removed?
+        ArrayWrapper<std::vector<ComponentId>, ComponentIndex> component_index_to_component_id;
+        ArrayWrapper<std::vector<ComponentIndex>, ComponentId> component_id_to_component_index;
+        ArrayWrapper<std::vector<GetComponentInfo>, ComponentIndex> get; // ComponentIndex -> {offset, size}
         std::vector<InsertInfo> insert; // only non null init functions
         std::vector<DestroyInfo> destroy; // only non null destroy functions
-        std::vector<ExternalMoveInfo> external_move;
-        std::vector<InternalMoveInfo> internal_move; // move or copy function
+        ArrayWrapper<std::vector<ExternalMoveInfo>, ComponentIndex> external_move;
+        ArrayWrapper<std::vector<InternalMoveInfo>, ComponentIndex> internal_move; // move or copy function
         uint32_t num_components;
-        uint32_t capacity;
+        ChunkEntityIndex index_of_last_entity_in_chunk;
         ComponentOffset entity_offset;
         ComponentOffset version_offset;
     };

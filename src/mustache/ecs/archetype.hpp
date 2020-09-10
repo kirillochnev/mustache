@@ -80,11 +80,11 @@ namespace mustache {
         template<FunctionSafety _Safety = FunctionSafety::kDefault>
         Chunk* getChunk(ChunkIndex index) const noexcept {
             if constexpr (isSafe(_Safety)) {
-                if (!index.isValid() || index.toInt() >= chunks_.size()) {
+                if (!index.isValid() || !chunks_.has(index)) {
                     return nullptr;
                 }
             }
-            return chunks_[index.toInt()];
+            return chunks_[index];
         }
         size_t chunkCount() const noexcept {
             return chunks_.size();
@@ -98,8 +98,8 @@ namespace mustache {
         [[nodiscard]] MUSTACHE_INLINE ComponentOffset getComponentOffset(ComponentId id) const noexcept {
             ComponentOffset result;
             if (hasComponent(id)) {
-                const auto index = operation_helper_.component_id_to_component_index[id.toInt()];
-                result = operation_helper_.get[index.toInt()].offset;
+                const auto index = operation_helper_.component_id_to_component_index[id];
+                result = operation_helper_.get[index].offset;
             }
             return result;
         }
@@ -118,9 +118,9 @@ namespace mustache {
                     return result;
                 }
             }
-            const auto capacity = operation_helper_.capacity;
-            result.chunk = chunks_[index.toInt() / capacity];
-            result.index = ChunkEntityIndex::make(index.toInt() % capacity);
+            const auto chunk_capacity = operation_helper_.chunkCapacity();
+            result.chunk = chunks_[ChunkIndex::make(index.toInt() / chunk_capacity)];
+            result.index = ChunkEntityIndex::make(index.toInt() % chunk_capacity);
             return result;
         }
 
@@ -131,10 +131,10 @@ namespace mustache {
             }
             auto num_items = size_;
             ArchetypeInternalEntityLocation location;
-            const auto chunk_last_index = ChunkEntityIndex::make(operation_helper_.capacity);
+            const auto chunk_last_index = operation_helper_.index_of_last_entity_in_chunk;
             for (auto chunk : chunks_) {
                 location.chunk = chunk;
-                for (location.index = ChunkEntityIndex::make(0); location.index < chunk_last_index; ++location.index) {
+                for (location.index = ChunkEntityIndex::make(0); location.index <= chunk_last_index; ++location.index) {
                     if (num_items == 0) {
                         return;
                     }
@@ -162,8 +162,8 @@ namespace mustache {
 
         MUSTACHE_INLINE ComponentIndex componentIndex(ComponentId id) const noexcept {
             auto result = ComponentIndex::null();
-            if (operation_helper_.component_id_to_component_index.size() > id.toInt()) {
-                result = operation_helper_.component_id_to_component_index[id.toInt()];
+            if (operation_helper_.component_id_to_component_index.has(id)) {
+                result = operation_helper_.component_id_to_component_index[id];
             }
             return result;
         }
@@ -182,7 +182,7 @@ namespace mustache {
         ComponentMask mask_;
         ArchetypeOperationHelper operation_helper_;
 
-        std::vector<Chunk*> chunks_;
+        ArrayWrapper<std::vector<Chunk*>, ChunkIndex> chunks_;
         uint32_t size_{0};
         uint32_t capacity_{0};
         ArchetypeIndex id_;
