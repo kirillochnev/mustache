@@ -75,6 +75,8 @@ namespace mustache {
                 }
             }
         }
+
+        std::string toString() const noexcept;
     private:
         std::bitset<64> value_;
         uint64_t uint_value_{0u};
