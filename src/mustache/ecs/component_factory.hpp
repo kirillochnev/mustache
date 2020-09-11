@@ -28,11 +28,17 @@ namespace mustache {
             return result;
         }
 
+        template<typename _C>
+        static MUSTACHE_INLINE void applyToMask(ComponentMask& mask) noexcept {
+            static const auto id = registerComponent< typename ComponentType<_C>::type >();
+            using Component = typename ComponentType<_C>::type;
+            constexpr bool is_required = IsComponentRequired<_C>::value;
+            mask.set(id, is_required);
+        }
         template <typename... _C>
         static MUSTACHE_INLINE ComponentMask makeMask() noexcept {
             ComponentMask mask;
-            (mask.set(registerComponent< typename ComponentType<_C>::type >(),
-                    !IsComponentOptional<typename std::remove_reference<_C>::type>::value), ...);
+            (applyToMask<_C>(mask), ...);
             return mask;
         }
 
