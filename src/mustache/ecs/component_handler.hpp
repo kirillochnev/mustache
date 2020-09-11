@@ -7,51 +7,40 @@ namespace mustache {
         static constexpr bool value = (std::is_same<T, ARGS>::value || ...);
     };
 
-    template <typename T>
-    struct RequiredComponent {
+    template<typename T, bool _IsRequired>
+    struct ComponentHandler {
         T* ptr;
-        RequiredComponent() = default;
+        ComponentHandler() = default;
 
-        RequiredComponent(T& value):
+        ComponentHandler(T& value):
             ptr{&value} {
 
         }
-        RequiredComponent(T* value):
-                ptr{value} {
+        ComponentHandler(T* value):
+            ptr{value} {
 
         }
-        operator T&() {
+        MUSTACHE_INLINE operator T&() noexcept {
             return *ptr;
         }
-        operator T*() {
+        MUSTACHE_INLINE operator T*() noexcept {
             return ptr;
         }
 
-        operator const T&() const {
+        MUSTACHE_INLINE operator const T&() const noexcept {
             return *ptr;
         }
-        operator const T*() const {
+        MUSTACHE_INLINE operator const T*() const noexcept {
             return ptr;
         }
-
     };
 
-    template <typename T>
-    struct OptionalComponent {
-        T* ptr;
-    };
+    template<typename T>
+    using RequiredComponent = ComponentHandler<T, true>;
 
-    template <typename T>
-    struct IsComponentOptional {
-        static constexpr bool value = IsOneOfTypes<T*, const T*,
-                OptionalComponent<T>, OptionalComponent<const T> >::value;
-    };
 
-    template <typename T>
-    struct IsComponentRequired {
-        static constexpr bool value = IsOneOfTypes<T&, const T&, const RequiredComponent<T>&,
-                RequiredComponent<T>, RequiredComponent<const T> >::value;
-    };
+    template<typename T>
+    using OptionalComponent = ComponentHandler<T, false>;
 
     template<typename T>
     struct IsComponentMutable {
@@ -150,6 +139,18 @@ namespace mustache {
         constexpr static bool is_component_mutable = false;
     };
 
+    template <typename T>
+    struct IsComponentRequired {
+        using Component = typename ComponentType<T>::type;
+        static constexpr bool value = IsOneOfTypes<T,
+                Component, Component&, const Component&, const RequiredComponent<Component>&,
+                RequiredComponent<Component>, RequiredComponent<const Component> >::value;
+    };
 
-
+    template <typename T>
+    struct IsComponentOptional {
+        using Component = typename ComponentType<T>::type;
+        static constexpr bool value = IsOneOfTypes<T, Component*, const Component*,
+                OptionalComponent<Component>, OptionalComponent<const Component> >::value;
+    };
 }
