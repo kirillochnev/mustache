@@ -20,6 +20,17 @@ namespace mustache {
             ptr{value} {
 
         }
+        MUSTACHE_INLINE ComponentHandler operator++(int) {
+            ComponentHandler cpy = *this;
+            if constexpr (_IsRequired) {
+                ++ptr;
+            } else {
+                if (ptr != nullptr) {
+                    ++ptr;
+                }
+            }
+            return cpy;
+        }
         MUSTACHE_INLINE operator T&() noexcept {
             return *ptr;
         }
