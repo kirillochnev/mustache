@@ -45,7 +45,7 @@ namespace mustache {
         [[nodiscard]] MUSTACHE_INLINE Entity create(Archetype& archetype) {
             Entity entity;
             if(!empty_slots_) {
-                entity = Entity {entities_.size()};
+                entity.reset(EntityId::make(entities_.size()), EntityVersion::make(0), this_world_id_);
                 entities_.push_back(entity);
                 locations_.emplace_back(archetype.insert(entity), archetype.id());
             } else {

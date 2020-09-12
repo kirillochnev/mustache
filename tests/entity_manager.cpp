@@ -51,6 +51,91 @@ TEST(EntityManager, create) {
     ASSERT_EQ(created_components.size(), 500);
 }
 
+TEST(EntityManager, create_entities_check_id_version) {
+    const auto world_id_value = rand() % 127;
+    const auto world_id = mustache::WorldId::make(world_id_value);
+    mustache::World world{world_id};
+    auto& entities = world.entities();
+    for (uint32_t i = 0; i < 1024; ++i) {
+        auto entity = entities.create();
+        ASSERT_EQ(entity.id(), mustache::EntityId::make(i));
+        ASSERT_EQ(entity.id().toInt(), i);
+        ASSERT_EQ(entity.version(), mustache::EntityVersion::make(0));
+        ASSERT_EQ(entity.version().toInt(), 0);
+        ASSERT_EQ(entity.worldId(), world_id);
+        ASSERT_EQ(entity.worldId().toInt(), world_id_value);
+    }
+}
+
+TEST(EntityManager, create_and_destroy_entities_check_id_version) {
+    const auto world_id_value = rand() % 127;
+    const auto world_id = mustache::WorldId::make(world_id_value);
+    mustache::World world{world_id};
+    auto& entities = world.entities();
+    for (uint32_t i = 0; i < 1024; ++i) {
+        auto entity = entities.create();
+        ASSERT_EQ(entity.id(), mustache::EntityId::make(0));
+        ASSERT_EQ(entity.id().toInt(), 0);
+        ASSERT_EQ(entity.version(), mustache::EntityVersion::make(i));
+        ASSERT_EQ(entity.version().toInt(), i);
+        ASSERT_EQ(entity.worldId(), world_id);
+        ASSERT_EQ(entity.worldId().toInt(), world_id_value);
+        entities.destroyNow(entity);
+    }
+}
+
+TEST(EntityManager, create_and_destroy_entities_check_id_version2) {
+    const auto world_id_value = rand() % 127;
+    const auto world_id = mustache::WorldId::make(world_id_value);
+    mustache::World world{world_id};
+    auto& entities = world.entities();
+    for (uint32_t i = 0; i < 1024; ++i) {
+        auto entity0 = entities.create();
+        ASSERT_EQ(entity0.id(), mustache::EntityId::make(0));
+        ASSERT_EQ(entity0.id().toInt(), 0);
+        ASSERT_EQ(entity0.version(), mustache::EntityVersion::make(i));
+        ASSERT_EQ(entity0.version().toInt(), i);
+        ASSERT_EQ(entity0.worldId(), world_id);
+        ASSERT_EQ(entity0.worldId().toInt(), world_id_value);
+
+        auto entity1 = entities.create();
+        ASSERT_EQ(entity1.id(), mustache::EntityId::make(1));
+        ASSERT_EQ(entity1.id().toInt(), 1);
+        ASSERT_EQ(entity1.version(), mustache::EntityVersion::make(i));
+        ASSERT_EQ(entity1.version().toInt(), i);
+        ASSERT_EQ(entity1.worldId(), world_id);
+        ASSERT_EQ(entity1.worldId().toInt(), world_id_value);
+
+        entities.destroyNow(entity1);
+        entities.destroyNow(entity0);
+    }
+}
+TEST(EntityManager, create_and_destroy_entities_check_id_version3) {
+    const auto world_id_value = rand() % 127;
+    const auto world_id = mustache::WorldId::make(world_id_value);
+    mustache::World world{world_id};
+    auto& entities = world.entities();
+    for (uint32_t i = 0; i < 1024; ++i) {
+        auto entity0 = entities.create();
+        ASSERT_EQ(entity0.id(), mustache::EntityId::make(i % 2));
+        ASSERT_EQ(entity0.id().toInt(), i % 2);
+        ASSERT_EQ(entity0.version(), mustache::EntityVersion::make(i));
+        ASSERT_EQ(entity0.version().toInt(), i);
+        ASSERT_EQ(entity0.worldId(), world_id);
+        ASSERT_EQ(entity0.worldId().toInt(), world_id_value);
+
+        auto entity1 = entities.create();
+        ASSERT_EQ(entity1.id(), mustache::EntityId::make((i + 1) % 2));
+        ASSERT_EQ(entity1.id().toInt(), (i + 1) % 2);
+        ASSERT_EQ(entity1.version(), mustache::EntityVersion::make(i));
+        ASSERT_EQ(entity1.version().toInt(), i);
+        ASSERT_EQ(entity1.worldId(), world_id);
+        ASSERT_EQ(entity1.worldId().toInt(), world_id_value);
+
+        entities.destroyNow(entity0);
+        entities.destroyNow(entity1);
+    }
+}
 TEST(EntityManager, clearArchetype) {
 
     mustache::World world{mustache::WorldId::make(0)};

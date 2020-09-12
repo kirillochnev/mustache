@@ -8,6 +8,12 @@ namespace mustache {
 
     struct Entity {
 
+        constexpr Entity() = default;
+
+        constexpr Entity(EntityId id, EntityVersion version, WorldId world_id) noexcept {
+            reset(id, version, world_id);
+        }
+
         [[nodiscard]] static constexpr Entity makeFromValue(uint64_t value) noexcept {
             Entity result;
             result.value = value;
@@ -66,7 +72,10 @@ namespace mustache {
         uint64_t value{static_cast<uint64_t >(-1)};
 
     private:
+        constexpr Entity(uint64_t v) noexcept :
+            value{v} {
 
+        }
         /*
          * id : entity_id_bits
          * world : version_bits
