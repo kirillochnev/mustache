@@ -95,8 +95,9 @@ namespace mustache {
                 if (archetype.isMatch(mask)) {
                     const auto size = ComponentArraySize::make(archetype.size());
                     constexpr auto entity_index = ArchetypeEntityIndex::make(0);
-                    applyPerArrayFunction<typename ComponentType<typename
-                        Info::FunctionInfo:: template Component<_I>::type>::type...>(archetype, entity_index, size, invocation_index);
+                    applyPerArrayFunction<typename Info::FunctionInfo:: template Component<_I>::type...>(archetype,
+                            entity_index, size, invocation_index);
+
                     invocation_index.entity_index_in_task = PerEntityJobEntityIndexInTask::make(
                             invocation_index.entity_index_in_task.toInt() + archetype.size());
                 }
@@ -118,9 +119,21 @@ namespace mustache {
                 invokeMethod(self, &T::forEachArray, count, invocation_index, pointers...);
             } else {
                 for(uint32_t i = 0; i < count.toInt(); ++i) {
-                    invoke(self, invocation_index, pointers[i]...);
+                    invoke(self, invocation_index, pointers++...);
                     ++invocation_index.entity_index_in_task;
                 }
+            }
+        }
+
+        template<typename _C>
+        MUSTACHE_INLINE auto getComponentHandler(const ArchetypeOperationHelper& operations,
+                const ArchetypeInternalEntityLocation& location) noexcept {
+            using Component = typename ComponentType<_C>::type;
+            if constexpr (IsComponentRequired<_C>::value) {
+                return RequiredComponent<Component> { operations.getComponent<Component, FunctionSafety::kUnsafe>(location)};
+            } else {
+                // TODO: it is possible to avoid per array check.
+                return OptionalComponent<Component> {operations.getComponent<Component, FunctionSafety::kSafe>(location) };
             }
         }
 
@@ -150,7 +163,7 @@ namespace mustache {
                 location.index = ChunkEntityIndex::make(begin);
                 forEachArrayGenerated(ComponentArraySize::make(end - begin), invocation_index,
                                       operation_helper.getEntity<FunctionSafety::kUnsafe>(location),
-                                      operation_helper.getComponent<_ARGS, FunctionSafety::kUnsafe>(location)...);
+                                      getComponentHandler<_ARGS>(operation_helper, location)...);
             }
         }
 
@@ -168,9 +181,8 @@ namespace mustache {
                 const uint32_t num_free_entities_in_arch = archetype_info.entities_count - begin.toInt();
                 const uint32_t objects_to_iterate = count < num_free_entities_in_arch ? count : num_free_entities_in_arch;
                 const auto array_size = ComponentArraySize::make(objects_to_iterate);
-                applyPerArrayFunction<typename ComponentType<typename
-                Info::FunctionInfo:: template Component<_I>::type>::type...>(*archetype_info.archetype,
-                        begin, array_size, invocation_index);
+                applyPerArrayFunction<typename Info::FunctionInfo::
+                    template Component<_I>::type...>(*archetype_info.archetype, begin, array_size, invocation_index);
                 count -= objects_to_iterate;
                 begin = ArchetypeEntityIndex::make(0);
             }

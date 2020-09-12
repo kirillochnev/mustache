@@ -18,6 +18,10 @@ namespace mustache {
             return result;
         }
 
+        explicit MUSTACHE_INLINE constexpr IndexLike(const IndexLike& v) noexcept :
+                value_{v.value_} {
+        }
+
         explicit MUSTACHE_INLINE constexpr IndexLike(T v) noexcept :
                 value_{v} {
         }

@@ -8,6 +8,8 @@ find_package(Threads REQUIRED)
 
 add_executable(${PROJECT_NAME}
         entity_manager.cpp
+        job.cpp
+        entity.cpp
 )
 gtest_add_tests(mustache_test "${FooTestArgs}" AUTO)
 

@@ -51,7 +51,6 @@ TEST(EntityManager, create) {
     ASSERT_EQ(created_components.size(), 500);
 }
 
-
 TEST(EntityManager, clearArchetype) {
 
     mustache::World world{mustache::WorldId::make(0)};
@@ -269,4 +268,94 @@ TEST(EntityManager, removeComponen) {
         ASSERT_TRUE(entities.hasComponent<UIntComponent0>(e));
         ASSERT_EQ(entities.getComponent<UIntComponent0>(e)->value, 12345u);
     }
+
+    auto e = entities.create();
+    for (uint32_t i = 0; i < 100; ++i) {
+
+        ASSERT_FALSE(entities.hasComponent<UIntComponent0>(e));
+        ASSERT_FALSE(entities.hasComponent<UIntComponent1>(e));
+        entities.assign<UIntComponent0>(e, UIntComponent0{777});
+        entities.assign<UIntComponent1>(e, UIntComponent1{543});
+        ASSERT_TRUE(entities.hasComponent<UIntComponent0>(e));
+        ASSERT_TRUE(entities.hasComponent<UIntComponent1>(e));
+        ASSERT_EQ(entities.getComponent<UIntComponent0>(e)->value, 777);
+        ASSERT_EQ(entities.getComponent<UIntComponent1>(e)->value, 543);
+
+        entities.removeComponent<UIntComponent0>(e);
+        ASSERT_FALSE(entities.hasComponent<UIntComponent0>(e));
+        ASSERT_TRUE(entities.hasComponent<UIntComponent1>(e));
+        ASSERT_EQ(entities.getComponent<UIntComponent1>(e)->value, 543);
+
+        entities.removeComponent<UIntComponent0>(e);
+        ASSERT_FALSE(entities.hasComponent<UIntComponent0>(e));
+        ASSERT_TRUE(entities.hasComponent<UIntComponent1>(e));
+        ASSERT_EQ(entities.getComponent<UIntComponent1>(e)->value, 543);
+
+        entities.removeComponent<UIntComponent1>(e);
+        ASSERT_FALSE(entities.hasComponent<UIntComponent0>(e));
+        ASSERT_FALSE(entities.hasComponent<UIntComponent1>(e));
+    }
+}
+
+TEST(EntityManager, move) {
+    static bool c0_active = false;
+    static bool c1_active = false;
+    struct Component0 {
+        Component0() = default;
+        Component0(Component0&&) = default;
+        Component0& operator=(Component0&&) = default;
+        Component0(std::unique_ptr<uint32_t>&& p):
+            ptr{std::move(p)} {
+            if (c0_active) {
+                throw std::runtime_error("Invalid value");
+            }
+            c0_active = true;
+        }
+        ~Component0() {
+            if (ptr) {
+                c0_active = false;
+            }
+        }
+        std::unique_ptr<uint32_t> ptr;
+    };
+
+    struct Component1 {
+        Component1& operator=(Component1&&) = default;
+        Component1() = default;
+        Component1(std::unique_ptr<uint32_t>&& p):
+            ptr{std::move(p)} {
+            if (c1_active) {
+                throw std::runtime_error("Invalid value");
+            }
+            c1_active = true;
+        }
+        ~Component1() {
+            if (ptr) {
+                c1_active = false;
+            }
+        }
+        std::unique_ptr<uint32_t> ptr;
+    };
+
+    mustache::World world {mustache::WorldId::make(0)};
+    auto& entities = world.entities();
+    for (uint32_t i = 0; i < 1024; ++i) {
+        auto e = entities.create();
+        entities.assign<Component0>(e, std::make_unique<uint32_t>(1));
+        entities.assign<Component1>(e, std::make_unique<uint32_t>(123));
+        ASSERT_TRUE(entities.hasComponent<Component0>(e));
+        ASSERT_TRUE(c0_active);
+        ASSERT_TRUE(entities.hasComponent<Component1>(e));
+        ASSERT_TRUE(c1_active);
+
+        ASSERT_EQ(*entities.getComponent<Component0>(e)->ptr, 1);
+        ASSERT_TRUE(c0_active);
+        ASSERT_EQ(*entities.getComponent<Component1>(e)->ptr, 123);
+        ASSERT_TRUE(c0_active);
+
+        entities.destroyNow(e);
+        ASSERT_FALSE(c0_active);
+        ASSERT_FALSE(c1_active);
+    }
+
 }
