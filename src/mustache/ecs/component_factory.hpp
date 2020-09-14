@@ -30,10 +30,11 @@ namespace mustache {
 
         template<typename _C>
         static MUSTACHE_INLINE void applyToMask(ComponentMask& mask) noexcept {
-            static const auto id = registerComponent< typename ComponentType<_C>::type >();
             using Component = typename ComponentType<_C>::type;
-            constexpr bool is_required = IsComponentRequired<_C>::value;
-            mask.set(id, is_required);
+            if constexpr (IsComponentRequired<_C>::value) {
+                static const auto id = registerComponent< typename ComponentType<_C>::type >();
+                mask.set(id, true);
+            }
         }
         template <typename... _C>
         static MUSTACHE_INLINE ComponentMask makeMask() noexcept {
