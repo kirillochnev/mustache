@@ -52,7 +52,7 @@ namespace mustache {
                 const auto id = next_slot_;
                 const auto version = entities_[id].version();
                 next_slot_ = entities_[id].id();
-                entity.reset(id, version);
+                entity.reset(id, version, this_world_id_);
                 entities_[id] = entity;
                 locations_[id].archetype = archetype.id();
                 locations_[id].index = archetype.insert(entity);
