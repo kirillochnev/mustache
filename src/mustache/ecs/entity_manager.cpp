@@ -29,7 +29,10 @@ Archetype& EntityManager::getArchetype(const ComponentMask& mask) {
 
 Entity EntityManager::create() {
     if(!empty_slots_) {
-        Entity result{entities_.size()};
+        const auto id = EntityId::make(entities_.size());
+        const auto version = EntityVersion::make(0);
+        const auto world_id = this_world_id_;
+        Entity result{id, version, world_id};
         entities_.push_back(result);
         locations_.emplace_back();
         return result;
@@ -39,7 +42,7 @@ Entity EntityManager::create() {
     const auto id = next_slot_;
     const auto version = entities_[id].version();
     next_slot_ = entities_[id].id();
-    entity.reset(id, version);
+    entity.reset(id, version, this_world_id_);
     entities_[id] = entity;
     locations_[id] = EntityLocationInWorld{};
     --empty_slots_;

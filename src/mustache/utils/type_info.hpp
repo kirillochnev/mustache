@@ -61,10 +61,15 @@ namespace mustache {
                         [](void* dest, void* source) {
                             if constexpr (std::is_move_constructible_v<T>) {
                                 new(dest) T{std::move(*static_cast<T *>(source))};
-                            }else {
-                                (void)dest;
-                                (void) source;
-                                throw std::runtime_error(type_name<T>() + " is not move constructible");
+                            } else {
+                                if constexpr (std::is_default_constructible_v<T>) {
+                                    T* ptr = new(dest) T{};
+                                    *std::launder(ptr) = std::move(*static_cast<T *>(source));
+                                } else {
+                                    (void)dest;
+                                    (void) source;
+                                    throw std::runtime_error(type_name<T>() + " is not move constructible");
+                                }
                             }
                         },
                         std::is_trivially_destructible<T>::value ? TypeInfo::Destructor{} : [](void *ptr) {

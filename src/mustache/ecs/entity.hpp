@@ -8,6 +8,12 @@ namespace mustache {
 
     struct Entity {
 
+        constexpr Entity() = default;
+
+        constexpr Entity(EntityId id, EntityVersion version, WorldId world_id) noexcept {
+            reset(id, version, world_id);
+        }
+
         [[nodiscard]] static constexpr Entity makeFromValue(uint64_t value) noexcept {
             Entity result;
             result.value = value;
@@ -34,11 +40,19 @@ namespace mustache {
             reset(id(), version, worldId());
         }
 
-        constexpr void reset(EntityId id = EntityId::null(), EntityVersion version = EntityVersion::null(),
-                             WorldId world_id = WorldId::null()) noexcept {
+        constexpr void reset(EntityId id, EntityVersion version, WorldId world_id) noexcept {
             value = id.toInt<uint64_t>() |
                     (version.toInt<uint64_t>() << version_shift) |
                     (world_id.toInt<uint64_t>() << world_id_shift);
+        }
+        constexpr void reset(EntityId id, EntityVersion version) noexcept {
+            reset(id, version, worldId());
+        }
+        constexpr void reset(EntityId id) noexcept {
+            reset(id, version(), worldId());
+        }
+        constexpr void reset() noexcept {
+            value = null;
         }
 
         [[nodiscard]] constexpr bool operator<(const Entity& rhs) const noexcept {
@@ -58,7 +72,10 @@ namespace mustache {
         uint64_t value{static_cast<uint64_t >(-1)};
 
     private:
+        constexpr Entity(uint64_t v) noexcept :
+            value{v} {
 
+        }
         /*
          * id : entity_id_bits
          * world : version_bits

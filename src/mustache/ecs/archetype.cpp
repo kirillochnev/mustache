@@ -174,6 +174,10 @@ uint32_t Archetype::worldVersion() const noexcept {
 }
 
 void Archetype::clear() {
+    if (size_ == 0) {
+        return;
+    }
+
     const auto for_each_location = [this, size = size_](auto&& f) {
         const auto chunk_last_index = operation_helper_.index_of_last_entity_in_chunk;
         auto num_items = size;

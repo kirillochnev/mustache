@@ -45,14 +45,14 @@ namespace mustache {
         [[nodiscard]] MUSTACHE_INLINE Entity create(Archetype& archetype) {
             Entity entity;
             if(!empty_slots_) {
-                entity = Entity {entities_.size()};
+                entity.reset(EntityId::make(entities_.size()), EntityVersion::make(0), this_world_id_);
                 entities_.push_back(entity);
                 locations_.emplace_back(archetype.insert(entity), archetype.id());
             } else {
                 const auto id = next_slot_;
                 const auto version = entities_[id].version();
                 next_slot_ = entities_[id].id();
-                entity.reset(id, version);
+                entity.reset(id, version, this_world_id_);
                 entities_[id] = entity;
                 locations_[id].archetype = archetype.id();
                 locations_[id].index = archetype.insert(entity);

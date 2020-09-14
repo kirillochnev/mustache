@@ -46,7 +46,7 @@ namespace mustache {
                 return fragmented_[index];
             }
             if(index - fragmented_.size() < count_) {
-                return Entity{first_ + index};
+                return Entity::makeFromValue(first_ + index);
             }
             throw std::out_of_range("Invalid index");
         }
@@ -54,7 +54,7 @@ namespace mustache {
             if(index < fragmented_.size()) {
                 return fragmented_[index];
             }
-            return Entity{first_ + index};
+            return Entity::makeFromValue(first_ + index);
         }
 
         [[nodiscard]] Iterator begin() const;

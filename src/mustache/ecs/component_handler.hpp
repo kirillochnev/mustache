@@ -7,51 +7,91 @@ namespace mustache {
         static constexpr bool value = (std::is_same<T, ARGS>::value || ...);
     };
 
-    template <typename T>
-    struct RequiredComponent {
-        T* ptr;
-        RequiredComponent() = default;
+    template<typename T, bool _IsRequired>
+    class ComponentHandler {
+    public:
+        ComponentHandler() = default;
 
-        RequiredComponent(T& value):
-            ptr{&value} {
-
-        }
-        RequiredComponent(T* value):
-                ptr{value} {
+        ComponentHandler(T& value):
+            ptr_{&value} {
 
         }
-        operator T&() {
-            return *ptr;
+        ComponentHandler(T* value):
+                ptr_{value} {
+
         }
-        operator T*() {
-            return ptr;
+        MUSTACHE_INLINE ComponentHandler operator++(int) {
+            ComponentHandler cpy = *this;
+            if constexpr (_IsRequired) {
+                ++ptr_;
+            } else {
+                if (ptr_ != nullptr) {
+                    ++ptr_;
+                }
+            }
+            return cpy;
+        }
+        MUSTACHE_INLINE operator bool() const noexcept {
+            return ptr_ != nullptr;
+        }
+        MUSTACHE_INLINE bool operator==(const std::nullptr_t&) const noexcept {
+            return ptr_ == nullptr;
+        }
+        MUSTACHE_INLINE bool operator!=(const std::nullptr_t&) const noexcept {
+            return ptr_ != nullptr;
+        }
+        MUSTACHE_INLINE operator T&() noexcept {
+            return *ptr_;
+        }
+        MUSTACHE_INLINE operator T*() noexcept {
+            return ptr_;
         }
 
-        operator const T&() const {
-            return *ptr;
+        MUSTACHE_INLINE operator const T&() const noexcept {
+            return *ptr_;
         }
-        operator const T*() const {
-            return ptr;
+        MUSTACHE_INLINE operator const T*() const noexcept {
+            return ptr_;
+        }
+        MUSTACHE_INLINE T* get() noexcept {
+            return ptr_;
+        }
+        MUSTACHE_INLINE const T* get() const noexcept {
+            return ptr_;
+        }
+        MUSTACHE_INLINE const T* operator->() const noexcept {
+            return ptr_;
+        }
+        MUSTACHE_INLINE T* operator->() noexcept {
+            return ptr_;
+        }
+        MUSTACHE_INLINE const T& operator*() const noexcept(_IsRequired) {
+            if constexpr (!_IsRequired) {
+                if (ptr_ == nullptr) {
+                    throw std::runtime_error("null component handler dereference");
+                }
+            }
+            return *ptr_;
+        }
+        MUSTACHE_INLINE T& operator*() noexcept(_IsRequired) {
+            if constexpr (!_IsRequired) {
+                if (ptr_ == nullptr) {
+                    throw std::runtime_error("null component handler dereference");
+                }
+            }
+            return *ptr_;
         }
 
+    private:
+        T* ptr_;
     };
 
-    template <typename T>
-    struct OptionalComponent {
-        T* ptr;
-    };
+    template<typename T>
+    using RequiredComponent = ComponentHandler<T, true>;
 
-    template <typename T>
-    struct IsComponentOptional {
-        static constexpr bool value = IsOneOfTypes<T*, const T*,
-                OptionalComponent<T>, OptionalComponent<const T> >::value;
-    };
 
-    template <typename T>
-    struct IsComponentRequired {
-        static constexpr bool value = IsOneOfTypes<T&, const T&, const RequiredComponent<T>&,
-                RequiredComponent<T>, RequiredComponent<const T> >::value;
-    };
+    template<typename T>
+    using OptionalComponent = ComponentHandler<T, false>;
 
     template<typename T>
     struct IsComponentMutable {
@@ -150,6 +190,18 @@ namespace mustache {
         constexpr static bool is_component_mutable = false;
     };
 
+    template <typename T>
+    struct IsComponentRequired {
+        using Component = typename ComponentType<T>::type;
+        static constexpr bool value = IsOneOfTypes<T,
+                Component, Component&, const Component&, const RequiredComponent<Component>&,
+                RequiredComponent<Component>, RequiredComponent<const Component> >::value;
+    };
 
-
+    template <typename T>
+    struct IsComponentOptional {
+        using Component = typename ComponentType<T>::type;
+        static constexpr bool value = IsOneOfTypes<T, Component*, const Component*,
+                OptionalComponent<Component>, OptionalComponent<const Component> >::value;
+    };
 }

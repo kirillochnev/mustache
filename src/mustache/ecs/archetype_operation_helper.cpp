@@ -71,7 +71,7 @@ ArchetypeOperationHelper::ArchetypeOperationHelper(const ComponentMask& mask):
         }
         ExternalMoveInfo external_move_info;
         external_move_info.constructor = info.functions.create;
-        external_move_info.move = info.functions.move;
+        external_move_info.move = info.functions.move_constructor;
         external_move_info.offset = offsets[component_index];
         external_move_info.size = static_cast<uint32_t>(info.size);
         external_move_info.id = component_id;
