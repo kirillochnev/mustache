@@ -24,7 +24,7 @@ namespace {
     }
 #endif
 
-    MUSTACHE_INLINE void updateVersion(uint32_t version, uint32_t num_components,
+    void updateVersion(uint32_t version, uint32_t num_components,
             ComponentOffset version_offset, Chunk* chunk) {
         auto version_ptr = chunk->dataPointerWithOffset<uint32_t>(version_offset);
         for (uint32_t i = 0; i < num_components; ++i) {

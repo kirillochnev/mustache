@@ -95,7 +95,7 @@ namespace mustache {
 
         uint32_t worldVersion() const noexcept;
 
-        [[nodiscard]] MUSTACHE_INLINE ComponentOffset getComponentOffset(ComponentId id) const noexcept {
+        [[nodiscard]] ComponentOffset getComponentOffset(ComponentId id) const noexcept {
             ComponentOffset result;
             if (hasComponent(id)) {
                 const auto index = operation_helper_.component_id_to_component_index[id];
@@ -108,7 +108,7 @@ namespace mustache {
         friend class EntityManager;
 
         template<FunctionSafety _Safety = FunctionSafety::kDefault>
-        MUSTACHE_INLINE ArchetypeInternalEntityLocation entityIndexToInternalLocation(ArchetypeEntityIndex index) const noexcept {
+        ArchetypeInternalEntityLocation entityIndexToInternalLocation(ArchetypeEntityIndex index) const noexcept {
             ArchetypeInternalEntityLocation result {
                     nullptr,
                     ChunkEntityIndex::null()
@@ -160,7 +160,7 @@ namespace mustache {
          */
         Entity remove(ArchetypeEntityIndex index);
 
-        MUSTACHE_INLINE ComponentIndex componentIndex(ComponentId id) const noexcept {
+        ComponentIndex componentIndex(ComponentId id) const noexcept {
             auto result = ComponentIndex::null();
             if (operation_helper_.component_id_to_component_index.has(id)) {
                 result = operation_helper_.component_id_to_component_index[id];
@@ -168,12 +168,12 @@ namespace mustache {
             return result;
         }
         template<FunctionSafety _Safety = FunctionSafety::kDefault>
-        MUSTACHE_INLINE void* getComponentFromArchetype(ArchetypeEntityIndex entity, ComponentIndex component) const noexcept {
+        void* getComponentFromArchetype(ArchetypeEntityIndex entity, ComponentIndex component) const noexcept {
             const auto location = entityIndexToInternalLocation(entity);
             return operation_helper_.getComponent<_Safety>(component, location);
         }
         template<FunctionSafety _Safety = FunctionSafety::kDefault>
-        MUSTACHE_INLINE void* getComponentFromArchetype(ArchetypeEntityIndex entity, ComponentId component) const noexcept {
+        void* getComponentFromArchetype(ArchetypeEntityIndex entity, ComponentId component) const noexcept {
             return getComponentFromArchetype<_Safety>(entity, componentIndex(component));
         }
         void allocateChunk();
