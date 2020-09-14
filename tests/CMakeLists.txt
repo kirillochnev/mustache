@@ -10,6 +10,7 @@ add_executable(${PROJECT_NAME}
         entity_manager.cpp
         job.cpp
         entity.cpp
+        component_factory.cpp
 )
 gtest_add_tests(mustache_test "${FooTestArgs}" AUTO)
 
