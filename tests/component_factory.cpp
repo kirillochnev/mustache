@@ -7,7 +7,6 @@ namespace {
     };
 }
 TEST(ComponentFactory, ComponentMask) {
-
     const std::array component_ids_actual = {
             mustache::ComponentFactory::registerComponent<Component<0> >(),
             mustache::ComponentFactory::registerComponent<Component<1> >(),
@@ -51,4 +50,18 @@ TEST(ComponentFactory, ComponentMask) {
     actual_mask = mustache::ComponentFactory::makeMask<Component<1>, Component<0>, Component<3>, Component<2>, Component<4> >();
     mask.add(component_ids_expected[3]);
     ASSERT_EQ(actual_mask, mask);
+}
+
+TEST(ComponentFactory, ComponentMaskIsMatch) {
+    auto mask_0 = mustache::ComponentFactory::makeMask<Component<0>, Component<1> >();
+    auto mask_1 = mustache::ComponentFactory::makeMask<Component<0>, Component<1> >();
+    ASSERT_TRUE(mask_0.isMatch(mask_1));
+    mask_1 = mustache::ComponentFactory::makeMask<Component<0> >();
+    ASSERT_TRUE(mask_0.isMatch(mask_1));
+    mask_1 = mustache::ComponentFactory::makeMask<Component<2> >();
+    ASSERT_FALSE(mask_0.isMatch(mask_1));
+    mask_1 = mustache::ComponentFactory::makeMask<Component<0>, Component<1>, Component<2> >();
+    ASSERT_FALSE(mask_0.isMatch(mask_1));
+    mask_1 = mustache::ComponentFactory::makeMask<Component<3>, Component<2> >();
+    ASSERT_FALSE(mask_0.isMatch(mask_1));
 }
