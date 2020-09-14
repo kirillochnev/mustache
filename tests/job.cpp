@@ -118,9 +118,9 @@ TEST(Job, iterate_singlethread) {
 TEST(Job, iterate_singlethread_with_required_componen) {
     struct Job0 : public mustache::PerEntityJob<Job0> {
         void operator()(Position& position, const mustache::RequiredComponent<Velocity>& velocity, const Orientation& orientation) {
-            position.x += velocity.ptr->value * orientation.x;
-            position.y += velocity.ptr->value * orientation.y;
-            position.z += velocity.ptr->value * orientation.z;
+            position.x += velocity->value * orientation.x;
+            position.y += velocity->value * orientation.y;
+            position.z += velocity->value * orientation.z;
             ++static_data.count;
         }
     };
@@ -165,12 +165,12 @@ TEST(Job, iterate_singlethread_with_optional_componen) {
     struct Job0 : public mustache::PerEntityJob<Job0> {
         void operator()(Position& position, const mustache::RequiredComponent<Velocity>& velocity,
                 const Orientation& orientation, mustache::OptionalComponent<UnusedComponent> null) {
-            if (null.ptr != nullptr) {
+            if (null != nullptr) {
                 throw std::runtime_error("invalid component");
             }
-            position.x += velocity.ptr->value * orientation.x;
-            position.y += velocity.ptr->value * orientation.y;
-            position.z += velocity.ptr->value * orientation.z;
+            position.x += velocity->value * orientation.x;
+            position.y += velocity->value * orientation.y;
+            position.z += velocity->value * orientation.z;
             ++static_data.count;
         }
     };

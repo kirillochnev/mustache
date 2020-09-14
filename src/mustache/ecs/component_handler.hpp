@@ -8,42 +8,82 @@ namespace mustache {
     };
 
     template<typename T, bool _IsRequired>
-    struct ComponentHandler {
-        T* ptr;
+    class ComponentHandler {
+    public:
         ComponentHandler() = default;
 
         ComponentHandler(T& value):
-            ptr{&value} {
+            ptr_{&value} {
 
         }
         ComponentHandler(T* value):
-            ptr{value} {
+                ptr_{value} {
 
         }
         MUSTACHE_INLINE ComponentHandler operator++(int) {
             ComponentHandler cpy = *this;
             if constexpr (_IsRequired) {
-                ++ptr;
+                ++ptr_;
             } else {
-                if (ptr != nullptr) {
-                    ++ptr;
+                if (ptr_ != nullptr) {
+                    ++ptr_;
                 }
             }
             return cpy;
         }
+        MUSTACHE_INLINE operator bool() const noexcept {
+            return ptr_ != nullptr;
+        }
+        MUSTACHE_INLINE bool operator==(const std::nullptr_t&) const noexcept {
+            return ptr_ == nullptr;
+        }
+        MUSTACHE_INLINE bool operator!=(const std::nullptr_t&) const noexcept {
+            return ptr_ != nullptr;
+        }
         MUSTACHE_INLINE operator T&() noexcept {
-            return *ptr;
+            return *ptr_;
         }
         MUSTACHE_INLINE operator T*() noexcept {
-            return ptr;
+            return ptr_;
         }
 
         MUSTACHE_INLINE operator const T&() const noexcept {
-            return *ptr;
+            return *ptr_;
         }
         MUSTACHE_INLINE operator const T*() const noexcept {
-            return ptr;
+            return ptr_;
         }
+        MUSTACHE_INLINE T* get() noexcept {
+            return ptr_;
+        }
+        MUSTACHE_INLINE const T* get() const noexcept {
+            return ptr_;
+        }
+        MUSTACHE_INLINE const T* operator->() const noexcept {
+            return ptr_;
+        }
+        MUSTACHE_INLINE T* operator->() noexcept {
+            return ptr_;
+        }
+        MUSTACHE_INLINE const T& operator*() const noexcept(_IsRequired) {
+            if constexpr (!_IsRequired) {
+                if (ptr_ == nullptr) {
+                    throw std::runtime_error("null component handler dereference");
+                }
+            }
+            return *ptr_;
+        }
+        MUSTACHE_INLINE T& operator*() noexcept(_IsRequired) {
+            if constexpr (!_IsRequired) {
+                if (ptr_ == nullptr) {
+                    throw std::runtime_error("null component handler dereference");
+                }
+            }
+            return *ptr_;
+        }
+
+    private:
+        T* ptr_;
     };
 
     template<typename T>

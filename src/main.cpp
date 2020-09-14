@@ -14,6 +14,7 @@
 #include <glm/vec3.hpp>
 #include <mustache/utils/dispatch.hpp>
 #include <mustache/ecs/job.hpp>
+#include <mustache/utils/logger.hpp>
 
 struct Component0 {
     uint32_t i = 0;
@@ -51,7 +52,7 @@ void destroy(std::byte*& ptr, const mustache::ComponentId& id) {
     ptr += sizeof(T);
 }
 
-namespace {
+//namespace {
     struct Position {
         glm::vec3 value = glm::vec3(1,2, 3);
     };
@@ -71,7 +72,7 @@ namespace {
                 -1.0f + 2.0f * (q.x * q.x + q.y * q.y),
         };
     }
-}
+//}
 
 void create1m() {
     enum : uint32_t {
@@ -118,12 +119,15 @@ void iterate500k() {
     constexpr float dt = 1.0f / kNumIteration;
     struct UpdatePosJob : public mustache::PerEntityJob <UpdatePosJob> {
 //        uint32_t count = 0;
-        std::vector<uint32_t> count;
+        struct alignas(128) AlignedUint {
+            uint32_t value = 0;
+        };
+        std::vector<AlignedUint> count;
 
         uint32_t totalCount() const {
             uint32_t result = 0;
             for (auto i : count) {
-                result += i;
+                result += i.value;
             }
             return result;
         }
@@ -136,25 +140,31 @@ void iterate500k() {
             count[invocation_index.task_index.toInt()] += size;
         }*/
         void operator()(Position& pos, const Velocity& vel, const mustache::RequiredComponent<Rotation>& rot,
-                mustache::JobInvocationIndex invocation_index) {
-            (void)pos;
-            (void)vel;
-            (void)rot;
+                mustache::JobInvocationIndex invocation_index/*, mustache::OptionalComponent<Component3> invalid*/) {
+//            (void) invalid;
+            (void) pos;
+            (void) vel;
+            (void) rot;
+            (void) invocation_index;
 
-            pos.value += dt * vel.value * forward(rot.ptr->orient);
-            ++count[invocation_index.task_index.toInt()];
+//            if (invalid.ptr) {
+//                std::terminate();
+//            }
+            pos.value += dt * vel.value * forward(rot->orient);
+            ++count[invocation_index.task_index.toInt()].value;
 //            ++count;
         }
     };
     UpdatePosJob update_pos_job;
     mustache::Benchmark benchmark;
 
+    mustache::Logger{}.info("Task Begin!");
     mustache::Dispatcher dispatcher;
     const auto task_count = dispatcher.threadCount() + 1;
     for (uint32_t i = 0; i < kNumIteration; ++i) {
 //        update_pos_job.count = 0;
         update_pos_job.count.clear();
-        update_pos_job.count.resize(task_count, 0);
+        update_pos_job.count.resize(task_count);
         benchmark.add([&world, &update_pos_job, &dispatcher, task_count] {
 //            update_pos_job.run(world, dispatcher);
             update_pos_job.runParallel(world, task_count, dispatcher);
@@ -222,6 +232,7 @@ void showComponentInfo() {
     std::cout << "T name: [" << mustache::type_name<T>() << "] component name: [" << mustache::type_name<Info >() << "]"
             << "\t\t\t| component is " << (is_component_required ? "" : "NOT ") << "required" <<std::endl;
 }
+
 int main() {
 //    showComponentInfo<Component0>();
 //    showComponentInfo<Component0*>();
@@ -241,7 +252,7 @@ int main() {
 
 //    foo();
 //    create1m();
-    createEmptyAndAssign();
-//    iterate500k();
+//    createEmptyAndAssign();
+    iterate500k();
     return 0;
 }
