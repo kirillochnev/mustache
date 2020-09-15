@@ -42,7 +42,7 @@ ComponentId ComponentFactory::componentId(const TypeInfo &info) {
         components_info.resize(next_component_id.toInt() + 1);
     }
     components_info[next_component_id.toInt()] = info;
-    Logger{}.debug("New component: %s, id: %d", info.name, next_component_id);
+    Logger{}.debug("New component: %s, id: %d", info.name, next_component_id.toInt());
     ComponentId return_value = next_component_id;
     next_component_id = ComponentId::make(next_component_id.toInt() + 1);
     return return_value;
@@ -58,4 +58,8 @@ void ComponentFactory::initComponents(const TypeInfo& info, void* data, size_t c
 
 void ComponentFactory::destroyComponents(const TypeInfo& info, void* data, size_t count) {
     applyFunction(data, info.functions.destroy, count, info.size);
+}
+
+ComponentId ComponentFactory::nextComponentId() noexcept {
+    return next_component_id;
 }

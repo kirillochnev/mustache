@@ -47,6 +47,10 @@ namespace {
     struct {
         uint32_t count = 0;
         uint32_t cur_iteration = 0;
+        void reset() {
+            cur_iteration = 0;
+            count = 0;
+        }
     } static static_data;
 
     struct CheckJob : public mustache::PerEntityJob<CheckJob> {
@@ -69,6 +73,8 @@ namespace {
 }
 
 TEST(Job, iterate_singlethread) {
+    static_data.reset();
+
     struct Job0 : public mustache::PerEntityJob<Job0> {
         void operator()(Position& position, const Velocity& velocity, const Orientation& orientation) {
             position.x += velocity.value * orientation.x;
@@ -116,6 +122,8 @@ TEST(Job, iterate_singlethread) {
 
 
 TEST(Job, iterate_singlethread_with_required_componen) {
+    static_data.reset();
+
     struct Job0 : public mustache::PerEntityJob<Job0> {
         void operator()(Position& position, const mustache::RequiredComponent<Velocity>& velocity, const Orientation& orientation) {
             position.x += velocity->value * orientation.x;
@@ -162,6 +170,8 @@ TEST(Job, iterate_singlethread_with_required_componen) {
 }
 
 TEST(Job, iterate_singlethread_with_optional_componen) {
+    static_data.reset();
+
     struct Job0 : public mustache::PerEntityJob<Job0> {
         void operator()(Position& position, const mustache::RequiredComponent<Velocity>& velocity,
                 const Orientation& orientation, mustache::OptionalComponent<UnusedComponent> null) {
@@ -211,6 +221,8 @@ TEST(Job, iterate_singlethread_with_optional_componen) {
 }
 
 TEST(Job, iterate_singlethread_4_archetypes_match_4_not) {
+    static_data.reset();
+
     static_assert(kNumObjects % 4 == 0);
 
     struct Job0 : public mustache::PerEntityJob<Job0> {
@@ -278,6 +290,8 @@ TEST(Job, iterate_singlethread_4_archetypes_match_4_not) {
 }
 
 TEST(Job, iterate_multithread_4_archetypes_match_4_not) {
+    static_data.reset();
+
     constexpr uint32_t kNumObjects2 = 1024 * 1024;
     constexpr uint32_t kNumIteration2 = 8;
     static_assert(kNumObjects2 % 4 == 0);

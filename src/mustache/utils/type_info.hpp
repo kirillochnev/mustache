@@ -3,6 +3,11 @@
 #include <string>
 #include <functional>
 
+#ifdef _MSC_BUILD
+#define MUSTACHE_FUNCTION_SIGNATURE __FUNCSIG__
+#else
+#define MUSTACHE_FUNCTION_SIGNATURE __PRETTY_FUNCTION__
+#endif
 namespace mustache {
     namespace detail {
         std::string make_type_name_from_func_name(const char* func_name) noexcept;
@@ -10,7 +15,7 @@ namespace mustache {
 
     template <typename T>
     std::string type_name() noexcept {
-        static std::string result = detail::make_type_name_from_func_name(__PRETTY_FUNCTION__);
+        static std::string result = detail::make_type_name_from_func_name(MUSTACHE_FUNCTION_SIGNATURE);
         return result;
     }
     template<typename _Sign>
