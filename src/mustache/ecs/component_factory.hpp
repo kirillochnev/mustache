@@ -61,6 +61,8 @@ namespace mustache {
             copyComponent(componentInfo(id), source, dest);
         }
 
+        static ComponentId nextComponentId() noexcept;
+
         static const TypeInfo& componentInfo(ComponentId id);
         static ComponentId componentId(const TypeInfo& info);
 
