@@ -7,6 +7,14 @@ namespace {
     };
 }
 TEST(ComponentFactory, ComponentMask) {
+    const std::array component_ids_expected {
+            mustache::ComponentId::make(0 + mustache::ComponentFactory::nextComponentId().toInt()),
+            mustache::ComponentId::make(1 + mustache::ComponentFactory::nextComponentId().toInt()),
+            mustache::ComponentId::make(2 + mustache::ComponentFactory::nextComponentId().toInt()),
+            mustache::ComponentId::make(3 + mustache::ComponentFactory::nextComponentId().toInt()),
+            mustache::ComponentId::make(4 + mustache::ComponentFactory::nextComponentId().toInt())
+    };
+
     const std::array component_ids_actual = {
             mustache::ComponentFactory::registerComponent<Component<0> >(),
             mustache::ComponentFactory::registerComponent<Component<1> >(),
@@ -15,15 +23,11 @@ TEST(ComponentFactory, ComponentMask) {
             mustache::ComponentFactory::registerComponent<Component<4> >()
     };
 
-    const std::array component_ids_expected {
-            mustache::ComponentId::make(0),
-            mustache::ComponentId::make(1),
-            mustache::ComponentId::make(2),
-            mustache::ComponentId::make(3),
-            mustache::ComponentId::make(4)
-    };
-
     static_assert(component_ids_actual.size() == component_ids_expected.size());
+    for (size_t i = 0; i < component_ids_actual.size(); ++i) {
+        std::cout << "component_ids_actual[i]: " << component_ids_actual[i].toInt() << " | "
+            << "component_ids_expected[i]: " << component_ids_expected[i].toInt() << std::endl;
+    }
     ASSERT_EQ(component_ids_actual, component_ids_expected);
 
     mustache::ComponentMask mask;
