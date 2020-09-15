@@ -27,7 +27,7 @@ namespace mustache {
         void update();
 
         // Checks if entity is valid for this World
-        MUSTACHE_INLINE bool isEntityValid(Entity entity) const noexcept {
+        bool isEntityValid(Entity entity) const noexcept {
             const auto id = entity.id();  // it is ok to get id for no-valid entity, null id will be returned
             if (entity.isNull() || entity.worldId() != this_world_id_ ||
                 !entities_.has(entity.id()) || entities_[id].version() != entity.version()) {
@@ -42,7 +42,7 @@ namespace mustache {
                 func(*arh);
             }
         }
-        [[nodiscard]] MUSTACHE_INLINE Entity create(Archetype& archetype) {
+        [[nodiscard]] Entity create(Archetype& archetype) {
             Entity entity;
             if(!empty_slots_) {
                 entity.reset(EntityId::make(entities_.size()), EntityVersion::make(0), this_world_id_);
@@ -103,12 +103,12 @@ namespace mustache {
             return getArchetype(ComponentFactory::makeMask<ARGS...>());
         }
 
-        [[nodiscard]] MUSTACHE_INLINE size_t getArchetypesCount() const noexcept {
+        [[nodiscard]] size_t getArchetypesCount() const noexcept {
             return archetypes_.size();
         }
 
         template<FunctionSafety _Safety = FunctionSafety::kDefault>
-        [[nodiscard]] MUSTACHE_INLINE Archetype& getArchetype(ArchetypeIndex index) noexcept (!isSafe(_Safety)) {
+        [[nodiscard]] Archetype& getArchetype(ArchetypeIndex index) noexcept (!isSafe(_Safety)) {
             if constexpr (isSafe(_Safety)) {
                 if (!archetypes_.has(index)) {
                     throw std::runtime_error("Index is out of bound");
@@ -118,7 +118,7 @@ namespace mustache {
         }
 
         template<typename T>
-        MUSTACHE_INLINE T* getComponent(Entity entity) const noexcept {
+        T* getComponent(Entity entity) const noexcept {
             static const auto component_id = ComponentFactory::registerComponent<T>();
             const auto& location = locations_[entity.id()];
             if (!location.archetype.isValid()) {
@@ -133,7 +133,7 @@ namespace mustache {
         }
 
         template<typename T, FunctionSafety _Safety = FunctionSafety::kSafe>
-        MUSTACHE_INLINE void removeComponent(Entity entity) {
+        void removeComponent(Entity entity) {
             static const auto component_id = ComponentFactory::registerComponent<T>();
             if constexpr (isSafe(_Safety)) {
                 if (!isEntityValid(entity)) {
@@ -173,7 +173,7 @@ namespace mustache {
         }
 
         template<typename T, typename... _ARGS>
-        MUSTACHE_INLINE T& assign(Entity e, _ARGS&&... args) {
+        T& assign(Entity e, _ARGS&&... args) {
             static const auto component_id = ComponentFactory::registerComponent<T>();
             auto& location = locations_[e.id()];
             constexpr bool use_custom_constructor = sizeof...(_ARGS) > 0;

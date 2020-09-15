@@ -39,13 +39,13 @@ namespace mustache {
     // offset of component data in the chunk
     struct ComponentOffset : public IndexLike<uint32_t, ComponentOffset> {
         template <typename T = std::byte>
-        MUSTACHE_INLINE constexpr ComponentOffset add(size_t i) const noexcept {
+        constexpr ComponentOffset add(size_t i) const noexcept {
             return ComponentOffset::make(value_ + static_cast<ValueType>(i * sizeof(T)));
         }
-        [[nodiscard]] MUSTACHE_INLINE constexpr std::byte* apply(std::byte* ptr) const noexcept {
+        [[nodiscard]] constexpr std::byte* apply(std::byte* ptr) const noexcept {
             return ptr + value_;
         }
-        [[nodiscard]] MUSTACHE_INLINE constexpr const std::byte* apply(const std::byte* ptr) const noexcept {
+        [[nodiscard]] constexpr const std::byte* apply(const std::byte* ptr) const noexcept {
             return ptr + value_;
         }
     };

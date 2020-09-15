@@ -22,21 +22,21 @@ namespace mustache {
         using SeftType = _Derived;
 
         template<typename T, FunctionSafety _Safety = FunctionSafety::kDefault>
-        MUSTACHE_INLINE ComponentIndex componentIndex() const noexcept {
+        ComponentIndex componentIndex() const noexcept {
             static const auto component_id = ComponentFactory::registerComponent<T>();
             return self().template componentIndex<_Safety>(component_id);
         }
 
         template<typename T, FunctionSafety _Safety = FunctionSafety::kDefault>
-        MUSTACHE_INLINE T* getComponent(const ArchetypeInternalEntityLocation& location) const noexcept {
+        T* getComponent(const ArchetypeInternalEntityLocation& location) const noexcept {
             return reinterpret_cast<T*>(self().template getComponent<_Safety>(componentIndex<T>(), location));
         }
 
     private:
-        MUSTACHE_INLINE SeftType& self() noexcept {
+        SeftType& self() noexcept {
             return *static_cast<SeftType*>(this);
         }
-        MUSTACHE_INLINE const SeftType& self() const noexcept {
+        const SeftType& self() const noexcept {
             return *static_cast<const SeftType*>(this);
         }
     };
@@ -122,7 +122,7 @@ namespace mustache {
             }
         }
 
-        MUSTACHE_INLINE uint32_t chunkCapacity() const noexcept {
+        uint32_t chunkCapacity() const noexcept {
             return index_of_last_entity_in_chunk.next().toInt();
         }
         // NOTE: can be removed?

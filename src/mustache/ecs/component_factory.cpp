@@ -14,7 +14,7 @@ namespace {
     std::vector<TypeInfo> components_info;
 
     template<typename _F>
-    MUSTACHE_INLINE static void applyFunction(void* data, _F&& f, size_t count, size_t size) {
+    static void applyFunction(void* data, _F&& f, size_t count, size_t size) {
         if (f) {
             std::byte *ptr = static_cast<std::byte *>(data);
             for (uint32_t i = 0; i < count; ++i) {

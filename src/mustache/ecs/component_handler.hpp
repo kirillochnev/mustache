@@ -20,7 +20,7 @@ namespace mustache {
                 ptr_{value} {
 
         }
-        MUSTACHE_INLINE ComponentHandler operator++(int) {
+        ComponentHandler operator++(int) {
             ComponentHandler cpy = *this;
             if constexpr (_IsRequired) {
                 ++ptr_;
@@ -31,41 +31,41 @@ namespace mustache {
             }
             return cpy;
         }
-        MUSTACHE_INLINE operator bool() const noexcept {
+        operator bool() const noexcept {
             return ptr_ != nullptr;
         }
-        MUSTACHE_INLINE bool operator==(const std::nullptr_t&) const noexcept {
+        bool operator==(const std::nullptr_t&) const noexcept {
             return ptr_ == nullptr;
         }
-        MUSTACHE_INLINE bool operator!=(const std::nullptr_t&) const noexcept {
+        bool operator!=(const std::nullptr_t&) const noexcept {
             return ptr_ != nullptr;
         }
-        MUSTACHE_INLINE operator T&() noexcept {
+        operator T&() noexcept {
             return *ptr_;
         }
-        MUSTACHE_INLINE operator T*() noexcept {
+        operator T*() noexcept {
             return ptr_;
         }
 
-        MUSTACHE_INLINE operator const T&() const noexcept {
+        operator const T&() const noexcept {
             return *ptr_;
         }
-        MUSTACHE_INLINE operator const T*() const noexcept {
+        operator const T*() const noexcept {
             return ptr_;
         }
-        MUSTACHE_INLINE T* get() noexcept {
+        T* get() noexcept {
             return ptr_;
         }
-        MUSTACHE_INLINE const T* get() const noexcept {
+        const T* get() const noexcept {
             return ptr_;
         }
-        MUSTACHE_INLINE const T* operator->() const noexcept {
+        const T* operator->() const noexcept {
             return ptr_;
         }
-        MUSTACHE_INLINE T* operator->() noexcept {
+        T* operator->() noexcept {
             return ptr_;
         }
-        MUSTACHE_INLINE const T& operator*() const noexcept(_IsRequired) {
+        const T& operator*() const noexcept(_IsRequired) {
             if constexpr (!_IsRequired) {
                 if (ptr_ == nullptr) {
                     throw std::runtime_error("null component handler dereference");
@@ -73,7 +73,7 @@ namespace mustache {
             }
             return *ptr_;
         }
-        MUSTACHE_INLINE T& operator*() noexcept(_IsRequired) {
+        T& operator*() noexcept(_IsRequired) {
             if constexpr (!_IsRequired) {
                 if (ptr_ == nullptr) {
                     throw std::runtime_error("null component handler dereference");

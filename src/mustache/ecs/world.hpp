@@ -10,7 +10,7 @@ namespace mustache {
     public:
         explicit World(WorldId id);
 
-        [[nodiscard]] MUSTACHE_INLINE EntityManager& entities() noexcept {
+        [[nodiscard]] EntityManager& entities() noexcept {
             return entities_;
         }
         /*[[nodiscard]] SystemManager& systems() noexcept {
@@ -25,10 +25,10 @@ namespace mustache {
         void pause();
         void resume();
 
-        [[nodiscard]] MUSTACHE_INLINE  constexpr WorldId id() const noexcept {
+        [[nodiscard]] constexpr WorldId id() const noexcept {
             return id_;
         }
-        [[nodiscard]] MUSTACHE_INLINE uint32_t version() const noexcept {
+        [[nodiscard]] uint32_t version() const noexcept {
             return version_;
         }
     private:

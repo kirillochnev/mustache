@@ -19,7 +19,7 @@ namespace mustache {
         ~ComponentFactory() = delete;
 
         template <typename T>
-        static MUSTACHE_INLINE ComponentId registerComponent() {
+        static ComponentId registerComponent() {
             static const auto info = makeTypeInfo<T>();
             static ComponentId result = componentId(info);
             if(!result.isValid()) {
@@ -29,7 +29,7 @@ namespace mustache {
         }
 
         template<typename _C>
-        static MUSTACHE_INLINE void applyToMask(ComponentMask& mask) noexcept {
+        static void applyToMask(ComponentMask& mask) noexcept {
             using Component = typename ComponentType<_C>::type;
             if constexpr (IsComponentRequired<_C>::value) {
                 static const auto id = registerComponent< typename ComponentType<_C>::type >();
@@ -37,7 +37,7 @@ namespace mustache {
             }
         }
         template <typename... _C>
-        static MUSTACHE_INLINE ComponentMask makeMask() noexcept {
+        static ComponentMask makeMask() noexcept {
             ComponentMask mask;
             (applyToMask<_C>(mask), ...);
             return mask;
