@@ -104,6 +104,13 @@ namespace mustache {
         using FC = utils::function_traits<T>;
         static constexpr size_t args_count = FC::arity;
         static constexpr auto index_sequence = std::make_index_sequence<args_count>();
+    private:
+        template<size_t... _I>
+        static constexpr auto buildPositionsOf(const std::index_sequence<_I...>&) {
+            return PositionOf<typename FC::template arg<_I>::type...>{};
+        }
+    public:
+        using Position = decltype(buildPositionsOf(index_sequence));
 
         static constexpr size_t componentsCount() noexcept {
             size_t result = args_count;
@@ -148,13 +155,7 @@ namespace mustache {
             };
             return ReturnType{}; // tuple type may be non-default constructable
         }
-        template<size_t... _I>
-        static constexpr auto buildPositionsOf(const std::index_sequence<_I...>&) {
-            return PositionOf<typename FC::template arg<_I>::type...>{};
-        }
-
         static constexpr auto components_positions = buildComponentIndexes(std::make_index_sequence<components_count>());
-        using Position = decltype(buildPositionsOf(index_sequence));
         using ArgsTypeTuple = typename decltype(buildArgsTuple(index_sequence))::type;
         using ComponentsTypeTuple = typename decltype(buildArgsTuple(components_positions))::type;
 
@@ -179,7 +180,7 @@ namespace mustache {
         }
 
         static constexpr auto getJobFunctionInfo() noexcept {
-            if constexpr (has_for_each_array) {
+            if constexpr (testForEachArray<T>(nullptr)) {
                 return JobFunctionInfo<decltype(&T::forEachArray)>{};
             } else {
                 return JobFunctionInfo<T>{};

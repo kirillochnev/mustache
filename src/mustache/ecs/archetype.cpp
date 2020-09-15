@@ -7,22 +7,6 @@
 using namespace mustache;
 
 namespace {
-#ifdef _MSC_BUILD
-    void* aligned_alloc(std::size_t size, std::size_t alignment) {
-        if (alignment < alignof(void*)) {
-            alignment = alignof(void*);
-        }
-        std::size_t space = size + alignment - 1;
-        void* allocated_mem = ::operator new(space + sizeof(void*));
-        void* aligned_mem = static_cast<void*>(static_cast<char*>(allocated_mem) + sizeof(void*));
-        ////////////// #1 ///////////////
-        std::align(alignment, size, aligned_mem, space);
-        ////////////// #2 ///////////////
-        *(static_cast<void**>(aligned_mem) - 1) = allocated_mem;
-        ////////////// #3 ///////////////
-        return aligned_mem;
-    }
-#endif
 
     void updateVersion(uint32_t version, uint32_t num_components,
             ComponentOffset version_offset, Chunk* chunk) {
@@ -154,7 +138,11 @@ void Archetype::reserve(size_t capacity) {
 
 void Archetype::allocateChunk() {
     // TODO: use memory allocator
+#ifdef _MSC_BUILD
+    Chunk* chunk = new Chunk{};
+#else
     Chunk* chunk = reinterpret_cast<Chunk*>(aligned_alloc(alignof(Entity), sizeof(Chunk)));
+#endif
 //    auto chunk = new Chunk{};
     chunks_.push_back(chunk);
     capacity_ += operation_helper_.chunkCapacity();
@@ -163,7 +151,7 @@ void Archetype::allocateChunk() {
 void Archetype::freeChunk(Chunk* chunk) {
     // TODO: use memory allocator
 #ifdef _MSC_BUILD
-    ::operator delete(*(static_cast<void**>(static_cast<void*>(chunk)) - 1));
+    delete chunk;
 #else
     free(chunk);
 #endif
