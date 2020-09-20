@@ -9,6 +9,7 @@ namespace mustache {
     struct EntityId : public IndexLike<uint32_t, EntityId>{};
     struct EntityVersion : public IndexLike<uint32_t, EntityVersion>{};
     struct WorldId : public IndexLike<uint32_t, WorldId>{};
+    struct WorldVersion : public IndexLike<uint32_t, WorldVersion>{};
 
     struct ComponentId : public IndexLike<uint32_t, ComponentId>{};
 

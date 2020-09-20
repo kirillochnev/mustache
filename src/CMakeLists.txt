@@ -47,6 +47,7 @@ add_library(${PROJECT_NAME} STATIC
         mustache/ecs/chunk.hpp
         mustache/ecs/entity_group.cpp
         mustache/ecs/entity_group.hpp
+        mustache/ecs/world_filter.hpp
 )
 
 target_include_directories(${PROJECT_NAME}

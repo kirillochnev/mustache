@@ -17,6 +17,7 @@ add_executable(${PROJECT_NAME}
         job.cpp
         entity.cpp
         component_factory.cpp
+        world_filter.cpp
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE mustache)
@@ -27,6 +28,6 @@ else()
     gtest_add_tests(mustache_test "${FooTestArgs}" AUTO)
     target_link_libraries(${PROJECT_NAME} PRIVATE ${GTEST_BOTH_LIBRARIES})
     target_link_libraries(${PROJECT_NAME} PRIVATE ${GTEST_BOTH_LIBRARIES})
-    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-omit-frame-pointer -fsanitize=address")
-    set (CMAKE_LINKER_FLAGS "${CMAKE_LINKER_FLAGS} -fno-omit-frame-pointer -fsanitize=address")
+#    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-omit-frame-pointer -fsanitize=address")
+#    set (CMAKE_LINKER_FLAGS "${CMAKE_LINKER_FLAGS} -fno-omit-frame-pointer -fsanitize=address")
 endif(MSVC)

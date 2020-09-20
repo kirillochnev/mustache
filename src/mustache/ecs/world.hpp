@@ -28,12 +28,12 @@ namespace mustache {
         [[nodiscard]] constexpr WorldId id() const noexcept {
             return id_;
         }
-        [[nodiscard]] uint32_t version() const noexcept {
+        [[nodiscard]] WorldVersion version() const noexcept {
             return version_;
         }
     private:
         WorldId id_;
-        uint32_t version_{0u};
+        WorldVersion version_ = WorldVersion::make(0u);
         EntityManager entities_;
     };
 }

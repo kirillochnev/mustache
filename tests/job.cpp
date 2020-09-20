@@ -161,7 +161,6 @@ TEST(Job, iterate_singlethread_with_required_componen) {
             const auto& position = *entities.getComponent<Position>(entity);
             const auto& velocity = *entities.getComponent<Velocity>(entity);
             const auto& orientation = *entities.getComponent<Orientation>(entity);
-            position.x != static_data.cur_iteration * velocity.value * orientation.x;
             ASSERT_EQ(static_data.cur_iteration * velocity.value * orientation.x, position.x);
             ASSERT_EQ(static_data.cur_iteration * velocity.value * orientation.y, position.y);
             ASSERT_EQ(static_data.cur_iteration * velocity.value * orientation.z, position.z);

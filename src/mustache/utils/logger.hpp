@@ -37,7 +37,7 @@ namespace mustache {
 
         }
         bool isDebugEnabled() const noexcept {
-            return true;
+            return false;
         }
         template <typename... _ARGS>
         void info(_ARGS&&... args) const {

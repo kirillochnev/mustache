@@ -8,9 +8,9 @@ using namespace mustache;
 
 namespace {
 
-    void updateVersion(uint32_t version, uint32_t num_components,
+    void updateVersion(WorldVersion version, uint32_t num_components,
             ComponentOffset version_offset, Chunk* chunk) {
-        auto version_ptr = chunk->dataPointerWithOffset<uint32_t>(version_offset);
+        auto version_ptr = chunk->dataPointerWithOffset<WorldVersion>(version_offset);
         for (uint32_t i = 0; i < num_components; ++i) {
             version_ptr[i] = version;
         }
@@ -157,7 +157,7 @@ void Archetype::freeChunk(Chunk* chunk) {
 #endif
 }
 
-uint32_t Archetype::worldVersion() const noexcept {
+WorldVersion Archetype::worldVersion() const noexcept {
     return world_.version();
 }
 

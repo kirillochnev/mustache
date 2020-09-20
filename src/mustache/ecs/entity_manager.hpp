@@ -42,6 +42,7 @@ namespace mustache {
                 func(*arh);
             }
         }
+
         [[nodiscard]] Entity create(Archetype& archetype) {
             Entity entity;
             if(!empty_slots_) {
@@ -59,6 +60,11 @@ namespace mustache {
                 --empty_slots_;
             }
             return entity;
+        }
+
+        template<typename... Components>
+        [[nodiscard]] Entity create() {
+            return create(getArchetype<Components...>());
         }
 
         void clear();
@@ -222,6 +228,19 @@ namespace mustache {
             }
             const auto& archetype = *archetypes_[location.archetype];
             return archetype.hasComponent<T>();
+        }
+
+        template<typename T, FunctionSafety _Safety = FunctionSafety::kSafe>
+        [[nodiscard]] WorldVersion getWorldVersionOfLastComponentUpdate(Entity entity) const noexcept {
+            if constexpr (isSafe(_Safety)) {
+                if (!isEntityValid(entity)) {
+                    return WorldVersion::null();
+                }
+            }
+            const auto component_id = ComponentFactory::registerComponent<T>();
+            const auto& location = locations_[entity.id()];
+            const auto& archetype = *archetypes_[location.archetype];
+            return archetype.getWorldVersionComponentUpdate<_Safety>(component_id, location.index);
         }
     private:
 

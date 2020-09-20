@@ -4,6 +4,7 @@
 #include <mustache/ecs/world.hpp>
 #include <mustache/ecs/entity_manager.hpp>
 #include <mustache/ecs/job_arg_parcer.hpp>
+#include <mustache//ecs/world_filter.hpp>
 #include <mustache/utils/dispatch.hpp>
 
 namespace mustache {
@@ -27,21 +28,6 @@ namespace mustache {
         /*void runWithDefaultDispatcher(World& world) {
             run(world, getDispatcher());
         }*/
-    };
-
-    /**
-     * Stores result of archetype filtering
-     */
-    struct DefaultWorldFilterResult {
-        struct ArchetypeFilterResult {
-            Archetype* archetype {nullptr};
-            uint32_t entities_count {0};
-            std::vector<ChunkIndex> chunks;
-        };
-        void apply(World& world);
-        std::vector<ArchetypeFilterResult> filtered_archetypes;
-        ComponentMask mask_;
-        uint32_t total_entity_count{0u};
     };
 
     template<typename T/*, typename _WorldFilter = DefaultWorldFilterResult*/>
@@ -177,7 +163,6 @@ namespace mustache {
             invocation_index.entity_index_in_task = PerEntityJobEntityIndexInTask::make(0);
             while (count != 0 && archetype_index.toInt() < num_archetypes) {
                 auto& archetype_info = filter_result_.filtered_archetypes[archetype_index.toInt()];
-                archetype_index = TaskArchetypeIndex::make(archetype_index.toInt() + 1);
                 const uint32_t num_free_entities_in_arch = archetype_info.entities_count - begin.toInt();
                 const uint32_t objects_to_iterate = count < num_free_entities_in_arch ? count : num_free_entities_in_arch;
                 const auto array_size = ComponentArraySize::make(objects_to_iterate);
@@ -185,6 +170,7 @@ namespace mustache {
                     template Component<_I>::type...>(*archetype_info.archetype, begin, array_size, invocation_index);
                 count -= objects_to_iterate;
                 begin = ArchetypeEntityIndex::make(0);
+                ++archetype_index;
             }
             if(count > 0) {
                 throw std::runtime_error(std::to_string(count) + " entities were not updated!");

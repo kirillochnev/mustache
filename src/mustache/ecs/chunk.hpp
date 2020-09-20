@@ -30,8 +30,8 @@ namespace mustache {
             return reinterpret_cast<const T*>(offset.apply(data_.data()));
         }
 
-        [[nodiscard]] uint32_t componentVersion(ComponentIndex index) const noexcept {
-            return dataPointerWithOffset<uint32_t>(ComponentOffset::make(0u))[index.toInt()];
+        [[nodiscard]] WorldVersion componentVersion(ComponentIndex index) const noexcept {
+            return dataPointerWithOffset<WorldVersion>(ComponentOffset::make(0u))[index.toInt()];
         }
 
         void updateVersion(ComponentIndex index, uint32_t version) noexcept {

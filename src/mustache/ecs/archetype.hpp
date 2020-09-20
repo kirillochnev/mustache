@@ -30,6 +30,19 @@ namespace mustache {
         ArchetypeIndex archetype = kDefaultArchetype;
     };
 
+    template<typename T, bool _IsConst>
+    struct ComponentPtrHelper {
+        static constexpr auto getNullPtr() noexcept {
+            if constexpr (_IsConst) {
+                return static_cast<const T *>(nullptr);
+            } else {
+                return static_cast<T *>(nullptr);
+            }
+        }
+
+        using type = decltype(getNullPtr());
+    };
+
     /**
      * Stores Entities with same component set
      * NOTE: It is has no information about entity manager, so Archetype's methods don't effects entity location.
@@ -93,15 +106,46 @@ namespace mustache {
             return operation_helper_;
         }
 
-        uint32_t worldVersion() const noexcept;
+        WorldVersion worldVersion() const noexcept;
+
+        template<FunctionSafety _Safety = FunctionSafety::kSafe>
+        [[nodiscard]] ComponentIndex getComponentIndex(ComponentId id) const noexcept {
+            if constexpr (isSafe(_Safety)) {
+                if (!operation_helper_.component_id_to_component_index.has(id)) {
+                    return ComponentIndex::null();
+                }
+            }
+            return operation_helper_.component_id_to_component_index[id];
+        }
+
+        [[nodiscard]] WorldVersion getWorldVersionComponentUpdate(ComponentIndex index,
+                const ArchetypeInternalEntityLocation& location) const noexcept {
+            return location.chunk->componentVersion(index);
+        }
+
+        template<FunctionSafety _Safety = FunctionSafety::kSafe>
+        [[nodiscard]] WorldVersion getWorldVersionComponentUpdate(ComponentId id,
+                ArchetypeEntityIndex index) const noexcept {
+            if constexpr (isSafe(_Safety)) {
+                if (!hasComponent(id)) {
+                    return WorldVersion::null();
+                }
+            }
+            return getWorldVersionComponentUpdate(getComponentIndex(id),
+                    entityIndexToInternalLocation<_Safety>(index));
+        }
 
         [[nodiscard]] ComponentOffset getComponentOffset(ComponentId id) const noexcept {
             ComponentOffset result;
             if (hasComponent(id)) {
-                const auto index = operation_helper_.component_id_to_component_index[id];
+                const auto index = getComponentIndex<FunctionSafety::kUnsafe>(id);
                 result = operation_helper_.get[index].offset;
             }
             return result;
+        }
+
+        [[nodiscard]] const ComponentMask& componentMask() const noexcept {
+            return mask_;
         }
 
     private:

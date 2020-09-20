@@ -115,8 +115,8 @@ namespace mustache {
             return component_id_to_component_index[component_id];
         }
 
-        void updateComponentsVersion(uint32_t world_version, Chunk& chunk) const noexcept {
-            auto version_ptr = chunk.dataPointerWithOffset<uint32_t >(ComponentOffset::make(0));
+        void updateComponentsVersion(WorldVersion world_version, Chunk& chunk) const noexcept {
+            auto version_ptr = chunk.dataPointerWithOffset<WorldVersion >(ComponentOffset::make(0));
             for (uint32_t i = 0; i < num_components; ++i) {
                 version_ptr[i] = world_version;
             }
