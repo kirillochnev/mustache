@@ -17,33 +17,19 @@ namespace mustache {
         ChunkEntityIndex index;
     };
 
-    template<typename _Derived>
-    struct TArchetypeOperationHelper {
-        using SeftType = _Derived;
-
+    class ArchetypeOperationHelper {
+    private:
+        friend class Archetype;
         template<typename T, FunctionSafety _Safety = FunctionSafety::kDefault>
         ComponentIndex componentIndex() const noexcept {
             static const auto component_id = ComponentFactory::registerComponent<T>();
-            return self().template componentIndex<_Safety>(component_id);
+            return componentIndex<_Safety>(component_id);
         }
 
         template<typename T, FunctionSafety _Safety = FunctionSafety::kDefault>
         T* getComponent(const ArchetypeInternalEntityLocation& location) const noexcept {
-            return reinterpret_cast<T*>(self().template getComponent<_Safety>(componentIndex<T>(), location));
+            return reinterpret_cast<T*>(getComponent<_Safety>(componentIndex<T>(), location));
         }
-
-    private:
-        SeftType& self() noexcept {
-            return *static_cast<SeftType*>(this);
-        }
-        const SeftType& self() const noexcept {
-            return *static_cast<const SeftType*>(this);
-        }
-    };
-
-    struct ArchetypeOperationHelper : public TArchetypeOperationHelper<ArchetypeOperationHelper> {
-        using TArchetypeOperationHelper::getComponent;
-        using TArchetypeOperationHelper::componentIndex;
 
         explicit ArchetypeOperationHelper(const ComponentMask& mask);
         ArchetypeOperationHelper() = default;

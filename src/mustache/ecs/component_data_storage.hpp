@@ -55,7 +55,16 @@ namespace mustache {
             }
             size_ = 0;
         }
+
+        void reserveForNextItem() {
+            reserve(size_ + 1);
+        }
     private:
+        struct GetComponentInfo {
+            ComponentOffset offset;
+            uint32_t size;
+        };
+
         friend class Archetype;
         void allocateChunk();
         void freeChunk(Chunk* chunk) noexcept;
@@ -63,6 +72,7 @@ namespace mustache {
         uint32_t size_{0u};
         uint32_t chunk_capacity_{0u};
         ComponentMask mask_;
+        ArrayWrapper<std::vector<GetComponentInfo>, DataLocation> get; // DataLocation -> {offset, size}
         ArrayWrapper<std::vector<Chunk*>, ChunkIndex> chunks_;
     };
 }

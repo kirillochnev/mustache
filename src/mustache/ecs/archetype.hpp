@@ -65,6 +65,19 @@ namespace mustache {
             return entity_ptr ? *entity_ptr : Entity{};
         }
 
+        [[nodiscard]] uint32_t chunkCapacity() const noexcept {
+            return data_storage_.chunk_capacity_;
+        }
+
+        template<FunctionSafety _Safety = FunctionSafety::kDefault>
+        Entity* getEntity(const ArchetypeInternalEntityLocation& location) const noexcept {
+            return operation_helper_.getEntity<_Safety>(location);
+        }
+
+        void updateComponentsVersion(WorldVersion world_version, Chunk& chunk) const noexcept {
+            return operation_helper_.updateComponentsVersion(world_version, chunk);
+        }
+
         [[nodiscard]] EntityGroup createGroup(size_t count);
 
         [[nodiscard]] uint32_t size() const noexcept {
@@ -76,8 +89,6 @@ namespace mustache {
         [[nodiscard]] ArchetypeIndex id() const noexcept {
             return id_;
         }
-
-        void reserve(size_t capacity);
 
         bool isMatch(const ComponentMask& mask) const noexcept {
             return mask_.isMatch(mask);
@@ -102,9 +113,6 @@ namespace mustache {
         }
         size_t chunkCount() const noexcept {
             return /*chunks_*/ data_storage_.chunks_.size();
-        }
-        const ArchetypeOperationHelper& operations() const noexcept {
-            return operation_helper_;
         }
 
         WorldVersion worldVersion() const noexcept;
@@ -147,6 +155,11 @@ namespace mustache {
 
         [[nodiscard]] const ComponentMask& componentMask() const noexcept {
             return mask_;
+        }
+
+        template<typename T, FunctionSafety _Safety = FunctionSafety::kDefault>
+        T* getComponent(const ArchetypeInternalEntityLocation& location) const noexcept {
+            return operation_helper_.getComponent<T, _Safety>(location);
         }
 
     private:
@@ -226,7 +239,6 @@ namespace mustache {
         ArchetypeOperationHelper operation_helper_;
         ComponentDataStorage data_storage_;
 
-//        uint32_t size_{0};
         ArchetypeIndex id_;
         std::string name_;
     };

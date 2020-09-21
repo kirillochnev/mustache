@@ -67,7 +67,7 @@ namespace mustache {
                         const auto last_chunk_index = chunk_count > 0 ?
                                 ChunkIndex::make(chunk_count - 1) :
                                 ChunkIndex::null();
-                        const auto chunk_capacity = arch.operations().chunkCapacity();
+                        const auto chunk_capacity = arch.chunkCapacity();
                         for (auto chunk_index = begin; chunk_index < end; ++chunk_index) {
                             if (self.isChunkMatch(arch, chunk_index)) {
                                 const auto entities_in_chunk = chunk_index != last_chunk_index ?

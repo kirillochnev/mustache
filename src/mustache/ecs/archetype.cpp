@@ -31,7 +31,7 @@ Archetype::Archetype(World& world, ArchetypeIndex id, const ComponentMask& mask)
                    name_.c_str(), operation_helper_.chunkCapacity());
 
     // TODO: remove
-    data_storage_.chunk_capacity_ = operations().chunkCapacity();
+    data_storage_.chunk_capacity_ = operation_helper_.chunkCapacity();
 }
 
 Archetype::~Archetype() {
@@ -43,7 +43,7 @@ Archetype::~Archetype() {
 
 ArchetypeEntityIndex Archetype::insert(Entity entity, Archetype& prev_archetype, ArchetypeEntityIndex prev_index,
         bool initialize_missing_components) {
-    reserve(size() + 1);
+    data_storage_.reserveForNextItem();
     const auto index = ArchetypeEntityIndex::make(data_storage_.size());
     data_storage_.incSize();
 
@@ -78,7 +78,7 @@ ArchetypeEntityIndex Archetype::insert(Entity entity, Archetype& prev_archetype,
 }
 
 ArchetypeEntityIndex Archetype::insert(Entity entity, bool call_constructor) {
-    reserve(size() + 1);
+    data_storage_.reserveForNextItem();
     const auto index = ArchetypeEntityIndex::make(data_storage_.size());
     data_storage_.incSize();
     // the item at this index has not been created yet,
@@ -133,13 +133,6 @@ Entity Archetype::remove(ArchetypeEntityIndex index) {
     return source_entity;
 }
 
-void Archetype::reserve(size_t capacity) {
-    /*while (capacity > capacity_) {
-        allocateChunk();
-    }*/
-    data_storage_.reserve(capacity);
-}
-
 WorldVersion Archetype::worldVersion() const noexcept {
     return world_.version();
 }
@@ -153,7 +146,7 @@ void Archetype::clear() {
         const auto chunk_last_index = operation_helper_.index_of_last_entity_in_chunk;
         auto num_items = size;
         ArchetypeInternalEntityLocation location;
-        for (auto chunk : /*chunks_*/ data_storage_.chunks_) {
+        for (auto chunk : data_storage_.chunks_) {
             location.chunk = chunk;
             for (location.index = ChunkEntityIndex::make(0); location.index <= chunk_last_index; ++location.index) {
                 f(location);

@@ -112,14 +112,14 @@ namespace mustache {
         }
 
         template<typename _C>
-        MUSTACHE_INLINE auto getComponentHandler(const ArchetypeOperationHelper& operations,
+        MUSTACHE_INLINE auto getComponentHandler(const Archetype& archetype,
                 const ArchetypeInternalEntityLocation& location) noexcept {
             using Component = typename ComponentType<_C>::type;
             if constexpr (IsComponentRequired<_C>::value) {
-                return RequiredComponent<Component> { operations.getComponent<Component, FunctionSafety::kUnsafe>(location)};
+                return RequiredComponent<Component> { archetype.getComponent<Component, FunctionSafety::kUnsafe>(location)};
             } else {
                 // TODO: it is possible to avoid per array check.
-                return OptionalComponent<Component> {operations.getComponent<Component, FunctionSafety::kSafe>(location) };
+                return OptionalComponent<Component> {archetype.getComponent<Component, FunctionSafety::kSafe>(location) };
             }
         }
 
@@ -132,8 +132,7 @@ namespace mustache {
 
             const auto i1 = first.toInt();
             const auto i2 = first.toInt() + count.toInt();
-            const auto operation_helper = archetype.operations();
-            const auto elements_per_chunk = operation_helper.chunkCapacity();
+            const auto elements_per_chunk = archetype.chunkCapacity();
             const ChunkIndex first_chunk = ChunkIndex::make(i1 / elements_per_chunk);
             const ChunkIndex last_chunk = ChunkIndex::make(i2 / elements_per_chunk);
 
@@ -145,11 +144,11 @@ namespace mustache {
 
                 ArchetypeInternalEntityLocation location;
                 location.chunk = archetype.getChunk<FunctionSafety::kUnsafe>(chunk_index);
-                operation_helper.updateComponentsVersion(world_version, *location.chunk);
+                archetype.updateComponentsVersion(world_version, *location.chunk);
                 location.index = ChunkEntityIndex::make(begin);
                 forEachArrayGenerated(ComponentArraySize::make(end - begin), invocation_index,
-                                      operation_helper.getEntity<FunctionSafety::kUnsafe>(location),
-                                      getComponentHandler<_ARGS>(operation_helper, location)...);
+                                      archetype.getEntity<FunctionSafety::kUnsafe>(location),
+                                      getComponentHandler<_ARGS>(archetype, location)...);
             }
         }
 

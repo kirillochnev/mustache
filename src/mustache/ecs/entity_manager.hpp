@@ -189,7 +189,7 @@ namespace mustache {
                 location.archetype = arch.id();
                 location.index = arch.insert(e, !use_custom_constructor);
                 const auto internal_location = arch.entityIndexToInternalLocation(location.index);
-                T* component_ptr = arch.operation_helper_.getComponent<T, FunctionSafety::kUnsafe>(internal_location);
+                T* component_ptr = arch.getComponent<T, FunctionSafety::kUnsafe>(internal_location);
                 if constexpr (use_custom_constructor) {
                     *new(component_ptr) T{std::forward<_ARGS>(args)...};
                 }
@@ -202,7 +202,7 @@ namespace mustache {
             const auto prev_index = location.index;
             location.index = arch.insert(e, prev_arch, prev_index, !use_custom_constructor);
             const auto internal_location = arch.entityIndexToInternalLocation(location.index);
-            T* component_ptr = arch.operation_helper_.getComponent<T, FunctionSafety::kUnsafe>(internal_location);
+            T* component_ptr = arch.getComponent<T, FunctionSafety::kUnsafe>(internal_location);
             if constexpr (use_custom_constructor) {
                 *new(component_ptr) T{std::forward<_ARGS>(args)...};
             }
