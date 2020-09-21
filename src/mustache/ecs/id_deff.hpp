@@ -25,6 +25,12 @@ namespace mustache {
     /// index of entity in archetype
     struct ArchetypeEntityIndex : public IndexLike<uint32_t, ArchetypeEntityIndex> {};
 
+    /// index of element in component data storage
+    struct ComponentStorageIndex : public mustache::IndexLike<uint32_t, ComponentStorageIndex> {};
+
+    /// Location of data in component data storage
+    struct DataLocation : public mustache::IndexLike<uint32_t, DataLocation> {};
+
     /// index of chunk in archetype
     struct ChunkIndex : public IndexLike<uint32_t, ChunkIndex> {};
 

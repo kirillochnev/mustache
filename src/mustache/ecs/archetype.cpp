@@ -29,21 +29,23 @@ Archetype::Archetype(World& world, ArchetypeIndex id, const ComponentMask& mask)
     }
     Logger{}.debug("New archetype created, components: %s | chunk size: %d",
                    name_.c_str(), operation_helper_.chunkCapacity());
+
+    // TODO: remove
+    data_storage_.chunk_capacity_ = operations().chunkCapacity();
 }
 
 Archetype::~Archetype() {
-    if (size_ > 0) {
+    if (!data_storage_.isEmpty()) {
         Logger{}.error("Destroying non-empty archetype");
     }
-    for(auto chunk : chunks_) {
-        freeChunk(chunk);
-    }
+    data_storage_.clear(true);
 }
 
 ArchetypeEntityIndex Archetype::insert(Entity entity, Archetype& prev_archetype, ArchetypeEntityIndex prev_index,
         bool initialize_missing_components) {
     reserve(size() + 1);
-    const auto index = ArchetypeEntityIndex::make(size_++);
+    const auto index = ArchetypeEntityIndex::make(data_storage_.size());
+    data_storage_.incSize();
 
     // the item at this index has not been created yet,
     // but memory has already been allocated, so an unsafe version of entityIndexToInternalLocation must be used
@@ -77,7 +79,8 @@ ArchetypeEntityIndex Archetype::insert(Entity entity, Archetype& prev_archetype,
 
 ArchetypeEntityIndex Archetype::insert(Entity entity, bool call_constructor) {
     reserve(size() + 1);
-    const auto index = ArchetypeEntityIndex::make(size_++);
+    const auto index = ArchetypeEntityIndex::make(data_storage_.size());
+    data_storage_.incSize();
     // the item at this index has not been created yet,
     // but memory has already been allocated, so an unsafe version of entityIndexToInternalLocation must be used
     const auto location = entityIndexToInternalLocation<FunctionSafety::kUnsafe>(index);
@@ -102,17 +105,17 @@ Entity Archetype::remove(ArchetypeEntityIndex index) {
             auto component_ptr = location.chunk->dataPointerWithOffset(component_offset);
             info.destructor(component_ptr);
         }
-        --size_;
+        data_storage_.decrSize();
     };
 
     const auto location = entityIndexToInternalLocation(index);
-    const auto last_item_index = ArchetypeEntityIndex::make(size_ - 1);
+    const auto last_item_index = ArchetypeEntityIndex::make(data_storage_.size() - 1);
     if (index == last_item_index) {
         call_destructors(location);
         return Entity{};
     }
     // moving last entity to index
-    const auto source_location = entityIndexToInternalLocation(ArchetypeEntityIndex::make(size_ - 1));
+    const auto source_location = entityIndexToInternalLocation(ArchetypeEntityIndex::make(data_storage_.size() - 1));
     for (auto& info : operation_helper_.internal_move) {
         const auto source_component_offset = info.offset.add(source_location.index.toInt() * info.component_size);
         const auto dest_component_offset = info.offset.add(location.index.toInt() * info.component_size);
@@ -131,30 +134,10 @@ Entity Archetype::remove(ArchetypeEntityIndex index) {
 }
 
 void Archetype::reserve(size_t capacity) {
-    while (capacity > capacity_) {
+    /*while (capacity > capacity_) {
         allocateChunk();
-    }
-}
-
-void Archetype::allocateChunk() {
-    // TODO: use memory allocator
-#ifdef _MSC_BUILD
-    Chunk* chunk = new Chunk{};
-#else
-    Chunk* chunk = reinterpret_cast<Chunk*>(aligned_alloc(alignof(Entity), sizeof(Chunk)));
-#endif
-//    auto chunk = new Chunk{};
-    chunks_.push_back(chunk);
-    capacity_ += operation_helper_.chunkCapacity();
-}
-
-void Archetype::freeChunk(Chunk* chunk) {
-    // TODO: use memory allocator
-#ifdef _MSC_BUILD
-    delete chunk;
-#else
-    free(chunk);
-#endif
+    }*/
+    data_storage_.reserve(capacity);
 }
 
 WorldVersion Archetype::worldVersion() const noexcept {
@@ -162,15 +145,15 @@ WorldVersion Archetype::worldVersion() const noexcept {
 }
 
 void Archetype::clear() {
-    if (size_ == 0) {
+    if (data_storage_.isEmpty()) {
         return;
     }
 
-    const auto for_each_location = [this, size = size_](auto&& f) {
+    const auto for_each_location = [this, size = data_storage_.size()](auto&& f) {
         const auto chunk_last_index = operation_helper_.index_of_last_entity_in_chunk;
         auto num_items = size;
         ArchetypeInternalEntityLocation location;
-        for (auto chunk : chunks_) {
+        for (auto chunk : /*chunks_*/ data_storage_.chunks_) {
             location.chunk = chunk;
             for (location.index = ChunkEntityIndex::make(0); location.index <= chunk_last_index; ++location.index) {
                 f(location);
@@ -187,5 +170,5 @@ void Archetype::clear() {
             info.destructor(component_ptr);
         });
     }
-    size_ = 0;
+    data_storage_.clear(false);
 }

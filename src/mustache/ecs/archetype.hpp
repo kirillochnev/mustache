@@ -5,6 +5,7 @@
 #include <mustache/ecs/id_deff.hpp>
 #include <mustache/ecs/job_arg_parcer.hpp>
 #include <mustache/ecs/archetype_operation_helper.hpp>
+#include <mustache/ecs/component_data_storage.hpp>
 #include <mustache/ecs/component_factory.hpp>
 #include <mustache/ecs/entity_group.hpp>
 #include <mustache/utils/uncopiable.hpp>
@@ -55,7 +56,7 @@ namespace mustache {
         template<FunctionSafety _Safety = FunctionSafety::kDefault>
         Entity entityAt(ArchetypeEntityIndex index) const noexcept {
             if constexpr (isSafe(_Safety)) {
-                if (!index.isValid() || index.toInt() >= size_) {
+                if (!index.isValid() || index.toInt() >= data_storage_.size()) {
                     return Entity{};
                 }
             }
@@ -67,10 +68,10 @@ namespace mustache {
         [[nodiscard]] EntityGroup createGroup(size_t count);
 
         [[nodiscard]] uint32_t size() const noexcept {
-            return size_;
+            return data_storage_.size();
         }
         [[nodiscard]] uint32_t capacity() const noexcept {
-            return capacity_;
+            return data_storage_.capacity();
         }
         [[nodiscard]] ArchetypeIndex id() const noexcept {
             return id_;
@@ -93,14 +94,14 @@ namespace mustache {
         template<FunctionSafety _Safety = FunctionSafety::kDefault>
         Chunk* getChunk(ChunkIndex index) const noexcept {
             if constexpr (isSafe(_Safety)) {
-                if (!index.isValid() || !chunks_.has(index)) {
+                if (!index.isValid() || !/*chunks_*/ data_storage_.chunks_.has(index)) {
                     return nullptr;
                 }
             }
-            return chunks_[index];
+            return /*chunks_*/ data_storage_.chunks_[index];
         }
         size_t chunkCount() const noexcept {
-            return chunks_.size();
+            return /*chunks_*/ data_storage_.chunks_.size();
         }
         const ArchetypeOperationHelper& operations() const noexcept {
             return operation_helper_;
@@ -158,25 +159,25 @@ namespace mustache {
                     ChunkEntityIndex::null()
             };
             if constexpr (isSafe(_Safety)) {
-                if (index.toInt() >= size_) {
+                if (index.toInt() >= data_storage_.size()) {
                     return result;
                 }
             }
             const auto chunk_capacity = operation_helper_.chunkCapacity();
-            result.chunk = chunks_[ChunkIndex::make(index.toInt() / chunk_capacity)];
+            result.chunk = /*chunks_*/ data_storage_.chunks_[ChunkIndex::make(index.toInt() / chunk_capacity)];
             result.index = ChunkEntityIndex::make(index.toInt() % chunk_capacity);
             return result;
         }
 
         template<typename _F>
         void forEachEntity(_F&& callback) {
-            if (size_ < 1) {
+            if (data_storage_.isEmpty()) {
                 return;
             }
-            auto num_items = size_;
+            auto num_items = data_storage_.size();
             ArchetypeInternalEntityLocation location;
             const auto chunk_last_index = operation_helper_.index_of_last_entity_in_chunk;
-            for (auto chunk : chunks_) {
+            for (auto chunk : /*chunks_*/ data_storage_.chunks_) {
                 location.chunk = chunk;
                 for (location.index = ChunkEntityIndex::make(0); location.index <= chunk_last_index; ++location.index) {
                     if (num_items == 0) {
@@ -189,7 +190,6 @@ namespace mustache {
         }
 
         void clear();
-        [[nodiscard]] Entity create();
 
         /// Entity must belong to default(empty) archetype
         ArchetypeEntityIndex insert(Entity entity, bool call_constructor = true);
@@ -220,15 +220,13 @@ namespace mustache {
         void* getComponentFromArchetype(ArchetypeEntityIndex entity, ComponentId component) const noexcept {
             return getComponentFromArchetype<_Safety>(entity, componentIndex(component));
         }
-        void allocateChunk();
-        void freeChunk(Chunk* chunk);
+
         World& world_;
         ComponentMask mask_;
         ArchetypeOperationHelper operation_helper_;
+        ComponentDataStorage data_storage_;
 
-        ArrayWrapper<std::vector<Chunk*>, ChunkIndex> chunks_;
-        uint32_t size_{0};
-        uint32_t capacity_{0};
+//        uint32_t size_{0};
         ArchetypeIndex id_;
         std::string name_;
     };
