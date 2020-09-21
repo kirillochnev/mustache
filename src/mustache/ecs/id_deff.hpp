@@ -38,6 +38,9 @@ namespace mustache {
 
     /// index of element in component data storage
     struct ComponentStorageIndex : public mustache::IndexLike<uint32_t, ComponentStorageIndex> {
+        [[nodiscard]] static ComponentStorageIndex fromArchetypeIndex(ArchetypeEntityIndex index) noexcept {
+            return make(index.toInt());
+        }
         [[nodiscard]] constexpr ChunkIndex operator/(ChunkCapacity capacity) const noexcept {
             if (capacity.isNull()) {
                 return ChunkIndex::null();
@@ -48,7 +51,7 @@ namespace mustache {
             if (capacity.isNull()) {
                 return ChunkEntityIndex::null();
             }
-            return ChunkEntityIndex::make(value_ / capacity.toInt());
+            return ChunkEntityIndex::make(value_ % capacity.toInt());
         }
     };
 
