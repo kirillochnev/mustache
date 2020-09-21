@@ -20,6 +20,7 @@ Archetype::Archetype(World& world, ArchetypeIndex id, const ComponentMask& mask)
     world_{world},
     mask_{mask},
     operation_helper_{mask},
+    data_storage_{mask},
     id_{id} {
     uint32_t i = 0;
     for (auto component_id : mask.components()) {
@@ -31,7 +32,10 @@ Archetype::Archetype(World& world, ArchetypeIndex id, const ComponentMask& mask)
                    name_.c_str(), operation_helper_.chunkCapacity());
 
     // TODO: remove
-    data_storage_.chunk_capacity_ = operation_helper_.chunkCapacity();
+    if (data_storage_.chunk_capacity_ != ChunkCapacity::make(operation_helper_.chunkCapacity())) {
+        throw std::runtime_error(std::to_string(data_storage_.chunk_capacity_.toInt()) + " vs " + std::to_string(operation_helper_.chunkCapacity()));
+    }
+//    data_storage_.chunk_capacity_ = ChunkCapacity::make(operation_helper_.chunkCapacity());
 }
 
 Archetype::~Archetype() {

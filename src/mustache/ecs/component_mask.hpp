@@ -67,6 +67,10 @@ namespace mustache {
             return uint_value_ < rhs.uint_value_;
         }
 
+        [[nodiscard]] uint32_t componentsCount() const noexcept {
+            return static_cast<uint32_t>(value_.count());
+        }
+
         template<typename _F>
         void forEachComponent(_F&& function) const noexcept {
             for(size_t i = 0u; i < value_.size(); ++i) {

@@ -66,7 +66,7 @@ namespace mustache {
         }
 
         [[nodiscard]] uint32_t chunkCapacity() const noexcept {
-            return data_storage_.chunk_capacity_;
+            return data_storage_.chunk_capacity_.toInt();
         }
 
         template<FunctionSafety _Safety = FunctionSafety::kDefault>

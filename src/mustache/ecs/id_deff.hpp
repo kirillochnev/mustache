@@ -25,8 +25,10 @@ namespace mustache {
     /// index of entity in archetype
     struct ArchetypeEntityIndex : public IndexLike<uint32_t, ArchetypeEntityIndex> {};
 
-    /// index of element in component data storage
-    struct ComponentStorageIndex : public mustache::IndexLike<uint32_t, ComponentStorageIndex> {};
+    /// index of entity in chunk
+    struct ChunkEntityIndex : public IndexLike<uint32_t, ChunkEntityIndex> {};
+
+    struct ChunkCapacity : public mustache::IndexLike<uint32_t, ChunkCapacity, 0u> {};
 
     /// Location of data in component data storage
     struct DataLocation : public mustache::IndexLike<uint32_t, DataLocation> {};
@@ -34,8 +36,21 @@ namespace mustache {
     /// index of chunk in archetype
     struct ChunkIndex : public IndexLike<uint32_t, ChunkIndex> {};
 
-    /// index of entity in chunk
-    struct ChunkEntityIndex : public IndexLike<uint32_t, ChunkEntityIndex> {};
+    /// index of element in component data storage
+    struct ComponentStorageIndex : public mustache::IndexLike<uint32_t, ComponentStorageIndex> {
+        [[nodiscard]] constexpr ChunkIndex operator/(ChunkCapacity capacity) const noexcept {
+            if (capacity.isNull()) {
+                return ChunkIndex::null();
+            }
+            return ChunkIndex::make(value_ / capacity.toInt());
+        }
+        [[nodiscard]] constexpr ChunkEntityIndex operator%(ChunkCapacity capacity) const noexcept {
+            if (capacity.isNull()) {
+                return ChunkEntityIndex::null();
+            }
+            return ChunkEntityIndex::make(value_ / capacity.toInt());
+        }
+    };
 
     /// index(position) of component in archetype
     struct ComponentIndex : public IndexLike<uint32_t, ComponentIndex>{};
@@ -54,6 +69,10 @@ namespace mustache {
         }
         [[nodiscard]] constexpr const std::byte* apply(const std::byte* ptr) const noexcept {
             return ptr + value_;
+        }
+
+        [[nodiscard]] static constexpr ComponentOffset makeAligned(ComponentOffset offset, uint32_t align) noexcept {
+            return ComponentOffset::make((offset.toInt() - 1u + align) & -align);
         }
     };
 }

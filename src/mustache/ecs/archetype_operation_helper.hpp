@@ -26,11 +26,6 @@ namespace mustache {
             return componentIndex<_Safety>(component_id);
         }
 
-        template<typename T, FunctionSafety _Safety = FunctionSafety::kDefault>
-        T* getComponent(const ArchetypeInternalEntityLocation& location) const noexcept {
-            return reinterpret_cast<T*>(getComponent<_Safety>(componentIndex<T>(), location));
-        }
-
         explicit ArchetypeOperationHelper(const ComponentMask& mask);
         ArchetypeOperationHelper() = default;
 
@@ -89,6 +84,11 @@ namespace mustache {
             const auto& info = get[component_index];
             const auto offset = info.offset.add(info.size * location.index.toInt());
             return location.chunk->dataPointerWithOffset(offset);
+        }
+
+        template<typename T, FunctionSafety _Safety = FunctionSafety::kDefault>
+        T* getComponent(const ArchetypeInternalEntityLocation& location) const noexcept {
+            return reinterpret_cast<T*>(getComponent<_Safety>(componentIndex<T>(), location));
         }
 
         template<FunctionSafety _Safety = FunctionSafety::kDefault>
