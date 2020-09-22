@@ -10,6 +10,8 @@
 
 #include <vector>
 
+#define OPERATION_GET 0
+
 namespace mustache {
 
     struct ArchetypeInternalEntityLocation {
@@ -56,21 +58,11 @@ namespace mustache {
             ComponentId id;
         };
 
+#if OPERATION_GET
         struct GetComponentInfo {
             ComponentOffset offset;
             uint32_t size;
         };
-
-        template<FunctionSafety _Safety = FunctionSafety::kDefault>
-        Entity* getEntity(const ArchetypeInternalEntityLocation& location) const noexcept {
-            if constexpr (isSafe(_Safety)) {
-                if (location.chunk == nullptr || !location.index.isValid() ||
-                    location.index > index_of_last_entity_in_chunk) {
-                    return nullptr;
-                }
-            }
-            return location.chunk->dataPointerWithOffset<Entity>(entity_offset) + location.index.toInt();
-        }
 
         template<FunctionSafety _Safety = FunctionSafety::kDefault>
         void* getComponent(ComponentIndex component_index, const ArchetypeInternalEntityLocation& location) const noexcept {
@@ -89,6 +81,19 @@ namespace mustache {
         template<typename T, FunctionSafety _Safety = FunctionSafety::kDefault>
         T* getComponent(const ArchetypeInternalEntityLocation& location) const noexcept {
             return reinterpret_cast<T*>(getComponent<_Safety>(componentIndex<T>(), location));
+        }
+
+#endif
+
+        template<FunctionSafety _Safety = FunctionSafety::kDefault>
+        Entity* getEntity(const ArchetypeInternalEntityLocation& location) const noexcept {
+            if constexpr (isSafe(_Safety)) {
+                if (location.chunk == nullptr || !location.index.isValid() ||
+                    location.index > index_of_last_entity_in_chunk) {
+                    return nullptr;
+                }
+            }
+            return location.chunk->dataPointerWithOffset<Entity>(entity_offset) + location.index.toInt();
         }
 
         template<FunctionSafety _Safety = FunctionSafety::kDefault>
@@ -114,7 +119,9 @@ namespace mustache {
         // NOTE: can be removed?
         ArrayWrapper<std::vector<ComponentId>, ComponentIndex> component_index_to_component_id;
         ArrayWrapper<std::vector<ComponentIndex>, ComponentId> component_id_to_component_index;
+#if OPERATION_GET
         ArrayWrapper<std::vector<GetComponentInfo>, ComponentIndex> get; // ComponentIndex -> {offset, size}
+#endif
         std::vector<InsertInfo> insert; // only non null init functions
         std::vector<DestroyInfo> destroy; // only non null destroy functions
         ArrayWrapper<std::vector<ExternalMoveInfo>, ComponentIndex> external_move;

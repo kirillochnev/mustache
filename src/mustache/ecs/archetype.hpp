@@ -14,6 +14,8 @@
 #include <string>
 #include <stdexcept>
 
+
+#define USE_NEW 0
 namespace mustache {
 
     class World;
@@ -105,14 +107,14 @@ namespace mustache {
         template<FunctionSafety _Safety = FunctionSafety::kDefault>
         Chunk* getChunk(ChunkIndex index) const noexcept {
             if constexpr (isSafe(_Safety)) {
-                if (!index.isValid() || !/*chunks_*/ data_storage_.chunks_.has(index)) {
+                if (!index.isValid() || ! data_storage_.chunks_.has(index)) {
                     return nullptr;
                 }
             }
-            return /*chunks_*/ data_storage_.chunks_[index];
+            return data_storage_.chunks_[index];
         }
         size_t chunkCount() const noexcept {
-            return /*chunks_*/ data_storage_.chunks_.size();
+            return data_storage_.chunks_.size();
         }
 
         WorldVersion worldVersion() const noexcept;
@@ -148,7 +150,11 @@ namespace mustache {
             ComponentOffset result;
             if (hasComponent(id)) {
                 const auto index = getComponentIndex<FunctionSafety::kUnsafe>(id);
+#if 1 /*USE_NEW*/ // OK
+                result = data_storage_.component_getter_info_[index].offset;
+#else
                 result = operation_helper_.get[index].offset;
+#endif
             }
             return result;
         }
@@ -159,7 +165,13 @@ namespace mustache {
 
         template<typename T, FunctionSafety _Safety = FunctionSafety::kDefault>
         T* getComponent(const ArchetypeInternalEntityLocation& location) const noexcept {
+#if 1 /*FAIL*/
+            const auto component_id = ComponentFactory::registerComponent<T>();
+            const auto component_index = operation_helper_.componentIndex(component_id);
+            return static_cast<T*>(data_storage_.getData<_Safety>(component_index, location.chunk, location.index));
+#else
             return operation_helper_.getComponent<T, _Safety>(location);
+#endif
         }
 
     private:
@@ -176,9 +188,16 @@ namespace mustache {
                     return result;
                 }
             }
+#if 1/*USE_NEW*/ // OK
+            const auto chunk_capacity = data_storage_.chunkCapacity();
+            const auto storage_index = ComponentStorageIndex::fromArchetypeIndex(index);
+            result.chunk = data_storage_.chunks_[storage_index / chunk_capacity];
+            result.index = storage_index % chunk_capacity;
+#else
             const auto chunk_capacity = operation_helper_.chunkCapacity();
-            result.chunk = /*chunks_*/ data_storage_.chunks_[ChunkIndex::make(index.toInt() / chunk_capacity)];
+            result.chunk = data_storage_.chunks_[ChunkIndex::make(index.toInt() / chunk_capacity)];
             result.index = ChunkEntityIndex::make(index.toInt() % chunk_capacity);
+#endif
             return result;
         }
 
@@ -226,8 +245,12 @@ namespace mustache {
         }
         template<FunctionSafety _Safety = FunctionSafety::kDefault>
         void* getComponentFromArchetype(ArchetypeEntityIndex entity, ComponentIndex component) const noexcept {
+#if 1/*USE_NEW*/ // OK same binary file
+            return data_storage_.getData<_Safety>(component, ComponentStorageIndex::make(entity.toInt()));
+#else
             const auto location = entityIndexToInternalLocation(entity);
             return operation_helper_.getComponent<_Safety>(component, location);
+#endif
         }
         template<FunctionSafety _Safety = FunctionSafety::kDefault>
         void* getComponentFromArchetype(ArchetypeEntityIndex entity, ComponentId component) const noexcept {

@@ -134,8 +134,12 @@ namespace mustache {
             if (!arch->hasComponent(component_id)) {
                 return nullptr;
             }
+#if 1 /*USE_NEW*/ // OK: generate same binary file
+            return arch->getComponent<T, FunctionSafety::kUnsafe>(arch->entityIndexToInternalLocation(location.index));
+#else
             auto ptr = arch->getComponentFromArchetype<FunctionSafety::kUnsafe>(location.index, component_id);
             return reinterpret_cast<T*>(ptr);
+#endif
         }
 
         template<typename T, FunctionSafety _Safety = FunctionSafety::kSafe>

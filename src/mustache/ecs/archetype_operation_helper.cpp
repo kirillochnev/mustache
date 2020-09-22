@@ -47,7 +47,9 @@ ArchetypeOperationHelper::ArchetypeOperationHelper(const ComponentMask& mask):
         }
         component_id_to_component_index[component_id] = component_index;
         const auto& info = ComponentFactory::componentInfo(component_id);
+#if OPERATION_GET
         get.push_back(GetComponentInfo{offsets[component_index], static_cast<uint32_t>(info.size)});
+#endif
         if (info.functions.create) {
             insert.push_back(InsertInfo {
                     offsets[component_index],

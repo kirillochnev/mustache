@@ -36,11 +36,6 @@ namespace mustache {
             --size_;
         }
 
-        DataLocation locationOf(ComponentId id) const noexcept {
-            (void ) id;
-            /// TODO: impl me
-            return DataLocation::null();
-        }
         template<FunctionSafety _Safety = FunctionSafety::kDefault>
         void* getEntityData(ComponentStorageIndex index) const noexcept {
             if constexpr (isSafe(_Safety)) {
@@ -53,15 +48,31 @@ namespace mustache {
             return chunks_[index / chunk_capacity_]->dataPointerWithOffset(read_offset);
         }
         template<FunctionSafety _Safety = FunctionSafety::kDefault>
-        void* getData(DataLocation location, ComponentStorageIndex index) const noexcept {
+        void* getData(ComponentIndex component_index, Chunk* chunk, ChunkEntityIndex index) const noexcept {
             if constexpr (isSafe(_Safety)) {
-                if (location.isNull() || index.isNull() ||
-                    !component_getter_info_.has(location) || index.toInt() >= size_) {
+                if (component_index.isNull() || !index.isValid() || chunk == nullptr ||
+                    !component_getter_info_.has(component_index) /*|| index.toInt() >= size_*/ ||
+                    chunk_capacity_.toInt() <= index.toInt()) {
                     return nullptr;
                 }
             }
-            const auto& getter_info = component_getter_info_[location];
-            return getter_info.getData(*chunks_[index / chunk_capacity_], index % chunk_capacity_);
+            const auto& info = component_getter_info_[component_index];
+            const auto offset = info.offset.add(info.size * index.toInt());
+            return chunk->dataPointerWithOffset(offset);
+        }
+
+        template<FunctionSafety _Safety = FunctionSafety::kDefault>
+        void* getData(ComponentIndex component_index, ComponentStorageIndex index) const noexcept {
+            if constexpr (isSafe(_Safety)) {
+                if (component_index.isNull() || index.isNull() ||
+                    !component_getter_info_.has(component_index) || index.toInt() >= size_) {
+                    return nullptr;
+                }
+            }
+            const auto& info = component_getter_info_[component_index];
+            const auto offset = info.offset.add(info.size * index.toInt());
+            auto chunk = chunks_[index / chunk_capacity_];
+            return chunk->dataPointerWithOffset(offset);
         }
 
         void clear(bool free_chunks = true) {
@@ -86,12 +97,13 @@ namespace mustache {
             return ComponentOffset::makeAligned(ComponentOffset::make(sizeof(WorldId) * componentsCount()),
                     alignof(Entity));
         }
+
+        [[nodiscard]] ChunkCapacity chunkCapacity() const noexcept {
+            return chunk_capacity_;
+        }
     private:
 
         struct ComponentDataGetter {
-            [[nodiscard]] void* getData(Chunk& chunk, ChunkEntityIndex index) const noexcept {
-                return chunk.dataPointerWithOffset(offset.add(index.toInt() * size));
-            }
             ComponentOffset offset;
             uint32_t size;
         };
@@ -100,9 +112,9 @@ namespace mustache {
         void allocateChunk();
         void freeChunk(Chunk* chunk) noexcept;
 
+        ArrayWrapper<std::vector<ComponentDataGetter>, ComponentIndex> component_getter_info_; // ComponentIndex -> {offset, size}
         uint32_t size_{0u};
         ChunkCapacity chunk_capacity_;
-        ArrayWrapper<std::vector<ComponentDataGetter>, DataLocation> component_getter_info_; // DataLocation -> {offset, size}
         ArrayWrapper<std::vector<Chunk*>, ChunkIndex> chunks_;
     };
 }
