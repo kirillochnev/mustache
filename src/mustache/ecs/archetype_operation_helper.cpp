@@ -20,10 +20,11 @@ namespace {
 }
 
 ArchetypeOperationHelper::ArchetypeOperationHelper(const ComponentMask& mask):
-        component_index_to_component_id{mask.components()},
-        num_components{static_cast<uint32_t>(component_index_to_component_id.size())},
+        num_components{mask.componentsCount()},
         entity_offset{entityOffset(num_components)},
         version_offset{versionOffset()} {
+
+    ArrayWrapper<std::vector<ComponentId>, ComponentIndex> component_index_to_component_id{mask.components()};
 
     ArrayWrapper<std::vector<ComponentOffset>, ComponentIndex> offsets;
     uint32_t element_size {static_cast<uint32_t>(sizeof(Entity))};

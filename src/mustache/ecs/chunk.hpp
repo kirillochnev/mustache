@@ -15,11 +15,13 @@ namespace mustache {
         enum : uint32_t {
             kChunkSize = 1024 * 1024
         };
-        [[nodiscard]] std::byte* data() noexcept {
-            return data_.data();
+        template <typename T = std::byte>
+        [[nodiscard]] T* data() noexcept {
+            return reinterpret_cast<T*>(data_.data());
         }
-        [[nodiscard]] const std::byte* data() const noexcept {
-            return data_.data();
+        template <typename T = std::byte>
+        [[nodiscard]] const T* data() const noexcept {
+            return reinterpret_cast<const T*>(data_.data());
         }
         template <typename T = void>
         [[nodiscard]] T* dataPointerWithOffset(ComponentOffset offset) noexcept {
@@ -34,30 +36,6 @@ namespace mustache {
             return dataPointerWithOffset<WorldVersion>(ComponentOffset::make(0u))[index.toInt()];
         }
 
-        void updateVersion(ComponentIndex index, uint32_t version) noexcept {
-            if(index.isValid()) {
-                dataPointerWithOffset<uint32_t>(ComponentOffset::make(0u))[index.toInt()] = version;
-            }
-        }
-
-        /*
-        void updateVersion(const ChunkStruct& chunk_struct, uint32_t version) noexcept {
-            for(uint32_t i = 0; i <  chunk_struct.numComponents(); ++i) {
-                updateVersion(ComponentIndex::make(i), version);
-            }
-        }
-
-        [[nodiscard]] uint32_t version(const ChunkStruct& chunk_struct) const noexcept {
-            uint32_t max = 0;
-            for(uint32_t i = 0; i < chunk_struct.numComponents(); ++i) {
-                const uint32_t version = componentVersion(ComponentIndex::make(i));
-                if(max < version) {
-                    max = version;
-                }
-            }
-            return max;
-        }
-         */
     private:
         std::array<std::byte, kChunkSize> data_;
     };

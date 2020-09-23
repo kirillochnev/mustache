@@ -12,6 +12,7 @@
 
 namespace mustache {
 
+    // TODO: only Archetype can use
     struct ArchetypeInternalEntityLocation {
         Chunk* chunk;
         ChunkEntityIndex index;
@@ -20,11 +21,6 @@ namespace mustache {
     class ArchetypeOperationHelper {
     private:
         friend class Archetype;
-        template<typename T, FunctionSafety _Safety = FunctionSafety::kDefault>
-        ComponentIndex componentIndex() const noexcept {
-            static const auto component_id = ComponentFactory::registerComponent<T>();
-            return componentIndex<_Safety>(component_id);
-        }
 
         explicit ArchetypeOperationHelper(const ComponentMask& mask);
         ArchetypeOperationHelper() = default;
@@ -71,18 +67,7 @@ namespace mustache {
             return component_id_to_component_index[component_id];
         }
 
-        void updateComponentsVersion(WorldVersion world_version, Chunk& chunk) const noexcept {
-            auto version_ptr = chunk.dataPointerWithOffset<WorldVersion >(ComponentOffset::make(0));
-            for (uint32_t i = 0; i < num_components; ++i) {
-                version_ptr[i] = world_version;
-            }
-        }
-
-        uint32_t chunkCapacity() const noexcept {
-            return index_of_last_entity_in_chunk.next().toInt();
-        }
         // NOTE: can be removed?
-        ArrayWrapper<std::vector<ComponentId>, ComponentIndex> component_index_to_component_id;
         ArrayWrapper<std::vector<ComponentIndex>, ComponentId> component_id_to_component_index;
 
         std::vector<InsertInfo> insert; // only non null init functions

@@ -74,10 +74,6 @@ namespace mustache {
             return operation_helper_.getEntity<_Safety>(location);
         }
 
-        void updateComponentsVersion(WorldVersion world_version, Chunk& chunk) const noexcept {
-            return operation_helper_.updateComponentsVersion(world_version, chunk);
-        }
-
         [[nodiscard]] EntityGroup createGroup(size_t count);
 
         [[nodiscard]] uint32_t size() const noexcept {
@@ -140,8 +136,7 @@ namespace mustache {
                     return WorldVersion::null();
                 }
             }
-            return getWorldVersionComponentUpdate(getComponentIndex(id),
-                    entityIndexToInternalLocation<_Safety>(index));
+            return data_storage_.getVersion(getComponentIndex(id), ComponentStorageIndex::fromArchetypeIndex(index));
         }
 
         [[nodiscard]] const ComponentMask& componentMask() const noexcept {
@@ -219,4 +214,5 @@ namespace mustache {
         ArchetypeIndex id_;
         std::string name_;
     };
+
 }

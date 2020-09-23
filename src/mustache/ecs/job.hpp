@@ -144,7 +144,7 @@ namespace mustache {
 
                 ArchetypeInternalEntityLocation location;
                 location.chunk = archetype.getChunk<FunctionSafety::kUnsafe>(chunk_index);
-                archetype.updateComponentsVersion(world_version, *location.chunk);
+//                archetype.updateComponentsVersion(world_version, *location.chunk);
                 location.index = ChunkEntityIndex::make(begin);
                 forEachArrayGenerated(ComponentArraySize::make(end - begin), invocation_index,
                                       archetype.getEntity<FunctionSafety::kUnsafe>(location),

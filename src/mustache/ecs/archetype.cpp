@@ -19,13 +19,7 @@ Archetype::Archetype(World& world, ArchetypeIndex id, const ComponentMask& mask)
         Logger{}.debug("Offset of: %s = %d", info.name, data_storage_.component_getter_info_[ComponentIndex::make(i++)].offset.toInt());
     }
     Logger{}.debug("New archetype created, components: %s | chunk size: %d",
-                   name_.c_str(), operation_helper_.chunkCapacity());
-
-    // TODO: remove
-    if (data_storage_.chunk_capacity_ != ChunkCapacity::make(operation_helper_.chunkCapacity())) {
-        throw std::runtime_error(std::to_string(data_storage_.chunk_capacity_.toInt()) + " vs " + std::to_string(operation_helper_.chunkCapacity()));
-    }
-//    data_storage_.chunk_capacity_ = ChunkCapacity::make(operation_helper_.chunkCapacity());
+                   name_.c_str(), data_storage_.chunkCapacity().toInt());
 }
 
 Archetype::~Archetype() {
