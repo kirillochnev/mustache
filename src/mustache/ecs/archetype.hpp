@@ -18,31 +18,6 @@ namespace mustache {
 
     class World;
     class EntityManager;
-    /// Location in world's entity manager
-    struct EntityLocationInWorld { // TODO: add version here?
-        constexpr static ArchetypeIndex kDefaultArchetype = ArchetypeIndex::null();
-        EntityLocationInWorld() = default;
-        EntityLocationInWorld(ArchetypeEntityIndex i, ArchetypeIndex arch ) noexcept :
-            index{i},
-            archetype{arch} {
-
-        }
-        ArchetypeEntityIndex index = ArchetypeEntityIndex::make(0u);
-        ArchetypeIndex archetype = kDefaultArchetype;
-    };
-
-    template<typename T, bool _IsConst>
-    struct ComponentPtrHelper {
-        static constexpr auto getNullPtr() noexcept {
-            if constexpr (_IsConst) {
-                return static_cast<const T *>(nullptr);
-            } else {
-                return static_cast<T *>(nullptr);
-            }
-        }
-
-        using type = decltype(getNullPtr());
-    };
 
     /**
      * Stores Entities with same component set
