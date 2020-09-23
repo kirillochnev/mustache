@@ -90,12 +90,7 @@ namespace mustache {
 
         template<FunctionSafety _Safety = FunctionSafety::kSafe>
         [[nodiscard]] ComponentIndex getComponentIndex(ComponentId id) const noexcept {
-            if constexpr (isSafe(_Safety)) {
-                if (!operation_helper_.component_id_to_component_index.has(id)) {
-                    return ComponentIndex::null();
-                }
-            }
-            return operation_helper_.component_id_to_component_index[id];
+            return operation_helper_.componentIndex<_Safety>(id);
         }
 
         template<FunctionSafety _Safety = FunctionSafety::kSafe>
