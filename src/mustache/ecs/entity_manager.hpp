@@ -210,7 +210,7 @@ namespace mustache {
             if constexpr (use_custom_constructor) {
                 *new(component_ptr) T{std::forward<_ARGS>(args)...};
             }
-            auto moved_entity = prev_arch.entityAt(prev_index);
+            auto moved_entity = prev_arch.entityAt<FunctionSafety::kSafe>(prev_index);
             if (!moved_entity.isNull()) {
                 locations_[moved_entity.id()].index = prev_index;
                 locations_[moved_entity.id()].archetype = location.archetype;

@@ -167,7 +167,7 @@ namespace mustache {
         T* getComponent(const ArchetypeInternalEntityLocation& location) const noexcept {
 #if 1 /*FAIL*/
             const auto component_id = ComponentFactory::registerComponent<T>();
-            const auto component_index = operation_helper_.componentIndex(component_id);
+            const auto component_index = operation_helper_.componentIndex<_Safety>(component_id);
             return static_cast<T*>(data_storage_.getData<_Safety>(component_index, location.chunk, location.index));
 #else
             return operation_helper_.getComponent<T, _Safety>(location);
