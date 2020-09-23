@@ -246,7 +246,7 @@ namespace mustache {
         template<FunctionSafety _Safety = FunctionSafety::kDefault>
         void* getComponentFromArchetype(ArchetypeEntityIndex entity, ComponentIndex component) const noexcept {
 #if 1/*USE_NEW*/ // OK same binary file
-            return data_storage_.getData<_Safety>(component, ComponentStorageIndex::make(entity.toInt()));
+            return data_storage_.getData<_Safety>(component, ComponentStorageIndex::fromArchetypeIndex(entity));
 #else
             const auto location = entityIndexToInternalLocation(entity);
             return operation_helper_.getComponent<_Safety>(component, location);

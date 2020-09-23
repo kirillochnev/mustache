@@ -104,5 +104,9 @@ namespace mustache {
         decltype(auto) clear() noexcept (noexcept(array_.clear())){
             array_.clear();
         }
+
+        bool empty() const noexcept {
+            return array_.empty();
+        }
     };
 }

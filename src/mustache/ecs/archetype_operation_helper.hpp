@@ -37,11 +37,11 @@ namespace mustache {
             ComponentOffset offset;
             uint32_t component_size;
             TypeInfo::Constructor constructor;
+            ComponentIndex component_index;
         };
         struct DestroyInfo {
-            ComponentOffset offset;
-            uint32_t component_size;
             TypeInfo::Destructor destructor;
+            ComponentIndex component_index;
         };
 
         struct InternalMoveInfo {

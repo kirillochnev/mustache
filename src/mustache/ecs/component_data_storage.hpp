@@ -8,6 +8,8 @@
 namespace mustache {
     class ComponentDataStorage {
     public:
+        class ElementView;
+
         explicit ComponentDataStorage(const ComponentMask& mask);
 
         [[nodiscard]] MUSTACHE_INLINE uint32_t capacity() const noexcept;
@@ -27,6 +29,8 @@ namespace mustache {
         template<FunctionSafety _Safety = FunctionSafety::kDefault>
         MUSTACHE_INLINE void* getData(ComponentIndex component_index, ComponentStorageIndex index) const noexcept;
 
+        MUSTACHE_INLINE ElementView getElementView(ComponentStorageIndex index) const noexcept;
+
         MUSTACHE_INLINE void clear(bool free_chunks = true);
 
         MUSTACHE_INLINE void reserveForNextItem();
@@ -45,6 +49,8 @@ namespace mustache {
 
         template<FunctionSafety _Safety = FunctionSafety::kDefault>
         MUSTACHE_INLINE ComponentStorageIndex pushBackAndUpdateVersion(Entity entity, WorldVersion world_version);
+
+        [[nodiscard]] MUSTACHE_INLINE ComponentStorageIndex lastItemIndex() const noexcept;
     private:
 
         struct ComponentDataGetter {
@@ -122,8 +128,9 @@ namespace mustache {
                 return nullptr;
             }
         }
+        const auto chunk_index = index % chunk_capacity_;
         const auto& info = component_getter_info_[component_index];
-        const auto offset = info.offset.add(info.size * index.toInt());
+        const auto offset = info.offset.add(info.size * chunk_index.toInt());
         auto chunk = chunks_[index / chunk_capacity_];
         return chunk->dataPointerWithOffset(offset);
     }
@@ -191,4 +198,42 @@ namespace mustache {
         return index;
     }
 
+    ComponentStorageIndex ComponentDataStorage::lastItemIndex() const noexcept {
+        return ComponentStorageIndex::make(size_ - 1);
+    }
+
+    class ComponentDataStorage::ElementView {
+    public:
+        template<FunctionSafety _Safety = FunctionSafety::kSafe>
+        void* getData(ComponentIndex component_index) const noexcept {
+            if constexpr (isSafe(_Safety)) {
+                if (component_index.isNull() ||
+                    !storage_->chunks_.has(chunk_index_) ||
+                    storage_->chunkCapacity().toInt() <= entity_index_.toInt()) {
+                    return nullptr;
+                }
+            }
+            const auto& info = storage_->component_getter_info_[component_index];
+            const auto offset = info.offset.add(info.size * entity_index_.toInt());
+            auto chunk = storage_->chunks_[chunk_index_];
+            return chunk->dataPointerWithOffset(offset);
+        }
+
+    private:
+        friend ComponentDataStorage;
+        const ComponentDataStorage* storage_;
+        ChunkIndex chunk_index_;
+        ChunkEntityIndex entity_index_;
+        constexpr ElementView(const ComponentDataStorage* storage,
+                                  ChunkIndex chunk_index, ChunkEntityIndex entity_index):
+                storage_{storage},
+                chunk_index_{chunk_index},
+                entity_index_{entity_index} {
+
+        }
+    };
+
+    ComponentDataStorage::ElementView ComponentDataStorage::getElementView(ComponentStorageIndex index) const noexcept {
+        return ElementView{this, index / chunkCapacity(), index % chunkCapacity()};
+    }
 }

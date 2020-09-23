@@ -54,14 +54,14 @@ ArchetypeOperationHelper::ArchetypeOperationHelper(const ComponentMask& mask):
             insert.push_back(InsertInfo {
                     offsets[component_index],
                     static_cast<uint32_t>(info.size),
-                    info.functions.create
+                    info.functions.create,
+                    component_index
             });
         }
         if (info.functions.destroy) {
             destroy.push_back(DestroyInfo {
-                    offsets[component_index],
-                    static_cast<uint32_t>(info.size),
-                    info.functions.destroy
+                    info.functions.destroy,
+                    component_index
             });
         }
         if (info.functions.move) {
