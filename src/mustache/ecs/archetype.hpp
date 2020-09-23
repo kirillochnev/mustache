@@ -19,12 +19,6 @@ namespace mustache {
     class World;
     class EntityManager;
 
-    // TODO: only Archetype can use
-    struct ArchetypeInternalEntityLocation {
-        Chunk* chunk;
-        ChunkEntityIndex index;
-    };
-
     /**
      * Stores Entities with same component set
      * NOTE: It is has no information about entity manager, so Archetype's methods don't effects entity location.
@@ -108,11 +102,15 @@ namespace mustache {
             return mask_;
         }
 
-        template<typename T, FunctionSafety _Safety = FunctionSafety::kDefault>
-        T* getComponent(const ArchetypeInternalEntityLocation& location) const noexcept {
-            const auto component_id = ComponentFactory::registerComponent<T>();
-            const auto component_index = operation_helper_.componentIndex<_Safety>(component_id);
-            return static_cast<T*>(data_storage_.getData<_Safety>(component_index, location.chunk, location.index));
+        template<FunctionSafety _Safety = FunctionSafety::kDefault>
+        void* getComponent(ComponentId component_id, ArchetypeEntityIndex index) const noexcept {
+            return data_storage_.getData<_Safety>(operation_helper_.componentIndex(component_id),
+                    ComponentStorageIndex::fromArchetypeIndex(index));
+        }
+
+        template<FunctionSafety _Safety = FunctionSafety::kDefault>
+        void* getComponent(ComponentIndex component_index, ArchetypeEntityIndex index) const noexcept {
+            return data_storage_.getData<_Safety>(component_index, ComponentStorageIndex::fromArchetypeIndex(index));
         }
 
         [[nodiscard]] auto getElementView(ArchetypeEntityIndex index) const noexcept {
@@ -120,24 +118,6 @@ namespace mustache {
         }
     private:
         friend class EntityManager;
-
-        template<FunctionSafety _Safety = FunctionSafety::kDefault>
-        ArchetypeInternalEntityLocation entityIndexToInternalLocation(ArchetypeEntityIndex index) const noexcept {
-            ArchetypeInternalEntityLocation result {
-                    nullptr,
-                    ChunkEntityIndex::null()
-            };
-            if constexpr (isSafe(_Safety)) {
-                if (index.toInt() >= data_storage_.size()) {
-                    return result;
-                }
-            }
-            const auto chunk_capacity = data_storage_.chunkCapacity();
-            const auto storage_index = ComponentStorageIndex::fromArchetypeIndex(index);
-            result.chunk = data_storage_.chunks_[storage_index / chunk_capacity];
-            result.index = storage_index % chunk_capacity;
-            return result;
-        }
 
         template<typename _F>
         void forEachEntity(_F&& callback) {

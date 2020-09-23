@@ -195,10 +195,12 @@ namespace mustache {
             return nullptr;
         }
         const auto& arch = archetypes_[location.archetype];
-        if (!arch->hasComponent(component_id)) {
+        const auto index = arch->getComponentIndex(component_id);
+        if (!index.isValid()) {
             return nullptr;
         }
-        return arch->getComponent<T, FunctionSafety::kUnsafe>(arch->entityIndexToInternalLocation(location.index));
+        auto ptr = arch->getComponent<FunctionSafety::kUnsafe>(index, location.index);
+        return reinterpret_cast<T*>(ptr);
     }
 
     template<typename T, FunctionSafety _Safety>
@@ -251,12 +253,11 @@ namespace mustache {
             auto& arch = getArchetype(mask);
             location.archetype = arch.id();
             location.index = arch.insert(e, !use_custom_constructor);
-            const auto internal_location = arch.entityIndexToInternalLocation(location.index);
-            T* component_ptr = arch.getComponent<T, FunctionSafety::kUnsafe>(internal_location);
+            auto component_ptr = arch.getComponent<FunctionSafety::kUnsafe>(component_id, location.index);
             if constexpr (use_custom_constructor) {
                 *new(component_ptr) T{std::forward<_ARGS>(args)...};
             }
-            return *component_ptr;
+            return *reinterpret_cast<T*>(component_ptr);
         }
         auto& prev_arch = *archetypes_[location.archetype];
         ComponentMask mask = prev_arch.mask_;
@@ -264,8 +265,7 @@ namespace mustache {
         auto& arch = getArchetype(mask);
         const auto prev_index = location.index;
         location.index = arch.insert(e, prev_arch, prev_index, !use_custom_constructor);
-        const auto internal_location = arch.entityIndexToInternalLocation(location.index);
-        T* component_ptr = arch.getComponent<T, FunctionSafety::kUnsafe>(internal_location);
+        auto component_ptr = arch.getComponent<FunctionSafety::kUnsafe>(component_id, location.index);
         if constexpr (use_custom_constructor) {
             *new(component_ptr) T{std::forward<_ARGS>(args)...};
         }
@@ -275,7 +275,7 @@ namespace mustache {
             locations_[moved_entity.id()].archetype = location.archetype;
         }
         location.archetype = arch.id();
-        return *component_ptr;
+        return *reinterpret_cast<T*>(component_ptr);
     }
 
     template<typename T, FunctionSafety _Safety>

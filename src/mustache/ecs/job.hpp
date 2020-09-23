@@ -110,18 +110,6 @@ namespace mustache {
             }
         }
 
-        template<typename _C>
-        MUSTACHE_INLINE auto getComponentHandler(const Archetype& archetype,
-                const ArchetypeInternalEntityLocation& location) noexcept {
-            using Component = typename ComponentType<_C>::type;
-            if constexpr (IsComponentRequired<_C>::value) {
-                return RequiredComponent<Component> { archetype.getComponent<Component, FunctionSafety::kUnsafe>(location)};
-            } else {
-                // TODO: it is possible to avoid per array check.
-                return OptionalComponent<Component> {archetype.getComponent<Component, FunctionSafety::kSafe>(location) };
-            }
-        }
-
         template<size_t _I>
         MUSTACHE_INLINE auto getComponentHandler(const ComponentDataStorage::ElementView& view, ComponentIndex index) noexcept {
             using RequiredType = typename Info::FunctionInfo::template Component<_I>::type;
