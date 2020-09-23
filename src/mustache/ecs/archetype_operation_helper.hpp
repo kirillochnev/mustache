@@ -3,20 +3,12 @@
 #include <mustache/utils/type_info.hpp>
 #include <mustache/utils/array_wrapper.hpp>
 #include <mustache/utils/default_settings.hpp>
-
-#include <mustache/ecs/chunk.hpp>
 #include <mustache/ecs/id_deff.hpp>
-#include <mustache/ecs/component_factory.hpp>
 
 #include <vector>
 
 namespace mustache {
-
-    // TODO: only Archetype can use
-    struct ArchetypeInternalEntityLocation {
-        Chunk* chunk;
-        ChunkEntityIndex index;
-    };
+    struct ComponentMask;
 
     class ArchetypeOperationHelper {
     private:
@@ -47,17 +39,6 @@ namespace mustache {
         };
 
         template<FunctionSafety _Safety = FunctionSafety::kDefault>
-        Entity* getEntity(const ArchetypeInternalEntityLocation& location) const noexcept { // TODO: remove
-            if constexpr (isSafe(_Safety)) {
-                if (location.chunk == nullptr || !location.index.isValid() ||
-                    location.index > index_of_last_entity_in_chunk) {
-                    return nullptr;
-                }
-            }
-            return location.chunk->dataPointerWithOffset<Entity>(entity_offset) + location.index.toInt();
-        }
-
-        template<FunctionSafety _Safety = FunctionSafety::kDefault>
         ComponentIndex componentIndex(ComponentId component_id) const noexcept {
             if constexpr (isSafe(_Safety)) {
                 if (component_id.isNull() || !component_id_to_component_index.has(component_id)) {
@@ -74,9 +55,5 @@ namespace mustache {
         std::vector<DestroyInfo> destroy; // only non null destroy functions
         ArrayWrapper<std::vector<ExternalMoveInfo>, ComponentIndex> external_move;
         ArrayWrapper<std::vector<InternalMoveInfo>, ComponentIndex> internal_move; // move or copy function
-        uint32_t num_components;
-        ChunkEntityIndex index_of_last_entity_in_chunk;
-        ComponentOffset entity_offset;
-        ComponentOffset version_offset;
     };
 }

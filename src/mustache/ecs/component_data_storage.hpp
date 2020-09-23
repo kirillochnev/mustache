@@ -71,7 +71,6 @@ namespace mustache {
         ArrayWrapper<std::vector<Chunk*>, ChunkIndex> chunks_;
     };
 
-
     uint32_t ComponentDataStorage::capacity() const noexcept {
         return chunk_capacity_.toInt() * chunks_.size();
     }

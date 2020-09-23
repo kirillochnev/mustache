@@ -19,6 +19,12 @@ namespace mustache {
     class World;
     class EntityManager;
 
+    // TODO: only Archetype can use
+    struct ArchetypeInternalEntityLocation {
+        Chunk* chunk;
+        ChunkEntityIndex index;
+    };
+
     /**
      * Stores Entities with same component set
      * NOTE: It is has no information about entity manager, so Archetype's methods don't effects entity location.
@@ -41,11 +47,6 @@ namespace mustache {
 
         [[nodiscard]] uint32_t chunkCapacity() const noexcept {
             return data_storage_.chunk_capacity_.toInt();
-        }
-
-        template<FunctionSafety _Safety = FunctionSafety::kDefault>
-        Entity* getEntity(const ArchetypeInternalEntityLocation& location) const noexcept {
-            return operation_helper_.getEntity<_Safety>(location);
         }
 
         [[nodiscard]] EntityGroup createGroup(size_t count);
