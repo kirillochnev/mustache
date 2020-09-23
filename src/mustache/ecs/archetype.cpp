@@ -6,16 +6,6 @@
 
 using namespace mustache;
 
-namespace {
-
-    void updateVersion(WorldVersion version, uint32_t num_components,
-            ComponentOffset version_offset, Chunk* chunk) {
-        auto version_ptr = chunk->dataPointerWithOffset<WorldVersion>(version_offset);
-        for (uint32_t i = 0; i < num_components; ++i) {
-            version_ptr[i] = version;
-        }
-    }
-}
 Archetype::Archetype(World& world, ArchetypeIndex id, const ComponentMask& mask):
     world_{world},
     mask_{mask},
@@ -47,17 +37,8 @@ Archetype::~Archetype() {
 
 ArchetypeEntityIndex Archetype::insert(Entity entity, Archetype& prev_archetype, ArchetypeEntityIndex prev_index,
         bool initialize_missing_components) {
-    data_storage_.reserveForNextItem();
-    const auto index = ArchetypeEntityIndex::make(data_storage_.size());
-    data_storage_.incSize();
-
-    // the item at this index has not been created yet,
-    // but memory has already been allocated, so an unsafe version of entityIndexToInternalLocation must be used
+    const auto index = data_storage_.pushBackAndUpdateVersion(entity, worldVersion()).toArchetypeIndex();
     const auto location = entityIndexToInternalLocation<FunctionSafety::kUnsafe>(index);
-    updateVersion(world_.version(), operation_helper_.num_components,
-                  operation_helper_.version_offset, location.chunk);
-    const auto entity_offset = operation_helper_.entity_offset.add(location.index.toInt() * sizeof(Entity));
-    new (location.chunk->dataPointerWithOffset<Entity>(entity_offset)) Entity (entity);
 
     const auto source_location = prev_archetype.entityIndexToInternalLocation(prev_index);
     for (const auto& info : operation_helper_.external_move) {
@@ -82,16 +63,9 @@ ArchetypeEntityIndex Archetype::insert(Entity entity, Archetype& prev_archetype,
 }
 
 ArchetypeEntityIndex Archetype::insert(Entity entity, bool call_constructor) {
-    data_storage_.reserveForNextItem();
-    const auto index = ArchetypeEntityIndex::make(data_storage_.size());
-    data_storage_.incSize();
-    // the item at this index has not been created yet,
-    // but memory has already been allocated, so an unsafe version of entityIndexToInternalLocation must be used
+    const auto index = data_storage_.pushBackAndUpdateVersion(entity, worldVersion()).toArchetypeIndex();
     const auto location = entityIndexToInternalLocation<FunctionSafety::kUnsafe>(index);
-    updateVersion(world_.version(), operation_helper_.num_components,
-            operation_helper_.version_offset, location.chunk);
-    const auto entity_offset = operation_helper_.entity_offset.add(location.index.toInt() * sizeof(Entity));
-    new (location.chunk->dataPointerWithOffset<Entity>(entity_offset)) Entity (entity);
+
     if (call_constructor) {
         for (const auto &info : operation_helper_.insert) {
             const auto component_offset = info.offset.add(location.index.toInt() * info.component_size);

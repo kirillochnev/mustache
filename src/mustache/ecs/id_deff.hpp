@@ -53,6 +53,9 @@ namespace mustache {
             }
             return ChunkEntityIndex::make(value_ % capacity.toInt());
         }
+        [[nodiscard]] constexpr ArchetypeEntityIndex toArchetypeIndex() const noexcept {
+            return ArchetypeEntityIndex::make(value_);
+        }
     };
 
     /// index(position) of component in archetype
