@@ -81,8 +81,7 @@ namespace mustache {
                 if (archetype.isMatch(mask)) {
                     const auto size = ComponentArraySize::make(archetype.size());
                     constexpr auto entity_index = ArchetypeEntityIndex::make(0);
-                    applyPerArrayFunction<typename Info::FunctionInfo:: template Component<_I>::type...>(archetype,
-                            entity_index, size, invocation_index);
+                    applyPerArrayFunction<_I...>(archetype, entity_index, size, invocation_index);
 
                     invocation_index.entity_index_in_task = PerEntityJobEntityIndexInTask::make(
                             invocation_index.entity_index_in_task.toInt() + archetype.size());
@@ -123,32 +122,43 @@ namespace mustache {
             }
         }
 
-        template<typename... _ARGS>
-        MUSTACHE_INLINE void applyPerArrayFunction(Archetype& archetype, ArchetypeEntityIndex first, ComponentArraySize count,
-                                                   JobInvocationIndex invocation_index) {
+        template<size_t _I>
+        MUSTACHE_INLINE auto getComponentHandler(const ComponentDataStorage::ElementView& view, ComponentIndex index) noexcept {
+            using RequiredType = typename Info::FunctionInfo::template Component<_I>::type;
+            using Component = typename ComponentType<RequiredType>::type;
+            if constexpr (IsComponentRequired<RequiredType>::value) {
+                auto ptr = view.getData<FunctionSafety::kUnsafe>(index);
+                return RequiredComponent<Component> {reinterpret_cast<Component*>(ptr)};
+            } else {
+                // TODO: it is possible to avoid per array check.
+                auto ptr = view.getData<FunctionSafety::kSafe>(index);
+                return OptionalComponent<Component> {reinterpret_cast<Component*>(ptr)};
+            }
+        }
+
+        template<size_t... _I>
+        MUSTACHE_INLINE void applyPerArrayFunction(Archetype& archetype, ArchetypeEntityIndex first,
+                ComponentArraySize count, JobInvocationIndex invocation_index) {
             if (count.toInt() < 1) {
                 return;
             }
 
-            const auto i1 = first.toInt();
-            const auto i2 = first.toInt() + count.toInt();
-            const auto elements_per_chunk = archetype.chunkCapacity();
-            const ChunkIndex first_chunk = ChunkIndex::make(i1 / elements_per_chunk);
-            const ChunkIndex last_chunk = ChunkIndex::make(i2 / elements_per_chunk);
+            static const std::array<ComponentId, sizeof...(_I)> ids {
+                ComponentFactory::registerComponent<typename ComponentType<typename Info::FunctionInfo::
+                template Component<_I>::type>::type>()...
+            };
+            std::array<ComponentIndex, sizeof...(_I)> component_indexes {
+                archetype.getComponentIndex(ids[_I])...
+            };
 
-            const auto world_version = archetype.worldVersion();
-            for(ChunkIndex chunk_index =  first_chunk; chunk_index <= last_chunk; ++chunk_index) {
-                const uint32_t rest = i2 - chunk_index.toInt() * elements_per_chunk;
-                const uint32_t begin = chunk_index == first_chunk ? i1 % elements_per_chunk : 0u;
-                const uint32_t end = (rest < elements_per_chunk) ? rest : elements_per_chunk;
-
-                ArchetypeInternalEntityLocation location;
-                location.chunk = archetype.getChunk<FunctionSafety::kUnsafe>(chunk_index);
-//                archetype.updateComponentsVersion(world_version, *location.chunk);
-                location.index = ChunkEntityIndex::make(begin);
-                forEachArrayGenerated(ComponentArraySize::make(end - begin), invocation_index,
-                                      archetype.getEntity<FunctionSafety::kUnsafe>(location),
-                                      getComponentHandler<_ARGS>(archetype, location)...);
+            auto view = archetype.getElementView(first);
+            auto elements_rest = count.toInt();
+            while (elements_rest != 0) {
+                const auto arr_len = std::min(view.elementArraySize(), elements_rest);
+                forEachArrayGenerated(ComponentArraySize::make(arr_len), invocation_index,
+                        view.getEntity<FunctionSafety::kUnsafe>(), getComponentHandler<_I>(view, component_indexes[_I])...);
+                view.add(arr_len);
+                elements_rest -= arr_len;
             }
         }
 
@@ -165,8 +175,7 @@ namespace mustache {
                 const uint32_t num_free_entities_in_arch = archetype_info.entities_count - begin.toInt();
                 const uint32_t objects_to_iterate = count < num_free_entities_in_arch ? count : num_free_entities_in_arch;
                 const auto array_size = ComponentArraySize::make(objects_to_iterate);
-                applyPerArrayFunction<typename Info::FunctionInfo::
-                    template Component<_I>::type...>(*archetype_info.archetype, begin, array_size, invocation_index);
+                applyPerArrayFunction<_I...>(*archetype_info.archetype, begin, array_size, invocation_index);
                 count -= objects_to_iterate;
                 begin = ArchetypeEntityIndex::make(0);
                 ++archetype_index;

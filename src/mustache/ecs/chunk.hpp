@@ -7,14 +7,17 @@
 #include <array>
 
 namespace mustache {
+    class ComponentDataStorage;
 
     class Chunk {
+        friend ComponentDataStorage;
     public:
-        Chunk() = default;
-        Chunk(const Chunk&) = delete;
         enum : uint32_t {
             kChunkSize = 1024 * 1024
         };
+//    private:
+        Chunk() = default;
+        Chunk(const Chunk&) = delete;
         template <typename T = std::byte>
         [[nodiscard]] T* data() noexcept {
             return reinterpret_cast<T*>(data_.data());

@@ -218,11 +218,39 @@ namespace mustache {
 
     class ComponentDataStorage::ElementView {
     public:
+
+        [[nodiscard]] ComponentStorageIndex globalIndex() const noexcept {
+            return ComponentStorageIndex::make(
+                chunk_index_.toInt() * storage_->chunkCapacity().toInt() + entity_index_.toInt()
+            );
+        }
+
+        [[nodiscard]] uint32_t elementArraySize() const noexcept {
+            const auto diff = [](const auto a, const auto b) noexcept{
+                return b > a ? b - a : 0;
+            };
+            const auto global_index = globalIndex();
+            const auto storage_size = storage_->size();
+            const auto elements_in_chunk = diff(entity_index_.toInt(), storage_->chunkCapacity().toInt());
+            const auto elements_in_arch = diff(global_index.toInt(), storage_size);
+            return std::min(elements_in_arch, elements_in_chunk);
+        }
+        void add(uint32_t count) noexcept {
+            const auto new_index = entity_index_.toInt() + count;
+            chunk_index_ = ChunkIndex::make(chunk_index_.toInt() + new_index / storage_->chunkCapacity().toInt());
+            entity_index_ = ChunkEntityIndex::make(new_index % storage_->chunkCapacity().toInt());
+        }
+
+        [[nodiscard]] bool isValid() const noexcept {
+            return storage_ && storage_->chunks_.has(chunk_index_) &&
+                storage_->chunkCapacity().isIndexValid(entity_index_) &&
+                    globalIndex() <= storage_->lastItemIndex();
+        }
+
         template<FunctionSafety _Safety = FunctionSafety::kSafe>
         Entity* getEntity() noexcept {
             if constexpr (isSafe(_Safety)) {
-                if (!storage_->chunks_.has(chunk_index_) ||
-                    storage_->chunkCapacity().toInt() <= entity_index_.toInt()) {
+                if (!isValid()) {
                     return nullptr;
                 }
             }
@@ -233,9 +261,7 @@ namespace mustache {
         template<FunctionSafety _Safety = FunctionSafety::kSafe>
         void* getData(ComponentIndex component_index) const noexcept {
             if constexpr (isSafe(_Safety)) {
-                if (component_index.isNull() ||
-                    !storage_->chunks_.has(chunk_index_) ||
-                    storage_->chunkCapacity().toInt() <= entity_index_.toInt()) {
+                if (component_index.isNull() || !isValid()) {
                     return nullptr;
                 }
             }
@@ -245,6 +271,15 @@ namespace mustache {
             return chunk->dataPointerWithOffset(offset);
         }
 
+        ElementView& operator++() noexcept {
+            ++entity_index_;
+            if (!storage_->chunkCapacity().isIndexValid(entity_index_)) {
+                entity_index_ = ChunkEntityIndex::make(0);
+                ++chunk_index_;
+            }
+
+            return *this;
+        }
     private:
         friend ComponentDataStorage;
         const ComponentDataStorage* storage_;

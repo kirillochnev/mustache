@@ -35,8 +35,7 @@ namespace mustache {
                     return Entity{};
                 }
             }
-            ArchetypeInternalEntityLocation location = entityIndexToInternalLocation(index);
-            auto entity_ptr = operation_helper_.getEntity<_Safety>(location);
+            auto entity_ptr = data_storage_.getEntityData<_Safety>(ComponentStorageIndex::fromArchetypeIndex(index));
             return entity_ptr ? *entity_ptr : Entity{};
         }
 
@@ -98,11 +97,6 @@ namespace mustache {
             return operation_helper_.component_id_to_component_index[id];
         }
 
-        [[nodiscard]] WorldVersion getWorldVersionComponentUpdate(ComponentIndex index,
-                const ArchetypeInternalEntityLocation& location) const noexcept {
-            return location.chunk->componentVersion(index);
-        }
-
         template<FunctionSafety _Safety = FunctionSafety::kSafe>
         [[nodiscard]] WorldVersion getWorldVersionComponentUpdate(ComponentId id,
                 ArchetypeEntityIndex index) const noexcept {
@@ -125,6 +119,9 @@ namespace mustache {
             return static_cast<T*>(data_storage_.getData<_Safety>(component_index, location.chunk, location.index));
         }
 
+        [[nodiscard]] auto getElementView(ArchetypeEntityIndex index) const noexcept {
+            return data_storage_.getElementView(ComponentStorageIndex::fromArchetypeIndex(index));
+        }
     private:
         friend class EntityManager;
 
@@ -151,18 +148,10 @@ namespace mustache {
             if (data_storage_.isEmpty()) {
                 return;
             }
-            auto num_items = data_storage_.size();
-            ArchetypeInternalEntityLocation location;
-            const auto chunk_last_index = operation_helper_.index_of_last_entity_in_chunk;
-            for (auto chunk : data_storage_.chunks_) {
-                location.chunk = chunk;
-                for (location.index = ChunkEntityIndex::make(0); location.index <= chunk_last_index; ++location.index) {
-                    if (num_items == 0) {
-                        return;
-                    }
-                    callback(*operation_helper_.getEntity(location));
-                    --num_items;
-                }
+            auto view = data_storage_.getElementView(ComponentStorageIndex::make(0));
+            while (view.isValid()) {
+                callback(*view.getEntity<FunctionSafety::kUnsafe>());
+                ++view;
             }
         }
 

@@ -28,7 +28,11 @@ namespace mustache {
     /// index of entity in chunk
     struct ChunkEntityIndex : public IndexLike<uint32_t, ChunkEntityIndex> {};
 
-    struct ChunkCapacity : public mustache::IndexLike<uint32_t, ChunkCapacity, 0u> {};
+    struct ChunkCapacity : public mustache::IndexLike<uint32_t, ChunkCapacity, 0u> {
+        [[nodiscard]] bool isIndexValid(ChunkEntityIndex index) const noexcept {
+            return index.toInt() < value_;
+        }
+    };
 
     /// Location of data in component data storage
     struct DataLocation : public mustache::IndexLike<uint32_t, DataLocation> {};

@@ -78,7 +78,6 @@ Entity Archetype::remove(ArchetypeEntityIndex index) {
         data_storage_.decrSize();
     };
 
-    const auto location = entityIndexToInternalLocation(index);
     const auto source_index = data_storage_.lastItemIndex();
     const auto dest_index = ComponentStorageIndex::fromArchetypeIndex(index);
     if (dest_index == source_index) {
@@ -97,8 +96,8 @@ Entity Archetype::remove(ArchetypeEntityIndex index) {
         info.move(dest_ptr, source_ptr);
     }
 
-    auto source_entity = *data_storage_.getEntityData<FunctionSafety::kUnsafe>(source_index);
-    *operation_helper_.getEntity<FunctionSafety::kUnsafe>(location) = source_entity;
+    auto source_entity = *source_view.getEntity<FunctionSafety::kUnsafe>();
+    *dest_view.getEntity<FunctionSafety::kUnsafe>() = source_entity;
     call_destructors(source_index);
 
     return source_entity;

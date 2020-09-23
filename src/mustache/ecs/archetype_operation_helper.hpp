@@ -47,7 +47,7 @@ namespace mustache {
         };
 
         template<FunctionSafety _Safety = FunctionSafety::kDefault>
-        Entity* getEntity(const ArchetypeInternalEntityLocation& location) const noexcept {
+        Entity* getEntity(const ArchetypeInternalEntityLocation& location) const noexcept { // TODO: remove
             if constexpr (isSafe(_Safety)) {
                 if (location.chunk == nullptr || !location.index.isValid() ||
                     location.index > index_of_last_entity_in_chunk) {
