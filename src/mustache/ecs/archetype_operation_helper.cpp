@@ -47,13 +47,9 @@ ArchetypeOperationHelper::ArchetypeOperationHelper(const ComponentMask& mask):
         }
         component_id_to_component_index[component_id] = component_index;
         const auto& info = ComponentFactory::componentInfo(component_id);
-#if OPERATION_GET
-        get.push_back(GetComponentInfo{offsets[component_index], static_cast<uint32_t>(info.size)});
-#endif
+
         if (info.functions.create) {
             insert.push_back(InsertInfo {
-                    offsets[component_index],
-                    static_cast<uint32_t>(info.size),
                     info.functions.create,
                     component_index
             });
@@ -66,16 +62,12 @@ ArchetypeOperationHelper::ArchetypeOperationHelper(const ComponentMask& mask):
         }
         if (info.functions.move) {
             internal_move.push_back(InternalMoveInfo {
-                    offsets[component_index],
-                    static_cast<uint32_t>(info.size),
                     info.functions.move
             });
         }
         ExternalMoveInfo external_move_info;
         external_move_info.constructor = info.functions.create;
         external_move_info.move = info.functions.move_constructor;
-        external_move_info.offset = offsets[component_index];
-        external_move_info.size = static_cast<uint32_t>(info.size);
         external_move_info.id = component_id;
         external_move.push_back(external_move_info);
 

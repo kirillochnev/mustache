@@ -10,8 +10,6 @@
 
 #include <vector>
 
-#define OPERATION_GET 0
-
 namespace mustache {
 
     struct ArchetypeInternalEntityLocation {
@@ -34,8 +32,6 @@ namespace mustache {
         static std::vector<ComponentOffset> offsetsFor(const std::vector<ComponentId>& components);
 
         struct InsertInfo {
-            ComponentOffset offset;
-            uint32_t component_size;
             TypeInfo::Constructor constructor;
             ComponentIndex component_index;
         };
@@ -45,45 +41,14 @@ namespace mustache {
         };
 
         struct InternalMoveInfo {
-            ComponentOffset offset;
-            uint32_t component_size;
             TypeInfo::MoveFunction move;
         };
 
         struct ExternalMoveInfo {
             TypeInfo::Constructor constructor;
             TypeInfo::MoveFunction move;
-            ComponentOffset offset;
-            uint32_t size;
             ComponentId id;
         };
-
-#if OPERATION_GET
-        struct GetComponentInfo {
-            ComponentOffset offset;
-            uint32_t size;
-        };
-
-        template<FunctionSafety _Safety = FunctionSafety::kDefault>
-        void* getComponent(ComponentIndex component_index, const ArchetypeInternalEntityLocation& location) const noexcept {
-            if constexpr (isSafe(_Safety)) {
-                if (component_index.isNull() || !get.has(component_index) ||
-                    location.chunk == nullptr || !location.index.isValid() ||
-                    location.index > index_of_last_entity_in_chunk) {
-                    return nullptr;
-                }
-            }
-            const auto& info = get[component_index];
-            const auto offset = info.offset.add(info.size * location.index.toInt());
-            return location.chunk->dataPointerWithOffset(offset);
-        }
-
-        template<typename T, FunctionSafety _Safety = FunctionSafety::kDefault>
-        T* getComponent(const ArchetypeInternalEntityLocation& location) const noexcept {
-            return reinterpret_cast<T*>(getComponent<_Safety>(componentIndex<T>(), location));
-        }
-
-#endif
 
         template<FunctionSafety _Safety = FunctionSafety::kDefault>
         Entity* getEntity(const ArchetypeInternalEntityLocation& location) const noexcept {
@@ -119,9 +84,7 @@ namespace mustache {
         // NOTE: can be removed?
         ArrayWrapper<std::vector<ComponentId>, ComponentIndex> component_index_to_component_id;
         ArrayWrapper<std::vector<ComponentIndex>, ComponentId> component_id_to_component_index;
-#if OPERATION_GET
-        ArrayWrapper<std::vector<GetComponentInfo>, ComponentIndex> get; // ComponentIndex -> {offset, size}
-#endif
+
         std::vector<InsertInfo> insert; // only non null init functions
         std::vector<DestroyInfo> destroy; // only non null destroy functions
         ArrayWrapper<std::vector<ExternalMoveInfo>, ComponentIndex> external_move;

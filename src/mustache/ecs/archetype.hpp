@@ -14,8 +14,6 @@
 #include <string>
 #include <stdexcept>
 
-
-#define USE_NEW 0
 namespace mustache {
 
     class World;
@@ -146,32 +144,15 @@ namespace mustache {
                     entityIndexToInternalLocation<_Safety>(index));
         }
 
-        [[nodiscard]] ComponentOffset getComponentOffset(ComponentId id) const noexcept {
-            ComponentOffset result;
-            if (hasComponent(id)) {
-                const auto index = getComponentIndex<FunctionSafety::kUnsafe>(id);
-#if 1 /*USE_NEW*/ // OK
-                result = data_storage_.component_getter_info_[index].offset;
-#else
-                result = operation_helper_.get[index].offset;
-#endif
-            }
-            return result;
-        }
-
         [[nodiscard]] const ComponentMask& componentMask() const noexcept {
             return mask_;
         }
 
         template<typename T, FunctionSafety _Safety = FunctionSafety::kDefault>
         T* getComponent(const ArchetypeInternalEntityLocation& location) const noexcept {
-#if 1 /*FAIL*/
             const auto component_id = ComponentFactory::registerComponent<T>();
             const auto component_index = operation_helper_.componentIndex<_Safety>(component_id);
             return static_cast<T*>(data_storage_.getData<_Safety>(component_index, location.chunk, location.index));
-#else
-            return operation_helper_.getComponent<T, _Safety>(location);
-#endif
         }
 
     private:
@@ -188,16 +169,10 @@ namespace mustache {
                     return result;
                 }
             }
-#if 1/*USE_NEW*/ // OK
             const auto chunk_capacity = data_storage_.chunkCapacity();
             const auto storage_index = ComponentStorageIndex::fromArchetypeIndex(index);
             result.chunk = data_storage_.chunks_[storage_index / chunk_capacity];
             result.index = storage_index % chunk_capacity;
-#else
-            const auto chunk_capacity = operation_helper_.chunkCapacity();
-            result.chunk = data_storage_.chunks_[ChunkIndex::make(index.toInt() / chunk_capacity)];
-            result.index = ChunkEntityIndex::make(index.toInt() % chunk_capacity);
-#endif
             return result;
         }
 
@@ -209,7 +184,7 @@ namespace mustache {
             auto num_items = data_storage_.size();
             ArchetypeInternalEntityLocation location;
             const auto chunk_last_index = operation_helper_.index_of_last_entity_in_chunk;
-            for (auto chunk : /*chunks_*/ data_storage_.chunks_) {
+            for (auto chunk : data_storage_.chunks_) {
                 location.chunk = chunk;
                 for (location.index = ChunkEntityIndex::make(0); location.index <= chunk_last_index; ++location.index) {
                     if (num_items == 0) {
@@ -235,27 +210,6 @@ namespace mustache {
          * returns new entity at index.
          */
         Entity remove(ArchetypeEntityIndex index);
-
-        ComponentIndex componentIndex(ComponentId id) const noexcept {
-            auto result = ComponentIndex::null();
-            if (operation_helper_.component_id_to_component_index.has(id)) {
-                result = operation_helper_.component_id_to_component_index[id];
-            }
-            return result;
-        }
-        template<FunctionSafety _Safety = FunctionSafety::kDefault>
-        void* getComponentFromArchetype(ArchetypeEntityIndex entity, ComponentIndex component) const noexcept {
-#if 1/*USE_NEW*/ // OK same binary file
-            return data_storage_.getData<_Safety>(component, ComponentStorageIndex::fromArchetypeIndex(entity));
-#else
-            const auto location = entityIndexToInternalLocation(entity);
-            return operation_helper_.getComponent<_Safety>(component, location);
-#endif
-        }
-        template<FunctionSafety _Safety = FunctionSafety::kDefault>
-        void* getComponentFromArchetype(ArchetypeEntityIndex entity, ComponentId component) const noexcept {
-            return getComponentFromArchetype<_Safety>(entity, componentIndex(component));
-        }
 
         World& world_;
         ComponentMask mask_;
