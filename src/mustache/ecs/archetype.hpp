@@ -1,6 +1,5 @@
 #pragma once
 
-#include <mustache/ecs/chunk.hpp>
 #include <mustache/ecs/entity.hpp>
 #include <mustache/ecs/id_deff.hpp>
 #include <mustache/ecs/job_arg_parcer.hpp>
@@ -39,10 +38,6 @@ namespace mustache {
             return entity_ptr ? *entity_ptr : Entity{};
         }
 
-        [[nodiscard]] uint32_t chunkCapacity() const noexcept {
-            return data_storage_.chunk_capacity_.toInt();
-        }
-
         [[nodiscard]] EntityGroup createGroup(size_t count);
 
         [[nodiscard]] uint32_t size() const noexcept {
@@ -66,18 +61,6 @@ namespace mustache {
         bool hasComponent() const noexcept {
             static const auto component_id = ComponentFactory::registerComponent<T>();
             return mask_.has(component_id);
-        }
-        template<FunctionSafety _Safety = FunctionSafety::kDefault>
-        Chunk* getChunk(ChunkIndex index) const noexcept {
-            if constexpr (isSafe(_Safety)) {
-                if (!index.isValid() || ! data_storage_.chunks_.has(index)) {
-                    return nullptr;
-                }
-            }
-            return data_storage_.chunks_[index];
-        }
-        size_t chunkCount() const noexcept {
-            return data_storage_.chunks_.size();
         }
 
         WorldVersion worldVersion() const noexcept;
@@ -152,7 +135,6 @@ namespace mustache {
         ComponentDataStorage data_storage_;
 
         ArchetypeIndex id_;
-        std::string name_;
     };
 
 }

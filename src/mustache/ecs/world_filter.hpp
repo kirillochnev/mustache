@@ -58,7 +58,8 @@ namespace mustache {
                 auto& arch = entities.getArchetype(index);
                 if(arch.size() > 0u && arch.isMatch(mask_)) {
                     ArchetypeFilterResult item;
-                    if constexpr (hasPerChunkFilter<_Filter>(nullptr)) {
+                    // TODO: impl me
+                    /*if constexpr (hasPerChunkFilter<_Filter>(nullptr)) {
                         auto& self = *static_cast<_Filter*>(this);
 
                         const auto chunk_count = arch.chunkCount();
@@ -77,7 +78,7 @@ namespace mustache {
                                 item.chunks.push_back(chunk_index);
                             }
                         }
-                    } else {
+                    } else*/ {
                         item.entities_count = arch.size();
                     }
                     if (item.entities_count > 0) {

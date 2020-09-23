@@ -2,7 +2,6 @@
 #include <mustache/utils/logger.hpp>
 #include <mustache/ecs/component_factory.hpp>
 #include <mustache/ecs/world.hpp>
-#include <cstdlib>
 
 using namespace mustache;
 
@@ -12,14 +11,6 @@ Archetype::Archetype(World& world, ArchetypeIndex id, const ComponentMask& mask)
     operation_helper_{mask},
     data_storage_{mask},
     id_{id} {
-    uint32_t i = 0;
-    for (auto component_id : mask.components()) {
-        const auto& info = ComponentFactory::componentInfo(component_id);
-        name_ += " [" + info.name + "]";
-        Logger{}.debug("Offset of: %s = %d", info.name, data_storage_.component_getter_info_[ComponentIndex::make(i++)].offset.toInt());
-    }
-    Logger{}.debug("New archetype created, components: %s | chunk size: %d",
-                   name_.c_str(), data_storage_.chunkCapacity().toInt());
 }
 
 Archetype::~Archetype() {

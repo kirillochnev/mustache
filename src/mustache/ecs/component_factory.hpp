@@ -1,6 +1,5 @@
 #pragma once
 
-#include <mustache/ecs/chunk.hpp>
 #include <mustache/ecs/entity.hpp>
 #include <mustache/ecs/id_deff.hpp>
 #include <mustache/ecs/component_mask.hpp>

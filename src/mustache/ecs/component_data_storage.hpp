@@ -1,9 +1,10 @@
 #pragma once
 
 #include <mustache/ecs/entity.hpp>
-#include <mustache/ecs/chunk.hpp>
 #include <mustache/ecs/component_mask.hpp>
 #include <mustache/utils/array_wrapper.hpp>
+
+#include <array>
 
 namespace mustache {
     class ComponentDataStorage {
@@ -19,49 +20,38 @@ namespace mustache {
         MUSTACHE_INLINE void reserve(size_t new_capacity);
         MUSTACHE_INLINE void incSize() noexcept;
         MUSTACHE_INLINE void decrSize() noexcept;
+        MUSTACHE_INLINE void clear(bool free_chunks = true);
 
         template<FunctionSafety _Safety = FunctionSafety::kDefault>
         MUSTACHE_INLINE Entity* getEntityData(ComponentStorageIndex index) const noexcept;
-
-        template<FunctionSafety _Safety = FunctionSafety::kDefault>
-        MUSTACHE_INLINE void* getData(ComponentIndex component_index, Chunk* chunk, ChunkEntityIndex index) const noexcept;
-
         template<FunctionSafety _Safety = FunctionSafety::kDefault>
         MUSTACHE_INLINE void* getData(ComponentIndex component_index, ComponentStorageIndex index) const noexcept;
-
         MUSTACHE_INLINE ElementView getElementView(ComponentStorageIndex index) const noexcept;
 
-        MUSTACHE_INLINE void clear(bool free_chunks = true);
-
-        MUSTACHE_INLINE void reserveForNextItem();
-
-        [[nodiscard]] MUSTACHE_INLINE uint32_t componentsCount() const noexcept;
-
-        [[nodiscard]] MUSTACHE_INLINE ComponentOffset entityOffset() const noexcept;
-
-        [[nodiscard]] MUSTACHE_INLINE ChunkCapacity chunkCapacity() const noexcept;
-
+        template<FunctionSafety _Safety = FunctionSafety::kDefault>
+        MUSTACHE_INLINE WorldVersion getVersion(ComponentIndex component_index, ComponentStorageIndex index) const noexcept;
         template<FunctionSafety _Safety = FunctionSafety::kDefault>
         MUSTACHE_INLINE void updateComponentVersion(WorldVersion version, ComponentIndex component_index, ComponentStorageIndex index) noexcept;
-
         template<FunctionSafety _Safety = FunctionSafety::kDefault>
         MUSTACHE_INLINE void updateVersion(WorldVersion version, ComponentStorageIndex index) noexcept;
 
         template<FunctionSafety _Safety = FunctionSafety::kDefault>
-        MUSTACHE_INLINE WorldVersion getVersion(ComponentIndex component_index, ComponentStorageIndex index) const noexcept;
-
-        template<FunctionSafety _Safety = FunctionSafety::kDefault>
         MUSTACHE_INLINE ComponentStorageIndex pushBackAndUpdateVersion(Entity entity, WorldVersion world_version);
-
         [[nodiscard]] MUSTACHE_INLINE ComponentStorageIndex lastItemIndex() const noexcept;
-    private:
 
+    private:
         struct ComponentDataGetter {
             ComponentOffset offset;
             uint32_t size;
         };
 
-        friend class Archetype;
+        class Chunk;
+
+        [[nodiscard]] MUSTACHE_INLINE uint32_t componentsCount() const noexcept;
+        [[nodiscard]] MUSTACHE_INLINE ComponentOffset entityOffset() const noexcept;
+        [[nodiscard]] MUSTACHE_INLINE ChunkCapacity chunkCapacity() const noexcept;
+        MUSTACHE_INLINE void reserveForNextItem();
+
         void allocateChunk();
         void freeChunk(Chunk* chunk) noexcept;
 
@@ -69,6 +59,34 @@ namespace mustache {
         uint32_t size_{0u};
         ChunkCapacity chunk_capacity_;
         ArrayWrapper<std::vector<Chunk*>, ChunkIndex> chunks_;
+    };
+
+    class ComponentDataStorage::Chunk {
+    public:
+        enum : uint32_t {
+            kChunkSize = 1024 * 1024
+        };
+        Chunk() = default;
+        Chunk(const Chunk&) = delete;
+        template <typename T = std::byte>
+        [[nodiscard]] T* data() noexcept {
+            return reinterpret_cast<T*>(data_.data());
+        }
+        template <typename T = std::byte>
+        [[nodiscard]] const T* data() const noexcept {
+            return reinterpret_cast<const T*>(data_.data());
+        }
+        template <typename T = void>
+        [[nodiscard]] T* dataPointerWithOffset(ComponentOffset offset) noexcept {
+            return reinterpret_cast<T*>(offset.apply(data_.data()));
+        }
+        template <typename T = void>
+        [[nodiscard]] const T* dataPointerWithOffset(ComponentOffset offset) const noexcept {
+            return reinterpret_cast<const T*>(offset.apply(data_.data()));
+        }
+
+    private:
+        std::array<std::byte, kChunkSize> data_;
     };
 
     uint32_t ComponentDataStorage::capacity() const noexcept {
@@ -107,19 +125,6 @@ namespace mustache {
         const auto index_at_chunk = index % chunk_capacity_;
         const auto read_offset = entityOffset().add(sizeof(Entity) * index_at_chunk.toInt());
         return chunks_[index / chunk_capacity_]->dataPointerWithOffset<Entity>(read_offset);
-    }
-    template<FunctionSafety _Safety>
-    void* ComponentDataStorage::getData(ComponentIndex component_index, Chunk* chunk, ChunkEntityIndex index) const noexcept {
-        if constexpr (isSafe(_Safety)) {
-            if (component_index.isNull() || !index.isValid() || chunk == nullptr ||
-                !component_getter_info_.has(component_index) /*|| index.toInt() >= size_*/ ||
-                chunk_capacity_.toInt() <= index.toInt()) {
-                return nullptr;
-            }
-        }
-        const auto& info = component_getter_info_[component_index];
-        const auto offset = info.offset.add(info.size * index.toInt());
-        return chunk->dataPointerWithOffset(offset);
     }
 
     template<FunctionSafety _Safety>
@@ -173,7 +178,7 @@ namespace mustache {
             }
         }
         auto& chunk = chunks_[index / chunk_capacity_];
-        auto version_array = chunk->dataPointerWithOffset<WorldVersion>(ComponentOffset::make(0));
+        auto version_array = chunk->data<WorldVersion>();
         version_array[component_index.toInt()] = version;
     }
     template<FunctionSafety _Safety>
@@ -184,7 +189,7 @@ namespace mustache {
             }
         }
         auto& chunk = chunks_[index / chunk_capacity_];
-        auto version_array = chunk->dataPointerWithOffset<WorldVersion>(ComponentOffset::make(0));
+        auto version_array = chunk->data<WorldVersion>();
         for (uint32_t i = 0; i < componentsCount(); ++i) {
             version_array[i] = version;
         }

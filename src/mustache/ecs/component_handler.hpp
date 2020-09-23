@@ -1,5 +1,7 @@
 #pragma once
 
+#include <stdexcept>
+
 namespace mustache {
 
     template <typename T, typename... ARGS>

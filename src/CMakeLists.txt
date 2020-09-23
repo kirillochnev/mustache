@@ -43,8 +43,6 @@ add_library(${PROJECT_NAME} STATIC
         mustache/ecs/world.hpp
         mustache/ecs/component_factory.cpp
         mustache/ecs/component_factory.hpp
-        mustache/ecs/chunk.cpp
-        mustache/ecs/chunk.hpp
         mustache/ecs/entity_group.cpp
         mustache/ecs/entity_group.hpp
         mustache/ecs/world_filter.hpp

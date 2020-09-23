@@ -95,7 +95,6 @@ namespace mustache {
 
     protected:
 
-        // TODO: use special struct instead of raw pointers
         template<typename... _ARGS>
         MUSTACHE_INLINE void forEachArrayGenerated(ComponentArraySize count, JobInvocationIndex& invocation_index,
                                    _ARGS MUSTACHE_RESTRICT_PTR ... pointers) {

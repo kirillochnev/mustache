@@ -35,6 +35,9 @@ ComponentDataStorage::ComponentDataStorage(const ComponentMask& mask) {
     for (auto& getter : component_getter_info_) {
         getter.offset = entity_offset.add(getter.offset.toInt() * chunk_capacity_.toInt());
     }
+
+    Logger{}.debug("New ComponentDataStorage has been created, components: %s | chunk capacity: %d",
+                   mask.toString().c_str(), chunkCapacity().toInt());
 }
 
 void ComponentDataStorage::allocateChunk() {
