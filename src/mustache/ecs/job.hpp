@@ -144,7 +144,7 @@ namespace mustache {
                 const auto arr_len = std::min(view.elementArraySize(), elements_rest);
                 forEachArrayGenerated(ComponentArraySize::make(arr_len), invocation_index,
                         view.getEntity<FunctionSafety::kUnsafe>(), getComponentHandler<_I>(view, component_indexes[_I])...);
-                view.add(arr_len);
+                view += arr_len;
                 elements_rest -= arr_len;
             }
         }

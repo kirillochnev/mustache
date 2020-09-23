@@ -239,11 +239,6 @@ namespace mustache {
             const auto elements_in_arch = diff(global_index.toInt(), storage_size);
             return std::min(elements_in_arch, elements_in_chunk);
         }
-        void add(uint32_t count) noexcept {
-            const auto new_index = entity_index_.toInt() + count;
-            chunk_index_ = ChunkIndex::make(chunk_index_.toInt() + new_index / storage_->chunkCapacity().toInt());
-            entity_index_ = ChunkEntityIndex::make(new_index % storage_->chunkCapacity().toInt());
-        }
 
         [[nodiscard]] bool isValid() const noexcept {
             return storage_ && storage_->chunks_.has(chunk_index_) &&
@@ -275,14 +270,15 @@ namespace mustache {
             return chunk->dataPointerWithOffset(offset);
         }
 
-        ElementView& operator++() noexcept {
-            ++entity_index_;
-            if (!storage_->chunkCapacity().isIndexValid(entity_index_)) {
-                entity_index_ = ChunkEntityIndex::make(0);
-                ++chunk_index_;
-            }
-
+        ElementView& operator+=(uint32_t count) noexcept {
+            const auto new_index = entity_index_.toInt() + count;
+            chunk_index_ = ChunkIndex::make(chunk_index_.toInt() + new_index / storage_->chunkCapacity().toInt());
+            entity_index_ = ChunkEntityIndex::make(new_index % storage_->chunkCapacity().toInt());
             return *this;
+        }
+
+        ElementView& operator++() noexcept {
+            return (*this) += 1;
         }
     private:
         friend ComponentDataStorage;
@@ -290,7 +286,7 @@ namespace mustache {
         ChunkIndex chunk_index_;
         ChunkEntityIndex entity_index_;
         constexpr ElementView(const ComponentDataStorage* storage,
-                                  ChunkIndex chunk_index, ChunkEntityIndex entity_index):
+                ChunkIndex chunk_index, ChunkEntityIndex entity_index):
                 storage_{storage},
                 chunk_index_{chunk_index},
                 entity_index_{entity_index} {
