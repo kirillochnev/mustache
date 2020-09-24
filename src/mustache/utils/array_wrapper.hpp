@@ -68,6 +68,9 @@ namespace mustache {
         decltype(auto) cend() const noexcept {
             return array_.cend();
         }
+        decltype(auto) pop_back() {
+            return array_.pop_back();
+        }
         template<typename T>
         decltype(auto) push_back(T&& item) {
             return array_.push_back(std::forward<T>(item));

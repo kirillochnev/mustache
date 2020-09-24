@@ -201,7 +201,7 @@ namespace mustache {
         ComponentStorageIndex index = ComponentStorageIndex::make(size_);
         incSize();
         *getEntityData<_Safety>(index) = entity;
-        updateVersion(world_version, index);
+        updateVersion<_Safety>(world_version, index);
         return index;
     }
 
@@ -220,7 +220,7 @@ namespace mustache {
         return chunk->data<WorldVersion>()[component.toInt()];
     }
 
-    class ComponentDataStorage::ElementView {
+    class ComponentDataStorage::ElementView { // TODO: rename
     public:
 
         [[nodiscard]] ComponentStorageIndex globalIndex() const noexcept {
@@ -229,7 +229,7 @@ namespace mustache {
             );
         }
 
-        [[nodiscard]] uint32_t elementArraySize() const noexcept {
+        [[nodiscard]] uint32_t elementArraySize() const noexcept { // TODO: create class to access arrays
             const auto diff = [](const auto a, const auto b) noexcept{
                 return b > a ? b - a : 0;
             };

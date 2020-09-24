@@ -5,6 +5,7 @@
 #include <mustache/ecs/job_arg_parcer.hpp>
 #include <mustache/ecs/archetype_operation_helper.hpp>
 #include <mustache/ecs/component_data_storage.hpp>
+#include <mustache/ecs/new_component_data_storage.hpp>
 #include <mustache/ecs/component_factory.hpp>
 #include <mustache/ecs/entity_group.hpp>
 #include <mustache/utils/uncopiable.hpp>

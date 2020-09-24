@@ -109,16 +109,16 @@ namespace mustache {
             }
         }
 
-        template<size_t _I>
-        MUSTACHE_INLINE auto getComponentHandler(const ComponentDataStorage::ElementView& view, ComponentIndex index) noexcept {
+        template<size_t _I, typename _ViewType>
+        MUSTACHE_INLINE auto getComponentHandler(const _ViewType& view, ComponentIndex index) noexcept {
             using RequiredType = typename Info::FunctionInfo::template Component<_I>::type;
             using Component = typename ComponentType<RequiredType>::type;
             if constexpr (IsComponentRequired<RequiredType>::value) {
-                auto ptr = view.getData<FunctionSafety::kUnsafe>(index);
+                auto ptr = view.template getData<FunctionSafety::kUnsafe>(index);
                 return RequiredComponent<Component> {reinterpret_cast<Component*>(ptr)};
             } else {
                 // TODO: it is possible to avoid per array check.
-                auto ptr = view.getData<FunctionSafety::kSafe>(index);
+                auto ptr = view.template getData<FunctionSafety::kSafe>(index);
                 return OptionalComponent<Component> {reinterpret_cast<Component*>(ptr)};
             }
         }

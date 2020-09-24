@@ -48,6 +48,9 @@ add_library(${PROJECT_NAME} STATIC
         mustache/ecs/world_filter.hpp
         mustache/ecs/component_data_storage.cpp
         mustache/ecs/component_data_storage.hpp
+
+        mustache/ecs/new_component_data_storage.cpp
+        mustache/ecs/new_component_data_storage.hpp
 )
 
 target_include_directories(${PROJECT_NAME}
