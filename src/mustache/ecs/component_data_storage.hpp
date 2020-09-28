@@ -59,34 +59,37 @@ namespace mustache {
         uint32_t size_{0u};
         ChunkCapacity chunk_capacity_;
         ArrayWrapper<std::vector<Chunk*>, ChunkIndex> chunks_;
+        uint32_t element_size_ {0u};
     };
 
     class ComponentDataStorage::Chunk {
     public:
-        enum : uint32_t {
-            kChunkSize = 1024 * 1024
-        };
+
         Chunk() = default;
         Chunk(const Chunk&) = delete;
         template <typename T = std::byte>
         [[nodiscard]] T* data() noexcept {
-            return reinterpret_cast<T*>(data_.data());
+            return reinterpret_cast<T*>(getPtr());
         }
         template <typename T = std::byte>
         [[nodiscard]] const T* data() const noexcept {
-            return reinterpret_cast<const T*>(data_.data());
+            return reinterpret_cast<const T*>(getPtr());
         }
         template <typename T = void>
         [[nodiscard]] T* dataPointerWithOffset(ComponentOffset offset) noexcept {
-            return reinterpret_cast<T*>(offset.apply(data_.data()));
+            return reinterpret_cast<T*>(offset.apply(getPtr()));
         }
         template <typename T = void>
         [[nodiscard]] const T* dataPointerWithOffset(ComponentOffset offset) const noexcept {
-            return reinterpret_cast<const T*>(offset.apply(data_.data()));
+            return reinterpret_cast<const T*>(offset.apply(getPtr()));
         }
 
     private:
-        std::array<std::byte, kChunkSize> data_;
+        MUSTACHE_INLINE std::byte* getPtr() const noexcept {
+            auto non_const_ptr = const_cast<Chunk*>(this);
+            return reinterpret_cast<std::byte*>(non_const_ptr);
+        }
+        //std::array<std::byte, kChunkSize> data_;
     };
 
     uint32_t ComponentDataStorage::capacity() const noexcept {

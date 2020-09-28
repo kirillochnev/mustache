@@ -13,21 +13,40 @@ namespace mustache {
     class Archetype;
     class World;
 
+    enum class JobRunMode : uint32_t {
+        kCurrentThread = 0u,
+        kParallel = 1u,
+        kSingleThread = 2u,
+        kDefault = kCurrentThread,
+    };
+
     class APerEntityJob {
     public:
         virtual ~APerEntityJob() = default;
 
-        virtual void run(World&, Dispatcher&) = 0;
+        void run(World& world, Dispatcher& dispatcher, JobRunMode mode = JobRunMode::kDefault) {
+            const auto entities_count = applyFilter(world);
+            switch (mode) {
+                case JobRunMode::kCurrentThread:
+                    runCurrentThread(world);
+                    break;
+                case JobRunMode::kParallel:
+                    runParallel(world, dispatcher, taskCount(dispatcher, entities_count));
+                    break;
+                case JobRunMode::kSingleThread:
+                    runParallel(world, dispatcher, 1);
+                    break;
+            };
+        }
 
-//        [[nodiscard]] virtual bool isArchetypeMatch(const Archetype& arch) const noexcept;
+        virtual void runParallel(World&, Dispatcher&, uint32_t num_tasks) = 0;
+        virtual void runCurrentThread(World&) = 0;
 
-//        virtual uint32_t taskCount(uint32_t entities_count, uint32_t thread_count) const noexcept;
+        virtual uint32_t applyFilter(World&) noexcept = 0;
+        virtual uint32_t taskCount(const Dispatcher& dispatcher, uint32_t entity_count) const noexcept {
+            return std::min(entity_count, dispatcher.threadCount() + 1);
+        }
 
-//        void applyFiler(World& world) noexcept;
-
-        /*void runWithDefaultDispatcher(World& world) {
-            run(world, getDispatcher());
-        }*/
     };
 
     template<typename T/*, typename _WorldFilter = DefaultWorldFilterResult*/>
@@ -36,61 +55,33 @@ namespace mustache {
         using Info = JobInfo<T>;
         using WorldFilterResult = DefaultWorldFilterResult;//_WorldFilter;
 
+        virtual uint32_t applyFilter(World& world) noexcept override {
+            filter_result_.apply(world);
+            return filter_result_.total_entity_count;
+        }
+
         PerEntityJob() {
             filter_result_.mask_ = Info::componentMask();
         }
+        MUSTACHE_INLINE void runCurrentThread(World&) override {
 
-        MUSTACHE_INLINE void runParallel(World& world, uint32_t task_count, Dispatcher& dispatcher) {
-            filter_result_.apply(world);
-            const uint32_t ept = filter_result_.total_entity_count / task_count;
-            const uint32_t num_archetypes = filter_result_.filtered_archetypes.size();
-            const uint32_t tasks_with_extra_item = filter_result_.total_entity_count - task_count * ept;
-            TaskArchetypeIndex first_a = TaskArchetypeIndex::make(0u);
-            ArchetypeEntityIndex first_i = ArchetypeEntityIndex::make(0u);
+            static constexpr auto index_sequence = std::make_index_sequence<Info::FunctionInfo::components_count>();
 
-            for(auto task = PerEntityJobTaskId::make(0); task < PerEntityJobTaskId::make(task_count); ++task) {
-                const uint32_t current_task_size = task.toInt() < tasks_with_extra_item ? ept + 1 : ept;
-                dispatcher.addParallelTask([first_a, first_i, task, current_task_size, this] {
-                    constexpr auto index_sequence = std::make_index_sequence<Info::FunctionInfo::components_count>();
-                    singleTask(task, first_a, first_i, current_task_size, index_sequence);
+            singleTask(PerEntityJobTaskId::make(0), TaskArchetypeIndex::make(0),
+                       ArchetypeEntityIndex::make(0), filter_result_.total_entity_count, index_sequence);
+        }
+
+        MUSTACHE_INLINE void runParallel(World&, Dispatcher& dispatcher, uint32_t task_count) override {
+            static constexpr auto index_sequence = std::make_index_sequence<Info::FunctionInfo::components_count>();
+
+            for (const auto &info : TaskView{filter_result_, task_count}) {
+                dispatcher.addParallelTask([info, this] {
+                    singleTask(info.task_id, info.first_archetype, info.first_entity, info.current_task_size,
+                               index_sequence);
                 });
-                uint32_t num_entities_to_iterate = current_task_size;
-                // iterate over archetypes and collect their entities until, ept was get
-                while (first_a.toInt() < num_archetypes && task.toInt() != task_count - 1) {
-                    const auto& archetype_info = filter_result_.filtered_archetypes[first_a.toInt()];
-                    const uint32_t num_free_entities_in_arch = archetype_info.entities_count - first_i.toInt();
-                    if(num_free_entities_in_arch > num_entities_to_iterate) {
-                        first_i = ArchetypeEntityIndex::make(first_i.toInt() + num_entities_to_iterate);
-                        break;
-                    }
-                    num_entities_to_iterate -= num_free_entities_in_arch;
-                    first_a = TaskArchetypeIndex::make(first_a.toInt() + 1);
-                    first_i = ArchetypeEntityIndex::make(0);
-                }
             }
+
             dispatcher.waitForParallelFinish();
-        }
-
-        template<size_t... _I>
-        MUSTACHE_INLINE void runSingleThread(World& world, const std::index_sequence<_I...>&) {
-            static const auto mask = Info::componentMask();
-            JobInvocationIndex invocation_index;
-            invocation_index.task_index = PerEntityJobTaskId::make(0);
-            invocation_index.entity_index_in_task = PerEntityJobEntityIndexInTask::make(0);
-            world.entities().forEachArchetype([this, &invocation_index](Archetype& archetype) {
-                if (archetype.isMatch(mask)) {
-                    const auto size = ComponentArraySize::make(archetype.size());
-                    constexpr auto entity_index = ArchetypeEntityIndex::make(0);
-                    applyPerArrayFunction<_I...>(archetype, entity_index, size, invocation_index);
-
-                    invocation_index.entity_index_in_task = PerEntityJobEntityIndexInTask::make(
-                            invocation_index.entity_index_in_task.toInt() + archetype.size());
-                }
-            });
-        }
-
-        MUSTACHE_INLINE void run(World& world, Dispatcher&) override {
-            runSingleThread(world, std::make_index_sequence<Info::FunctionInfo::components_count>());
         }
 
     protected:
@@ -166,9 +157,6 @@ namespace mustache {
                 count -= objects_to_iterate;
                 begin = ArchetypeEntityIndex::make(0);
                 ++archetype_index;
-            }
-            if(count > 0) {
-                throw std::runtime_error(std::to_string(count) + " entities were not updated!");
             }
         }
 

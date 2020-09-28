@@ -17,20 +17,20 @@ namespace {
 ComponentDataStorage::ComponentDataStorage(const ComponentMask& mask) {
     component_getter_info_.reserve(mask.componentsCount());
 
-    uint32_t element_size = sizeof(Entity);
+    element_size_ = sizeof(Entity);
 
-    mask.forEachComponent([this, &element_size](ComponentId id) {
+    mask.forEachComponent([this](ComponentId id) {
         const auto& info = ComponentFactory::componentInfo(id);
         ComponentDataGetter getter;
-        getter.offset = ComponentOffset::makeAligned(ComponentOffset::make(element_size), info.align);
+        getter.offset = ComponentOffset::makeAligned(ComponentOffset::make(element_size_), info.align);
         getter.size = info.size;
-        element_size = getter.offset.add(info.size).toInt();
+        element_size_ = getter.offset.add(info.size).toInt();
         component_getter_info_.push_back(getter);
     });
 
     const auto entity_offset = entityOffset();
 
-    chunk_capacity_ = ChunkCapacity::make((Chunk::kChunkSize - entity_offset.toInt()) / element_size);
+    chunk_capacity_ = ChunkCapacity::make(1024 );//ChunkCapacity::make((Chunk::kChunkSize - entity_offset.toInt()) / element_size_);
 
     for (auto& getter : component_getter_info_) {
         getter.offset = entity_offset.add(getter.offset.toInt() * chunk_capacity_.toInt());
@@ -46,7 +46,7 @@ void ComponentDataStorage::allocateChunk() {
     Chunk* chunk = new Chunk{};
 #else
     const auto chunk_alignment = getChunkAlign(componentsCount());
-    Chunk* chunk = reinterpret_cast<Chunk*>(aligned_alloc(chunk_alignment, sizeof(Chunk)));
+    Chunk* chunk = reinterpret_cast<Chunk*>(aligned_alloc(chunk_alignment, element_size_ * chunk_capacity_.toInt()/*sizeof(Chunk)*/));
 #endif
     chunks_.push_back(chunk);
 }

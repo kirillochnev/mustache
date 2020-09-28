@@ -201,13 +201,18 @@ namespace mustache {
         return ComponentStorageIndex::make(size() - 1);
     }
 
+#define USE_GLOBAL_INDEX 0
     class NewComponentDataStorage::ElementView { // TODO: rename
     public:
 
         [[nodiscard]] ComponentStorageIndex globalIndex() const noexcept {
+#if USE_GLOBAL_INDEX
+            return global_index_;
+#else
             return ComponentStorageIndex::make(
                     chunk_index_.toInt() * chunkCapacity().toInt() + entity_index_.toInt()
             );
+#endif
         }
 
         [[nodiscard]] uint32_t elementArraySize() const noexcept {
@@ -216,7 +221,8 @@ namespace mustache {
             };
             const auto global_index = globalIndex();
             const auto storage_size = storage_->size();
-            const auto elements_in_chunk = diff(entity_index_.toInt(), chunkCapacity().toInt());
+            const auto entity_index = globalIndex() % chunkCapacity();
+            const auto elements_in_chunk = diff(entity_index.toInt(), chunkCapacity().toInt());
             const auto elements_in_arch = diff(global_index.toInt(), storage_size);
             return std::min(elements_in_arch, elements_in_chunk);
         }
@@ -236,9 +242,13 @@ namespace mustache {
         }
 
         ElementView& operator+=(uint32_t count) noexcept {
+#if USE_GLOBAL_INDEX
+            global_index_ = ComponentStorageIndex::make(global_index_.toInt() + count);
+#else
             const auto new_index = entity_index_.toInt() + count;
             chunk_index_ = ChunkIndex::make(chunk_index_.toInt() + new_index / chunkCapacity().toInt());
             entity_index_ = ChunkEntityIndex::make(new_index % chunkCapacity().toInt());
+#endif
             return *this;
         }
 
@@ -248,19 +258,34 @@ namespace mustache {
     private:
         friend NewComponentDataStorage;
         const NewComponentDataStorage* storage_;
+#if USE_GLOBAL_INDEX
+        ComponentStorageIndex global_index_;
+#else
         ChunkIndex chunk_index_;
         ChunkEntityIndex entity_index_;
+#endif
         constexpr ElementView(const NewComponentDataStorage* storage,
+#if USE_GLOBAL_INDEX
+                              ComponentStorageIndex index):
+#else
                               ChunkIndex chunk_index, ChunkEntityIndex entity_index):
+#endif
                 storage_{storage},
+#if USE_GLOBAL_INDEX
+                global_index_{index} {
+#else
                 chunk_index_{chunk_index},
                 entity_index_{entity_index} {
-
+#endif
         }
     };
 
     NewComponentDataStorage::ElementView NewComponentDataStorage::getElementView(ComponentStorageIndex index) const noexcept {
         (void ) index;
+#if USE_GLOBAL_INDEX
+        return ElementView {this,index};
+#else
         return ElementView {this, index / chunkCapacity(), index % chunkCapacity()};
+#endif
     }
 }
