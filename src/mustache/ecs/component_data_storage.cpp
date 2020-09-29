@@ -30,31 +30,32 @@ ComponentDataStorage::ComponentDataStorage(const ComponentMask& mask) {
 
     const auto entity_offset = entityOffset();
 
-    chunk_capacity_ = ChunkCapacity::make(1024 );//ChunkCapacity::make((Chunk::kChunkSize - entity_offset.toInt()) / element_size_);
+    chunk_capacity_ = ChunkCapacity::make(1024 * 16);//ChunkCapacity::make((Chunk::kChunkSize - entity_offset.toInt()) / element_size_);
 
     for (auto& getter : component_getter_info_) {
         getter.offset = entity_offset.add(getter.offset.toInt() * chunk_capacity_.toInt());
     }
 
-    Logger{}.debug("New ComponentDataStorage has been created, components: %s | chunk capacity: %d",
+    Logger{}.info("New ComponentDataStorage has been created, components: %s | chunk capacity: %d",
                    mask.toString().c_str(), chunkCapacity().toInt());
 }
 
 void ComponentDataStorage::allocateChunk() {
+    const auto chunk_size = element_size_ * chunk_capacity_.toInt();
     // TODO: use memory allocator
 #ifdef _MSC_BUILD
-    Chunk* chunk = new Chunk{};
+    ChunkPtr chunk = reinterpret_cast<ChunkPtr>(malloc(chunk_size));
 #else
     const auto chunk_alignment = getChunkAlign(componentsCount());
-    Chunk* chunk = reinterpret_cast<Chunk*>(aligned_alloc(chunk_alignment, element_size_ * chunk_capacity_.toInt()/*sizeof(Chunk)*/));
+    ChunkPtr chunk = reinterpret_cast<ChunkPtr>(aligned_alloc(chunk_alignment, chunk_size));
 #endif
     chunks_.push_back(chunk);
 }
 
-void ComponentDataStorage::freeChunk(Chunk* chunk) noexcept {
+void ComponentDataStorage::freeChunk(ChunkPtr chunk) noexcept {
     // TODO: use memory allocator
 #ifdef _MSC_BUILD
-    delete chunk;
+    free (chunk);
 #else
     free(chunk);
 #endif

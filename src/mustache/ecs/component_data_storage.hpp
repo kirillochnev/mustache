@@ -7,6 +7,7 @@
 #include <array>
 
 namespace mustache {
+
     class ComponentDataStorage {
     public:
         class ElementView;
@@ -45,7 +46,17 @@ namespace mustache {
             uint32_t size;
         };
 
-        class Chunk;
+        using ChunkPtr = std::byte*;
+
+        template <typename T = std::byte>
+        [[nodiscard]] static T* data(ChunkPtr chunk) noexcept {
+            return reinterpret_cast<T*>(chunk);
+        }
+
+        template <typename T = void>
+        [[nodiscard]] static T* dataPointerWithOffset(ChunkPtr chunk, ComponentOffset offset) noexcept {
+            return reinterpret_cast<T*>(offset.apply(data(chunk)));
+        }
 
         [[nodiscard]] MUSTACHE_INLINE uint32_t componentsCount() const noexcept;
         [[nodiscard]] MUSTACHE_INLINE ComponentOffset entityOffset() const noexcept;
@@ -53,43 +64,13 @@ namespace mustache {
         MUSTACHE_INLINE void reserveForNextItem();
 
         void allocateChunk();
-        void freeChunk(Chunk* chunk) noexcept;
+        void freeChunk(ChunkPtr chunk) noexcept;
 
         ArrayWrapper<std::vector<ComponentDataGetter>, ComponentIndex> component_getter_info_; // ComponentIndex -> {offset, size}
         uint32_t size_{0u};
         ChunkCapacity chunk_capacity_;
-        ArrayWrapper<std::vector<Chunk*>, ChunkIndex> chunks_;
+        ArrayWrapper<std::vector<ChunkPtr>, ChunkIndex> chunks_;
         uint32_t element_size_ {0u};
-    };
-
-    class ComponentDataStorage::Chunk {
-    public:
-
-        Chunk() = default;
-        Chunk(const Chunk&) = delete;
-        template <typename T = std::byte>
-        [[nodiscard]] T* data() noexcept {
-            return reinterpret_cast<T*>(getPtr());
-        }
-        template <typename T = std::byte>
-        [[nodiscard]] const T* data() const noexcept {
-            return reinterpret_cast<const T*>(getPtr());
-        }
-        template <typename T = void>
-        [[nodiscard]] T* dataPointerWithOffset(ComponentOffset offset) noexcept {
-            return reinterpret_cast<T*>(offset.apply(getPtr()));
-        }
-        template <typename T = void>
-        [[nodiscard]] const T* dataPointerWithOffset(ComponentOffset offset) const noexcept {
-            return reinterpret_cast<const T*>(offset.apply(getPtr()));
-        }
-
-    private:
-        MUSTACHE_INLINE std::byte* getPtr() const noexcept {
-            auto non_const_ptr = const_cast<Chunk*>(this);
-            return reinterpret_cast<std::byte*>(non_const_ptr);
-        }
-        //std::array<std::byte, kChunkSize> data_;
     };
 
     uint32_t ComponentDataStorage::capacity() const noexcept {
@@ -127,7 +108,7 @@ namespace mustache {
         }
         const auto index_at_chunk = index % chunk_capacity_;
         const auto read_offset = entityOffset().add(sizeof(Entity) * index_at_chunk.toInt());
-        return chunks_[index / chunk_capacity_]->dataPointerWithOffset<Entity>(read_offset);
+        return dataPointerWithOffset<Entity>(chunks_[index / chunk_capacity_], read_offset);
     }
 
     template<FunctionSafety _Safety>
@@ -142,7 +123,7 @@ namespace mustache {
         const auto& info = component_getter_info_[component_index];
         const auto offset = info.offset.add(info.size * chunk_index.toInt());
         auto chunk = chunks_[index / chunk_capacity_];
-        return chunk->dataPointerWithOffset(offset);
+        return dataPointerWithOffset(chunk, offset);
     }
 
     void ComponentDataStorage::clear(bool free_chunks) {
@@ -181,7 +162,7 @@ namespace mustache {
             }
         }
         auto& chunk = chunks_[index / chunk_capacity_];
-        auto version_array = chunk->data<WorldVersion>();
+        auto version_array = data<WorldVersion>(chunk);
         version_array[component_index.toInt()] = version;
     }
     template<FunctionSafety _Safety>
@@ -192,7 +173,7 @@ namespace mustache {
             }
         }
         auto& chunk = chunks_[index / chunk_capacity_];
-        auto version_array = chunk->data<WorldVersion>();
+        auto version_array = data<WorldVersion>(chunk);
         for (uint32_t i = 0; i < componentsCount(); ++i) {
             version_array[i] = version;
         }
@@ -220,7 +201,7 @@ namespace mustache {
             }
         }
         const auto chunk = chunks_[index / chunkCapacity()];
-        return chunk->data<WorldVersion>()[component.toInt()];
+        return data<WorldVersion>(chunk)[component.toInt()];
     }
 
     class ComponentDataStorage::ElementView { // TODO: rename
@@ -256,7 +237,7 @@ namespace mustache {
                     return nullptr;
                 }
             }
-            auto entity_ptr = storage_->chunks_[chunk_index_]->dataPointerWithOffset<Entity>(storage_->entityOffset());
+            auto entity_ptr = dataPointerWithOffset<Entity>(storage_->chunks_[chunk_index_], storage_->entityOffset());
             return entity_ptr + entity_index_.toInt();
         }
 
@@ -270,7 +251,7 @@ namespace mustache {
             const auto& info = storage_->component_getter_info_[component_index];
             const auto offset = info.offset.add(info.size * entity_index_.toInt());
             auto chunk = storage_->chunks_[chunk_index_];
-            return chunk->dataPointerWithOffset(offset);
+            return dataPointerWithOffset(chunk, offset);
         }
 
         ElementView& operator+=(uint32_t count) noexcept {

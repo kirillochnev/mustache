@@ -9,9 +9,6 @@
 
 namespace mustache {
 
-    class Context;
-    class Chunk;
-
     class ComponentFactory {
     public:
         ComponentFactory() = delete;

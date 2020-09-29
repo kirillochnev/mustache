@@ -155,7 +155,7 @@ struct Dispatcher::Data {
 Dispatcher::Dispatcher(uint32_t thread_count):
         data_{new Data} {
 
-    if (thread_count==0) {
+    if (thread_count == 0) {
         thread_count = maxThreadCount() - 1; // one core for main thread
     }
 

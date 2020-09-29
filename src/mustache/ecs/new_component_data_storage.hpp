@@ -43,7 +43,7 @@ namespace mustache {
     private:
         MUSTACHE_INLINE void allocateBlock();
         enum : uint32_t {
-            kComponentBlockSize = 1024
+            kComponentBlockSize = 1024 * 16
         };
         static constexpr ChunkCapacity chunkCapacity() noexcept {
             return ChunkCapacity::make(kComponentBlockSize);

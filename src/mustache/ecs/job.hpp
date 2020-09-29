@@ -63,10 +63,9 @@ namespace mustache {
         PerEntityJob() {
             filter_result_.mask_ = Info::componentMask();
         }
-        MUSTACHE_INLINE void runCurrentThread(World&) override {
-
+        MUSTACHE_INLINE void runCurrentThread(World& world) override {
+            filter_result_.apply(world);
             static constexpr auto index_sequence = std::make_index_sequence<Info::FunctionInfo::components_count>();
-
             singleTask(PerEntityJobTaskId::make(0), TaskArchetypeIndex::make(0),
                        ArchetypeEntityIndex::make(0), filter_result_.total_entity_count, index_sequence);
         }
@@ -93,7 +92,7 @@ namespace mustache {
             if constexpr (Info::has_for_each_array) {
                 invokeMethod(self, &T::forEachArray, count, invocation_index, pointers...);
             } else {
-                for(uint32_t i = 0; i < count.toInt(); ++i) {
+                for(ComponentArraySize i = ComponentArraySize::make(0); i < count; ++i) {
                     invoke(self, invocation_index, pointers++...);
                     ++invocation_index.entity_index_in_task;
                 }

@@ -73,12 +73,12 @@ namespace mustache {
     }
 
     template<typename F, size_t... I, typename... ARGS>
-    auto invokeWithIndexSequence(F&& func, const std::index_sequence<I...>&, ARGS&&... args) {
+    MUSTACHE_INLINE auto invokeWithIndexSequence(F&& func, const std::index_sequence<I...>&, ARGS&&... args) {
         using FC = utils::function_traits<F>;
         return func(selectArgByType<typename FC::template arg<I>::type>(std::forward<ARGS>(args)...)...);
     }
     template<typename F, typename... ARGS>
-    auto invoke(F&& func, ARGS&&... args) {
+    MUSTACHE_INLINE auto invoke(F&& func, ARGS&&... args) {
         using FC = utils::function_traits<F>;
         return invokeWithIndexSequence(std::forward<F>(func),
                 std::make_index_sequence<FC::arity>(), std::forward<ARGS>(args)...);
