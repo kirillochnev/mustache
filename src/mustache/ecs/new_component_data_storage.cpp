@@ -4,13 +4,13 @@
 
 using namespace mustache;
 
-NewComponentDataStorage::NewComponentDataStorage(const ComponentMask& mask) {
+NewComponentDataStorage::NewComponentDataStorage(const ComponentIdMask& mask) {
     components_.resize(mask.componentsCount());
 
     ComponentIndex index = ComponentIndex::make(0);
-    mask.forEachComponent([&index, this](ComponentId id) {
-        const auto& info = ComponentFactory::componentInfo(id);
-        auto& component = components_[index];
+    mask.forEachItem([&index, this](ComponentId id) {
+        const auto &info = ComponentFactory::componentInfo(id);
+        auto &component = components_[index];
         component.component_size = info.size;
         component.component_alignment = info.align;
         ++index;

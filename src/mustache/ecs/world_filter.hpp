@@ -14,7 +14,7 @@ namespace mustache {
         };
         void apply(World& world);
         std::vector<ArchetypeFilterResult> filtered_archetypes;
-        ComponentMask mask_;
+        ComponentIdMask mask_;
         uint32_t total_entity_count{0u};
     };
 
@@ -91,7 +91,7 @@ namespace mustache {
         }
 
         std::vector<ArchetypeFilterResult> filtered_archetypes;
-        ComponentMask mask_;
+        ComponentIdMask mask_;
         uint32_t total_entity_count{0u};
     };
 

@@ -194,10 +194,10 @@ namespace mustache {
         static constexpr bool has_for_each_array = testForEachArray<T>(nullptr);
 
         template<size_t... _I>
-        static ComponentMask componentMask(std::index_sequence<_I...>&&) noexcept {
+        static ComponentIdMask componentMask(std::index_sequence<_I...>&&) noexcept {
             return ComponentFactory::makeMask<typename FunctionInfo::template Component<_I> ::type...>();
         }
-        static ComponentMask componentMask() noexcept {
+        static ComponentIdMask componentMask() noexcept {
             return componentMask(std::make_index_sequence<FunctionInfo::components_count>());
         }
     };

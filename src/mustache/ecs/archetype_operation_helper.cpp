@@ -4,9 +4,9 @@
 
 using namespace mustache;
 
-ArchetypeOperationHelper::ArchetypeOperationHelper(const ComponentMask& mask) {
+ArchetypeOperationHelper::ArchetypeOperationHelper(const ComponentIdMask& mask) {
 
-    ArrayWrapper<std::vector<ComponentId>, ComponentIndex> component_index_to_component_id{mask.components()};
+    ArrayWrapper<std::vector<ComponentId>, ComponentIndex> component_index_to_component_id{mask.items()};
 
     ComponentIndex component_index = ComponentIndex::make(0);
 

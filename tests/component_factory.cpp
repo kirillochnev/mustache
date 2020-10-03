@@ -30,7 +30,7 @@ TEST(ComponentFactory, ComponentMask) {
     }
     ASSERT_EQ(component_ids_actual, component_ids_expected);
 
-    mustache::ComponentMask mask;
+    mustache::ComponentIdMask mask;
     ASSERT_TRUE(mask.isEmpty());
     auto actual_mask = mustache::ComponentFactory::makeMask<>();
     ASSERT_EQ(actual_mask, mask);

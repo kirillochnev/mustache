@@ -5,14 +5,16 @@
 #include <mustache/utils/array_wrapper.hpp>
 
 #include <array>
-
+#include <cstddef>
 namespace mustache {
+
+    using ChunkHandler = uintptr_t;
 
     class ComponentDataStorage {
     public:
         class ElementView;
 
-        explicit ComponentDataStorage(const ComponentMask& mask);
+        explicit ComponentDataStorage(const ComponentIdMask& mask);
 
         [[nodiscard]] MUSTACHE_INLINE uint32_t capacity() const noexcept;
         [[nodiscard]] MUSTACHE_INLINE uint32_t size() const noexcept;
@@ -40,6 +42,88 @@ namespace mustache {
         MUSTACHE_INLINE ComponentStorageIndex pushBackAndUpdateVersion(Entity entity, WorldVersion world_version);
         [[nodiscard]] MUSTACHE_INLINE ComponentStorageIndex lastItemIndex() const noexcept;
 
+
+        template<FunctionSafety _Safety = FunctionSafety::kDefault>
+        [[nodiscard]] ChunkHandler getChunkHandler(ChunkIndex index) const noexcept {
+            if constexpr (isSafe(_Safety)) {
+                if (!chunks_.has(index)) {
+                    return static_cast<ChunkHandler>(0);
+                }
+            }
+            return reinterpret_cast<ChunkHandler>(chunks_[index]);
+        }
+
+        uint32_t getChunksCount() const noexcept {
+            return static_cast<uint32_t>(chunks_.size());
+        }
+
+        template<FunctionSafety _Safety = FunctionSafety::kDefault>
+        WorldVersion getLastUpdateWorldVersion(ChunkHandler handler,
+                const ComponentIndexMask& mask) const noexcept {
+            if constexpr (isSafe(_Safety)) {
+                if (!handler) {
+                    return WorldVersion::null();
+                }
+            }
+            WorldVersion result = WorldVersion::make(0);
+            const auto versions = reinterpret_cast<WorldVersion*>(handler);
+            mask.forEachItem([&result, versions, num_components = componentsCount()](ComponentIndex index) {
+                if constexpr (isSafe(_Safety)) {
+                    if (num_components <= index.toInt()) {
+                        return;
+                    }
+                }
+               const auto cur_version =  versions[index.toInt()];
+               if (cur_version > result) {
+                   result = cur_version;
+               }
+            });
+            return result;
+        }
+
+        template<FunctionSafety _Safety = FunctionSafety::kDefault>
+        void updateComponentVersion(ChunkHandler handler, WorldVersion version,
+                const ComponentIndexMask& write_mask) noexcept {
+            if constexpr (isSafe(_Safety)) {
+                if (!handler) {
+                    return;
+                }
+            }
+            const auto versions = reinterpret_cast<WorldVersion*>(handler);
+            write_mask.forEachItem([version, versions, num_components = componentsCount()](ComponentIndex index) {
+                if constexpr (isSafe(_Safety)) {
+                    if (num_components <= index.toInt()) {
+                        return;
+                    }
+                }
+                versions[index.toInt()] = version;
+            });
+        }
+
+        /*template<FunctionSafety _Safety = FunctionSafety::kDefault>
+        bool updateComponentVersionIfMatch(ChunkHandler handler, WorldVersion version,
+                const ComponentIndexMask& read_mask, const ComponentIndexMask& write_mask) noexcept {
+            if constexpr (isSafe(_Safety)) {
+                if (!handler) {
+                    return false;
+                }
+            }
+            bool need_update = false;
+            const auto versions = reinterpret_cast<WorldVersion*>(handler);
+            read_mask.forEachItem([&need_update, version, versions,
+                num_components = componentsCount()](ComponentIndex index) {
+                if constexpr (isSafe(_Safety)) {
+                    if (num_components <= index.toInt()) {
+                        return;
+                    }
+                }
+                const auto cur_version =  versions[index.toInt()];
+                if (cur_version > version) {
+                    need_update = true; // TODO: exit now
+                }
+            });
+
+        }*/
     private:
         struct ComponentDataGetter {
             ComponentOffset offset;

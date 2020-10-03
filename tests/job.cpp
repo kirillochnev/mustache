@@ -345,7 +345,7 @@ TEST(Job, iterate_multithread_4_archetypes_match_4_not) {
     for (uint32_t i = 0; i < kNumIteration2; ++i) {
         ++static_data.cur_iteration;
 
-        job_update.runParallel(world, kTaskCount, dispatcher);
+        job_update.run(world, dispatcher);
         for(auto& count : job_update.counter) {
             static_data.count += count.value;
             count.value = 0u;

@@ -49,6 +49,47 @@ TEST(WorldFilter, test0) {
             arch_info.chunks.size() << " chunks" << std::endl;
     }
 }
+namespace {
+    struct TaskView {
+        mustache::ComponentIdMask required_;
+        mustache::ComponentIdMask optional_;
+        int* begin();
+        int* end();
+    };
+    struct World_ {
+        template<size_t I>
+        using Components = std::array<mustache::ComponentId, I>;
+
+        TaskView view(const mustache::ComponentIdMask& required, const mustache::ComponentIdMask& optional = {}) {
+            return TaskView{required, optional};
+        }
+    };
+    struct Job {
+        bool is_view_init_ = false;
+        TaskView view_;
+        mustache::ComponentIdMask mask_;
+
+
+        void operator()() {
+
+        }
+        void initView(World_& world) {
+            view_ = world.view(mask_);
+            is_view_init_ = true;
+        }
+        void run(World_& world) {
+            if (!is_view_init_) {
+                initView(world);
+            }
+            for (auto it : view_) {
+                (*this)();
+            }
+        }
+    };
+}
+TEST(WorldFilter, POC) {
+
+}
 /*
 TEST(WorldFilter, component_version) {
     auto& world = getWorld();

@@ -14,13 +14,13 @@ namespace {
     }
 }
 
-ComponentDataStorage::ComponentDataStorage(const ComponentMask& mask) {
+ComponentDataStorage::ComponentDataStorage(const ComponentIdMask& mask) {
     component_getter_info_.reserve(mask.componentsCount());
 
     element_size_ = sizeof(Entity);
 
-    mask.forEachComponent([this](ComponentId id) {
-        const auto& info = ComponentFactory::componentInfo(id);
+    mask.forEachItem([this](ComponentId id) {
+        const auto &info = ComponentFactory::componentInfo(id);
         ComponentDataGetter getter;
         getter.offset = ComponentOffset::makeAligned(ComponentOffset::make(element_size_), info.align);
         getter.size = info.size;

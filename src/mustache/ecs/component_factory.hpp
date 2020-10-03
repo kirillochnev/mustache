@@ -25,7 +25,7 @@ namespace mustache {
         }
 
         template<typename _C>
-        static void applyToMask(ComponentMask& mask) noexcept {
+        static void applyToMask(ComponentIdMask& mask) noexcept {
             using Component = typename ComponentType<_C>::type;
             if constexpr (IsComponentRequired<_C>::value) {
                 static const auto id = registerComponent< typename ComponentType<_C>::type >();
@@ -33,8 +33,8 @@ namespace mustache {
             }
         }
         template <typename... _C>
-        static ComponentMask makeMask() noexcept {
-            ComponentMask mask;
+        static ComponentIdMask makeMask() noexcept {
+            ComponentIdMask mask;
             (applyToMask<_C>(mask), ...);
             return mask;
         }

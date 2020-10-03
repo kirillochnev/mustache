@@ -9,70 +9,34 @@
 
 namespace mustache {
 
-
+    template<typename _ItemType, size_t _MaxElements>
     struct ComponentMask {
-
-        [[nodiscard]] uint64_t value() const noexcept {
-            return uint_value_;
-        }
         ComponentMask() = default;
 
-        explicit ComponentMask(const std::initializer_list<ComponentId>& components) {
-            for(auto id : components) {
+        explicit ComponentMask(const std::initializer_list<_ItemType>& items) {
+            for(auto id : items) {
                 value_.set(id.toInt());
             }
-            uint_value_ = value_.to_ullong();
+        }
+
+        [[nodiscard]] uint64_t toUInt64() const noexcept {
+            return static_cast<uint64_t>(value_.to_ullong());
         }
 
         [[nodiscard]] bool isEmpty() const noexcept {
             return !value_.any();
         }
 
-        [[nodiscard]] std::vector<ComponentId > components() const noexcept {
-            std::vector<ComponentId > result;
-            forEachComponent([&result](auto id) {
+        [[nodiscard]] std::vector<_ItemType > items() const noexcept {
+            std::vector<_ItemType > result;
+            forEachItem([&result](auto id) {
                 result.push_back(id);
             });
             return result;
         }
 
-        [[nodiscard]] bool isMatch(const ComponentMask& rhs) const noexcept {
-            return (uint_value_ & rhs.uint_value_) == rhs.uint_value_;
-        }
-
-        [[nodiscard]] bool has(ComponentId id) const noexcept{
-            return value_.test(id.toInt());
-        }
-
-        void add(ComponentId id) noexcept {
-            value_.set(id.toInt());
-            uint_value_ = value_.to_ullong();
-        }
-
-        void set(ComponentId id, bool value) noexcept {
-            value_.set(id.toInt(), value);
-            uint_value_ = value_.to_ullong();
-        }
-
-        void reset(ComponentId id) noexcept {
-            value_.reset(id.toInt());
-            uint_value_ = value_.to_ullong();
-        }
-
-        [[nodiscard]] bool operator==(const ComponentMask& rhs) const noexcept {
-            return value_ == rhs.value_;
-        }
-
-        [[nodiscard]] bool operator<(const ComponentMask& rhs) const noexcept {
-            return uint_value_ < rhs.uint_value_;
-        }
-
-        [[nodiscard]] uint32_t componentsCount() const noexcept {
-            return static_cast<uint32_t>(value_.count());
-        }
-
         template<typename _F>
-        void forEachComponent(_F&& function) const noexcept {
+        void forEachItem(_F&& function) const noexcept {
             for(size_t i = 0u; i < value_.size(); ++i) {
                 if(value_.test(i)) {
                     function(ComponentId::make(i));
@@ -80,10 +44,47 @@ namespace mustache {
             }
         }
 
-        std::string toString() const noexcept;
+        [[nodiscard]] bool isMatch(const ComponentMask& rhs) const noexcept {
+            return (toUInt64() & rhs.toUInt64()) == rhs.toUInt64();
+        }
+
+        [[nodiscard]] bool has(_ItemType item) const noexcept{
+            return value_.test(item.toInt());
+        }
+
+        void add(_ItemType item) noexcept {
+            value_.set(item.toInt());
+        }
+
+        void set(_ItemType item, bool value) noexcept {
+            value_.set(item.toInt(), value);
+        }
+
+        void reset(_ItemType item) noexcept {
+            value_.reset(item.toInt());
+        }
+
+        [[nodiscard]] bool operator==(const ComponentMask& rhs) const noexcept {
+            return value_ == rhs.value_;
+        }
+
+        [[nodiscard]] bool operator<(const ComponentMask& rhs) const noexcept {
+            return toUInt64() < rhs.toUInt64();
+        }
+
+        [[nodiscard]] uint32_t componentsCount() const noexcept {
+            return static_cast<uint32_t>(value_.count());
+        }
     private:
-        std::bitset<64> value_;
-        uint64_t uint_value_{0u};
+        std::bitset<_MaxElements> value_;
     };
 
+    struct ComponentIdMask : public ComponentMask<ComponentId, 64> {
+        std::string toString() const noexcept;
+        using ComponentMask::ComponentMask;
+    };
+
+    struct ComponentIndexMask : public ComponentMask<ComponentIndex, 64> {
+        using ComponentMask::ComponentMask;
+    };
 }

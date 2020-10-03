@@ -5,7 +5,7 @@
 
 using namespace mustache;
 
-Archetype::Archetype(World& world, ArchetypeIndex id, const ComponentMask& mask):
+Archetype::Archetype(World& world, ArchetypeIndex id, const ComponentIdMask& mask):
     world_{world},
     mask_{mask},
     operation_helper_{mask},

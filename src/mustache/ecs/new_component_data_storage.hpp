@@ -12,7 +12,7 @@ namespace mustache {
     public:
         class ElementView;
 
-        explicit NewComponentDataStorage(const ComponentMask& mask);
+        explicit NewComponentDataStorage(const ComponentIdMask& mask);
 
         [[nodiscard]] MUSTACHE_INLINE uint32_t capacity() const noexcept;
         [[nodiscard]] MUSTACHE_INLINE uint32_t size() const noexcept;

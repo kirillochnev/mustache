@@ -25,7 +25,7 @@ namespace mustache {
      */
     class Archetype : public Uncopiable {
     public:
-        Archetype(World& world, ArchetypeIndex id, const ComponentMask& mask);
+        Archetype(World& world, ArchetypeIndex id, const ComponentIdMask& mask);
         ~Archetype();
 
         template<FunctionSafety _Safety = FunctionSafety::kDefault>
@@ -51,7 +51,7 @@ namespace mustache {
             return id_;
         }
 
-        bool isMatch(const ComponentMask& mask) const noexcept {
+        bool isMatch(const ComponentIdMask& mask) const noexcept {
             return mask_.isMatch(mask);
         }
 
@@ -82,7 +82,7 @@ namespace mustache {
             return data_storage_.getVersion(getComponentIndex(id), ComponentStorageIndex::fromArchetypeIndex(index));
         }
 
-        [[nodiscard]] const ComponentMask& componentMask() const noexcept {
+        [[nodiscard]] const ComponentIdMask& componentMask() const noexcept {
             return mask_;
         }
 
@@ -131,7 +131,7 @@ namespace mustache {
         Entity remove(ArchetypeEntityIndex index);
 
         World& world_;
-        ComponentMask mask_;
+        ComponentIdMask mask_;
         ArchetypeOperationHelper operation_helper_;
         ComponentDataStorage data_storage_;
 

@@ -46,7 +46,7 @@ namespace mustache {
         template<FunctionSafety _Safety = FunctionSafety::kSafe>
         MUSTACHE_INLINE void destroyNow(Entity entity);
 
-        Archetype& getArchetype(const ComponentMask&);
+        Archetype& getArchetype(const ComponentIdMask&);
 
         template<typename... ARGS>
         MUSTACHE_INLINE Archetype& getArchetype();
@@ -84,7 +84,7 @@ namespace mustache {
         };
 
         World& world_;
-        std::map<ComponentMask , Archetype* > mask_to_arch_;
+        std::map<ComponentIdMask , Archetype* > mask_to_arch_;
         EntityId next_slot_ = EntityId::make(0);
 
         uint32_t empty_slots_{0};
@@ -249,7 +249,7 @@ namespace mustache {
         auto& location = locations_[e.id()];
         constexpr bool use_custom_constructor = sizeof...(_ARGS) > 0;
         if (location.archetype.isNull()) {
-            static const ComponentMask mask{component_id};
+            static const ComponentIdMask mask{component_id};
             auto& arch = getArchetype(mask);
             location.archetype = arch.id();
             location.index = arch.insert(e, !use_custom_constructor);
@@ -260,7 +260,7 @@ namespace mustache {
             return *reinterpret_cast<T*>(component_ptr);
         }
         auto& prev_arch = *archetypes_[location.archetype];
-        ComponentMask mask = prev_arch.mask_;
+        ComponentIdMask mask = prev_arch.mask_;
         mask.add(component_id);
         auto& arch = getArchetype(mask);
         const auto prev_index = location.index;

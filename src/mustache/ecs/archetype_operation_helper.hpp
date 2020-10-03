@@ -8,13 +8,13 @@
 #include <vector>
 
 namespace mustache {
-    struct ComponentMask;
+    struct ComponentIdMask;
 
     class ArchetypeOperationHelper {
     private:
         friend class Archetype;
 
-        explicit ArchetypeOperationHelper(const ComponentMask& mask);
+        explicit ArchetypeOperationHelper(const ComponentIdMask& mask);
         ArchetypeOperationHelper() = default;
 
         static std::vector<ComponentOffset> offsetsFor(const std::vector<ComponentId>& components);
