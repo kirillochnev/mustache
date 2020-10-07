@@ -19,6 +19,26 @@ namespace mustache {
     class World;
     class EntityManager;
 
+    using ArchetypeComponentDataStorage = ComponentDataStorage;
+
+    class Archetype;
+
+    struct ElementView : public ArchetypeComponentDataStorage::ElementView {
+        using Super = ArchetypeComponentDataStorage::ElementView;
+        using Super::Super;
+
+        /*explicit ElementView(const Super& view) noexcept :
+                Super{view} {
+
+        }*/
+        ElementView(const Super& view, const Archetype& archetype):
+            Super{view},
+            archetype_{&archetype} {
+
+        }
+
+        const Archetype* archetype_ = nullptr;
+    };
     /**
      * Stores Entities with same component set
      * NOTE: It is has no information about entity manager, so Archetype's methods don't effects entity location.
@@ -29,14 +49,22 @@ namespace mustache {
         ~Archetype();
 
         template<FunctionSafety _Safety = FunctionSafety::kDefault>
-        Entity entityAt(ArchetypeEntityIndex index) const noexcept {
+        Entity entityAt(ArchetypeEntityIndex index) const {
             if constexpr (isSafe(_Safety)) {
                 if (!index.isValid() || index.toInt() >= data_storage_.size()) {
                     return Entity{};
                 }
             }
+//            std::terminate();
             auto entity_ptr = data_storage_.getEntityData<_Safety>(ComponentStorageIndex::fromArchetypeIndex(index));
-            return entity_ptr ? *entity_ptr : Entity{};
+            const auto res = entity_ptr ? *entity_ptr : Entity{};
+
+            if (entities_[index.toInt()] == res) {
+                throw std::runtime_error("Fail!");
+            }
+            return entities_[index.toInt()];
+            /*auto entity_ptr = data_storage_.getEntityData<_Safety>(ComponentStorageIndex::fromArchetypeIndex(index));
+            return entity_ptr ? *entity_ptr : Entity{};*/
         }
 
         [[nodiscard]] EntityGroup createGroup(size_t count);
@@ -97,8 +125,11 @@ namespace mustache {
             return data_storage_.getData<_Safety>(component_index, ComponentStorageIndex::fromArchetypeIndex(index));
         }
 
-        [[nodiscard]] auto getElementView(ArchetypeEntityIndex index) const noexcept {
-            return data_storage_.getElementView(ComponentStorageIndex::fromArchetypeIndex(index));
+        [[nodiscard]] ElementView getElementView(ArchetypeEntityIndex index) const noexcept {
+            return ElementView {
+                data_storage_.getElementView(ComponentStorageIndex::fromArchetypeIndex(index)),
+                *this
+            };
         }
     private:
         friend class EntityManager;
@@ -133,7 +164,8 @@ namespace mustache {
         World& world_;
         ComponentIdMask mask_;
         ArchetypeOperationHelper operation_helper_;
-        ComponentDataStorage data_storage_;
+        ArchetypeComponentDataStorage data_storage_;
+        std::vector<Entity> entities_;
 
         ArchetypeIndex id_;
     };

@@ -71,6 +71,12 @@ namespace mustache {
 
         uint64_t value{static_cast<uint64_t >(-1)};
 
+        [[nodiscard]] constexpr bool operator==(const Entity& rhs) const noexcept {
+            return value == rhs.value;
+        }
+        [[nodiscard]] constexpr bool operator!=(const Entity& rhs) const noexcept {
+            return value != rhs.value;
+        }
     private:
         constexpr Entity(uint64_t v) noexcept :
             value{v} {

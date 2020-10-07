@@ -5,19 +5,7 @@ using namespace mustache;
 
 
 namespace {
-    constexpr const char* toStr(LogLevel lvl) noexcept {
-        switch (lvl) {
-            case LogLevel::kError:
-                return "Error";
-            case LogLevel::kWarn:
-                return "Warning";
-            case LogLevel::kInfo:
-                return "Info";
-            case LogLevel::kDebug:
-                return "Debug";
-        }
-        return nullptr;
-    }
+    std::shared_ptr<LogWriter> active_writer = std::make_shared<LogWriter>();
 }
 
 
@@ -38,6 +26,11 @@ void LogWriter::onMessage(const Context& ctx, LogLevel lvl, std::string str, ...
 }
 
 LogWriter& LogWriter::active() noexcept {
-    static LogWriter instance;
-    return instance;
+    return *active_writer;
+}
+
+void LogWriter::setActive(const std::shared_ptr<LogWriter>& writer) noexcept {
+    if (writer) {
+        active_writer = writer;
+    }
 }

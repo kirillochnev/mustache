@@ -348,7 +348,8 @@ namespace mustache {
         ElementView& operator++() noexcept {
             return (*this) += 1;
         }
-    private:
+
+    protected:
         friend ComponentDataStorage;
         const ComponentDataStorage* storage_;
         ChunkIndex chunk_index_;

@@ -58,8 +58,3 @@ target_include_directories(${PROJECT_NAME}
 )
 
 target_link_libraries(${PROJECT_NAME} ${CMAKE_THREAD_LIBS_INIT})
-
-if (MUSTACHE_BUILD_BENCHMARK)
-    add_executable(mustache_exe main.cpp)
-    target_link_libraries(mustache_exe mustache)
-endif()

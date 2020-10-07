@@ -23,7 +23,11 @@ Archetype::~Archetype() {
 ArchetypeEntityIndex Archetype::insert(Entity entity, Archetype& prev_archetype, ArchetypeEntityIndex prev_index,
         bool initialize_missing_components) {
 
+
+    entities_.push_back(entity);
     const auto index = data_storage_.pushBackAndUpdateVersion(entity, worldVersion());
+//    Logger{}.debug("Moving entity from: %s pos: %d,  to: %s pos: %d",
+//            prev_archetype.mask_.toString(), prev_index.toInt(), mask_.toString(), index.toInt());
 
     ComponentIndex component_index = ComponentIndex::make(0);
     const auto source_view = prev_archetype.data_storage_.getElementView(ComponentStorageIndex::fromArchetypeIndex(prev_index));
@@ -48,6 +52,7 @@ ArchetypeEntityIndex Archetype::insert(Entity entity, Archetype& prev_archetype,
 
 ArchetypeEntityIndex Archetype::insert(Entity entity, bool call_constructor) {
     const auto index = data_storage_.pushBackAndUpdateVersion(entity, worldVersion());
+    entities_.push_back(entity);
 
     if (call_constructor) {
         const auto view = data_storage_.getElementView(index);
@@ -56,11 +61,12 @@ ArchetypeEntityIndex Archetype::insert(Entity entity, bool call_constructor) {
             info.constructor(component_ptr);
         }
     }
-
+//    world_.entities().updateLocation(entity, index.toArchetypeIndex());
     return index.toArchetypeIndex();
 }
 
 Entity Archetype::remove(ArchetypeEntityIndex index) {
+//    Logger{}.debug("Removing entity from: %s pos: %d", mask_.toString(), index.toInt());
     const auto call_destructors = [this](ComponentStorageIndex destroy_index) {
         for (const auto& info : operation_helper_.destroy) {
             auto component_ptr = data_storage_.getData(info.component_index, destroy_index);

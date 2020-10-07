@@ -346,7 +346,7 @@ TEST(EntityManager, assign_with_custom_constructor) {
 
 }
 
-TEST(EntityManager, removeComponen) {
+TEST(EntityManager, removeComponent) {
     ASSERT_EQ(created_components.size(), 0);
     {
         static uint32_t num_0 = 0;

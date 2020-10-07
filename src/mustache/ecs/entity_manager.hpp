@@ -71,6 +71,11 @@ namespace mustache {
         template<typename T, FunctionSafety _Safety = FunctionSafety::kSafe>
         [[nodiscard]] MUSTACHE_INLINE WorldVersion getWorldVersionOfLastComponentUpdate(Entity entity) const noexcept ;
     private:
+        friend Archetype;
+        void updateLocation(Entity e, ArchetypeEntityIndex index) noexcept {
+            locations_[e.id()].index = index;
+        }
+
         struct EntityLocationInWorld {
             constexpr static ArchetypeIndex kDefaultArchetype = ArchetypeIndex::null();
             EntityLocationInWorld() = default;

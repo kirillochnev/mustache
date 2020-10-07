@@ -63,6 +63,11 @@ if (MUSTACHE_BUILD_TESTS)
     enable_testing()
     add_subdirectory(tests)
 endif()
+
+
+if (MUSTACHE_BUILD_BENCHMARK)
+    add_subdirectory(bench)
+endif()
 #add_subdirectory(benchmark)
 #add_subdirectory(debug_app)
 #add_subdirectory(lua_systems)
