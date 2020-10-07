@@ -72,8 +72,15 @@ namespace mustache {
         [[nodiscard]] MUSTACHE_INLINE WorldVersion getWorldVersionOfLastComponentUpdate(Entity entity) const noexcept ;
     private:
         friend Archetype;
-        void updateLocation(Entity e, ArchetypeEntityIndex index) noexcept {
-            locations_[e.id()].index = index;
+        void updateLocation(Entity e, ArchetypeIndex archetype, ArchetypeEntityIndex index) noexcept {
+            if (e.id().isValid()) {
+                if (!locations_.has(e.id())) {
+                    locations_.resize(e.id().next().toInt());
+                }
+                auto &location = locations_[e.id()];
+                location.archetype = archetype;
+                location.index = index;
+            }
         }
 
         struct EntityLocationInWorld {
@@ -124,15 +131,14 @@ namespace mustache {
         if(!empty_slots_) {
             entity.reset(EntityId::make(entities_.size()), EntityVersion::make(0), this_world_id_);
             entities_.push_back(entity);
-            locations_.emplace_back(archetype.insert(entity), archetype.id());
+            updateLocation(entity, archetype.id(), archetype.insert(entity));
         } else {
             const auto id = next_slot_;
             const auto version = entities_[id].version();
             next_slot_ = entities_[id].id();
             entity.reset(id, version, this_world_id_);
             entities_[id] = entity;
-            locations_[id].archetype = archetype.id();
-            locations_[id].index = archetype.insert(entity);
+            updateLocation(entity, archetype.id(), archetype.insert(entity));
             --empty_slots_;
         }
         return entity;
@@ -155,19 +161,14 @@ namespace mustache {
             }
         }
         const auto id = entity.id();
-        auto& location = locations_[id];
+        const auto& location = locations_[id];
         if (!location.archetype.isNull()) {
             if constexpr (isSafe(_Safety)) {
                 if (!archetypes_.has(location.archetype)) {
                     throw std::runtime_error("Invalid archetype index");
                 }
             }
-            auto& archetype = archetypes_[location.archetype];
-            auto moved_entity =  archetype->remove(location.index);
-            if (!moved_entity.isNull()) {
-                locations_[moved_entity.id()] = location;
-            }
-            location.archetype = ArchetypeIndex::null();
+            archetypes_[location.archetype]->remove(entity, location.index);
         }
         entities_[id].reset(empty_slots_ ? next_slot_ : id.next(), entity.version().next());
         next_slot_ = id;
@@ -216,7 +217,7 @@ namespace mustache {
                 return;
             }
         }
-        auto& location = locations_[entity.id()];
+        const auto& location = locations_[entity.id()];
         if constexpr (isSafe(_Safety)) {
             if (location.archetype.isNull()) {
                 return;
@@ -231,33 +232,24 @@ namespace mustache {
         }
         mask.set(component_id, false);
         if (mask.isEmpty()) {
-            prev_archetype.remove(location.index);
-            location.archetype = ArchetypeIndex::null();
-            location.index = ArchetypeEntityIndex::null();
+            prev_archetype.remove(entity, location.index);
             return;
         }
         auto& archetype = getArchetype(mask);
         const auto prev_index = location.index;
 
-        location.index = archetype.insert(entity, prev_archetype, prev_index, false);
-        auto moved_entity = prev_archetype.entityAt(prev_index);
-        if (!moved_entity.isNull()) {
-            locations_[moved_entity.id()].index = prev_index;
-            locations_[moved_entity.id()].archetype = location.archetype;
-        }
-        location.archetype = archetype.id();
+        archetype.externalMove(entity, prev_archetype, prev_index, false);
     }
 
     template<typename T, typename... _ARGS>
     T& EntityManager::assign(Entity e, _ARGS&&... args) {
         static const auto component_id = ComponentFactory::registerComponent<T>();
-        auto& location = locations_[e.id()];
+        const auto& location = locations_[e.id()];
         constexpr bool use_custom_constructor = sizeof...(_ARGS) > 0;
         if (location.archetype.isNull()) {
             static const ComponentIdMask mask{component_id};
             auto& arch = getArchetype(mask);
-            location.archetype = arch.id();
-            location.index = arch.insert(e, !use_custom_constructor);
+            arch.insert(e, !use_custom_constructor);
             auto component_ptr = arch.getComponent<FunctionSafety::kUnsafe>(component_id, location.index);
             if constexpr (use_custom_constructor) {
                 *new(component_ptr) T{std::forward<_ARGS>(args)...};
@@ -269,17 +261,12 @@ namespace mustache {
         mask.add(component_id);
         auto& arch = getArchetype(mask);
         const auto prev_index = location.index;
-        location.index = arch.insert(e, prev_arch, prev_index, !use_custom_constructor);
+        arch.externalMove(e, prev_arch, prev_index, !use_custom_constructor);
         auto component_ptr = arch.getComponent<FunctionSafety::kUnsafe>(component_id, location.index);
         if constexpr (use_custom_constructor) {
             *new(component_ptr) T{std::forward<_ARGS>(args)...};
         }
-        auto moved_entity = prev_arch.entityAt<FunctionSafety::kSafe>(prev_index);
-        if (!moved_entity.isNull()) {
-            locations_[moved_entity.id()].index = prev_index;
-            locations_[moved_entity.id()].archetype = location.archetype;
-        }
-        location.archetype = arch.id();
+
         return *reinterpret_cast<T*>(component_ptr);
     }
 
@@ -296,18 +283,5 @@ namespace mustache {
         }
         const auto& archetype = *archetypes_[location.archetype];
         return archetype.hasComponent<T>();
-    }
-
-    template<typename T, FunctionSafety _Safety>
-    WorldVersion EntityManager::getWorldVersionOfLastComponentUpdate(Entity entity) const noexcept {
-        if constexpr (isSafe(_Safety)) {
-            if (!isEntityValid(entity)) {
-                return WorldVersion::null();
-            }
-        }
-        const auto component_id = ComponentFactory::registerComponent<T>();
-        const auto& location = locations_[entity.id()];
-        const auto& archetype = *archetypes_[location.archetype];
-        return archetype.getWorldVersionComponentUpdate<_Safety>(component_id, location.index);
     }
 }

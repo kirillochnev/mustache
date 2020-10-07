@@ -20,7 +20,7 @@ Archetype::~Archetype() {
     data_storage_.clear(true);
 }
 
-ArchetypeEntityIndex Archetype::insert(Entity entity, Archetype& prev_archetype, ArchetypeEntityIndex prev_index,
+void Archetype::externalMove(Entity entity, Archetype& prev_archetype, ArchetypeEntityIndex prev_index,
         bool initialize_missing_components) {
 
 
@@ -45,9 +45,9 @@ ArchetypeEntityIndex Archetype::insert(Entity entity, Archetype& prev_archetype,
     }
 
     // TODO: use callback to update entity location for prev archetype!
-    prev_archetype.remove(prev_index);
+    prev_archetype.remove(*source_view.getEntity<FunctionSafety::kUnsafe>(), prev_index);
 
-    return index.toArchetypeIndex();
+    world_.entities().updateLocation(entity, id_, index.toArchetypeIndex());
 }
 
 ArchetypeEntityIndex Archetype::insert(Entity entity, bool call_constructor) {
@@ -61,43 +61,46 @@ ArchetypeEntityIndex Archetype::insert(Entity entity, bool call_constructor) {
             info.constructor(component_ptr);
         }
     }
-//    world_.entities().updateLocation(entity, index.toArchetypeIndex());
+    world_.entities().updateLocation(entity, id_, index.toArchetypeIndex());
     return index.toArchetypeIndex();
 }
 
-Entity Archetype::remove(ArchetypeEntityIndex index) {
+void Archetype::remove(Entity entity_to_destroy, ArchetypeEntityIndex entity_index) {
 //    Logger{}.debug("Removing entity from: %s pos: %d", mask_.toString(), index.toInt());
-    const auto call_destructors = [this](ComponentStorageIndex destroy_index) {
-        for (const auto& info : operation_helper_.destroy) {
-            auto component_ptr = data_storage_.getData(info.component_index, destroy_index);
-            info.destructor(component_ptr);
+    const auto call_destructors = [this, &entity_to_destroy](ComponentStorageIndex destroy_index) {
+        if (!operation_helper_.destroy.empty()) {
+            auto view = data_storage_.getElementView(destroy_index);
+            for (const auto &info : operation_helper_.destroy) {
+                info.destructor(view.getData<FunctionSafety::kUnsafe>(info.component_index));
+            }
         }
         data_storage_.decrSize();
+        world_.entities().updateLocation(entity_to_destroy, ArchetypeIndex::null(), ArchetypeEntityIndex::null());
     };
 
-    const auto source_index = data_storage_.lastItemIndex();
-    const auto dest_index = ComponentStorageIndex::fromArchetypeIndex(index);
-    if (dest_index == source_index) {
-        call_destructors(source_index);
-        return Entity{};
+    const auto last_index = data_storage_.lastItemIndex();
+    const auto index = ComponentStorageIndex::fromArchetypeIndex(entity_index);
+    if (index == last_index) {
+        call_destructors(last_index);
+        return;
     }
     // TODO: add test for this part
 
     // moving last entity to index
     ComponentIndex component_index = ComponentIndex::make(0);
-    auto source_view = data_storage_.getElementView(source_index);
-    auto dest_view = data_storage_.getElementView(dest_index);
+    auto last_item_view = data_storage_.getElementView(last_index);
+    auto dest_view = data_storage_.getElementView(index);
     for (auto& info : operation_helper_.internal_move) {
-        auto source_ptr = source_view.getData<FunctionSafety::kUnsafe>(component_index);
+        auto source_ptr = last_item_view.getData<FunctionSafety::kUnsafe>(component_index);
         auto dest_ptr = dest_view.getData<FunctionSafety::kUnsafe>(component_index);
         info.move(dest_ptr, source_ptr);
     }
 
-    auto source_entity = *source_view.getEntity<FunctionSafety::kUnsafe>();
-    *dest_view.getEntity<FunctionSafety::kUnsafe>() = source_entity;
-    call_destructors(source_index);
+    auto last_entity = *last_item_view.getEntity<FunctionSafety::kUnsafe>();
+    *dest_view.getEntity<FunctionSafety::kUnsafe>() = last_entity;
+    call_destructors(last_index);
 
-    return source_entity;
+    world_.entities().updateLocation(last_entity, id_, entity_index);
 }
 
 WorldVersion Archetype::worldVersion() const noexcept {

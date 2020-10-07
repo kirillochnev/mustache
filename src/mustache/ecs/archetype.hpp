@@ -151,15 +151,14 @@ namespace mustache {
         /// Entity must belong to default(empty) archetype
         ArchetypeEntityIndex insert(Entity entity, bool call_constructor = true);
 
-        ArchetypeEntityIndex insert(Entity entity, Archetype& prev_archetype,
-                ArchetypeEntityIndex prev_index, bool initialize_missing_components = true);
+        void externalMove(Entity entity, Archetype& prev, ArchetypeEntityIndex prev_index, bool init_missing = true);
 
         /**
          * removes entity from archetype, calls destructor for each trivially destructible component
          * moves last entity at index.
          * returns new entity at index.
          */
-        Entity remove(ArchetypeEntityIndex index);
+        void remove(Entity entity, ArchetypeEntityIndex index);
 
         World& world_;
         ComponentIdMask mask_;
