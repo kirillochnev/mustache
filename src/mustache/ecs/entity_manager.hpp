@@ -206,7 +206,8 @@ namespace mustache {
             return nullptr;
         }
         auto ptr = arch->getComponent<FunctionSafety::kUnsafe>(index, location.index);
-        return reinterpret_cast<T*>(ptr);
+        auto typed_ptr = reinterpret_cast<T*>(ptr);
+        return typed_ptr;
     }
 
     template<typename T, FunctionSafety _Safety>

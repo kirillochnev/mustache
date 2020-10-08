@@ -152,13 +152,14 @@ namespace mustache {
         ArchetypeEntityIndex insert(Entity entity, bool call_constructor = true);
 
         void externalMove(Entity entity, Archetype& prev, ArchetypeEntityIndex prev_index, bool init_missing = true);
-
+        void internalMove(ArchetypeEntityIndex from, ArchetypeEntityIndex to);
         /**
          * removes entity from archetype, calls destructor for each trivially destructible component
          * moves last entity at index.
          * returns new entity at index.
          */
         void remove(Entity entity, ArchetypeEntityIndex index);
+        void callDestructor(const ArchetypeComponentDataStorage::ElementView& view);
 
         World& world_;
         ComponentIdMask mask_;

@@ -25,22 +25,47 @@ namespace {
     struct UnusedComponent {
 
     };
+
+    struct FileLogger : public mustache::LogWriter {
+        FILE* file_ = fopen("out.log", "w");
+        virtual void onMessage(const Context& ctx, mustache::LogLevel lvl, std::string str, ...) override {
+            /*if (ctx.show_context_) {
+                fprintf(file_, "%s: ", toStr(lvl));
+            }*/
+            (void) ctx;
+            (void) lvl;
+            va_list args;
+            va_start (args, str);
+            vfprintf(file_, str.c_str(), args);
+            va_end (args);
+            /*if (ctx.show_context_) {
+                fprintf(file_, " | at: %s:%d\n", ctx.file, ctx.line);
+            } else */{
+                fprintf(file_, "\n");
+            }
+            fflush(file_);
+        }
+    };
+//    LogWriter::setActive(std::make_shared<FileLogger>());
+
+
+
 #define ASSERT_FALSE(exp) if (exp) throw std::runtime_error(std::string (__FILE__) + ":" + std::to_string(__LINE__))
 #define ASSERT_TRUE(exp) if (!(exp)) throw std::runtime_error(std::string (__FILE__) + ":" + std::to_string(__LINE__))
 #define ASSERT_EQ(a, b) if ((a) != (b)) throw std::runtime_error(std::string (__FILE__) + ":" + std::to_string(__LINE__))
 }
 struct C0 {
     C0() = default;
-    C0(const std::string& str):
-            ptr{new std::string(str)} {
+    C0(uint64_t v):
+            ptr{new uint64_t (v)} {
 
     }
-    std::unique_ptr<std::string> ptr;
-    bool isMatch(const std::string& str) const noexcept {
-        if (!(ptr && str == *ptr)) {
+    std::unique_ptr<uint64_t> ptr;
+    bool isMatch(uint64_t v) const noexcept {
+        if (!(ptr && v == *ptr)) {
             return false;
         }
-        return ptr && str == *ptr;
+        return ptr && v == *ptr;
     }
 };
 
@@ -132,29 +157,6 @@ void remove_component_1() {
 
 void remove_component_2() {
     using namespace mustache;
-    struct FileLogger : public LogWriter {
-        FILE* file_ = fopen("out.log", "w");
-        virtual void onMessage(const Context& ctx, LogLevel lvl, std::string str, ...) override {
-            /*if (ctx.show_context_) {
-                fprintf(file_, "%s: ", toStr(lvl));
-            }*/
-            (void) ctx;
-            (void) lvl;
-            va_list args;
-            va_start (args, str);
-            vfprintf(file_, str.c_str(), args);
-            va_end (args);
-            /*if (ctx.show_context_) {
-                fprintf(file_, " | at: %s:%d\n", ctx.file, ctx.line);
-            } else */{
-                fprintf(file_, "\n");
-            }
-            fflush(file_);
-        }
-    };
-    LogWriter::setActive(std::make_shared<FileLogger>());
-
-
 
     World world{WorldId::make(0)};
     auto& entities = world.entities();
@@ -162,16 +164,16 @@ void remove_component_2() {
     std::vector<Entity> entities_arr;
     Logger{}.info("---------------------------------------------------------------------------------------");
 
-    for (uint32_t i = 0; i < 2; ++i) {
+    for (uint32_t i = 0; i < 1024; ++i) {
         auto e = entities.create();
-        entities.assign<C0>(e, std::to_string(e.value));
+        entities.assign<C0>(e, e.value);
         ASSERT_TRUE(entities.hasComponent<C0>(e));
-        ASSERT_TRUE(entities.getComponent<C0>(e)->isMatch(std::to_string(e.value)));
+        ASSERT_TRUE(entities.getComponent<C0>(e)->isMatch(e.value));
 
         entities.assign<C1>(e, e);
         ASSERT_TRUE(entities.hasComponent<C0>(e));
         ASSERT_TRUE(entities.hasComponent<C1>(e));
-        ASSERT_TRUE(entities.getComponent<C0>(e)->isMatch(std::to_string(e.value)));
+        ASSERT_TRUE(entities.getComponent<C0>(e)->isMatch(e.value));
         ASSERT_EQ(entities.getComponent<C1>(e)->entity, e);
 
         entities.assign<C2>(e);
@@ -179,7 +181,7 @@ void remove_component_2() {
         ASSERT_TRUE(entities.hasComponent<C1>(e));
         ASSERT_TRUE(entities.hasComponent<C2>(e));
 
-        ASSERT_TRUE(entities.getComponent<C0>(e)->isMatch(std::to_string(e.value)));
+        ASSERT_TRUE(entities.getComponent<C0>(e)->isMatch(e.value));
         ASSERT_EQ(entities.getComponent<C1>(e)->entity, e);
         entities_arr.push_back(e);
     }
@@ -189,35 +191,32 @@ void remove_component_2() {
         ASSERT_TRUE(entities.hasComponent<C1>(e));
         ASSERT_TRUE(entities.hasComponent<C2>(e));
 
-        ASSERT_TRUE(entities.getComponent<C0>(e)->isMatch(std::to_string(e.value)));
+        ASSERT_TRUE(entities.getComponent<C0>(e)->isMatch(e.value));
         ASSERT_EQ(entities.getComponent<C1>(e)->entity, e);
     }
 
     Logger{}.info("---------------------------------------------------------------------------------------");
-    for (uint32_t i = 0; i < 2; ++i) {
+    for (uint32_t i = 0; i < 1024; ++i) {
         auto e = entities_arr[i];
         ASSERT_TRUE(entities.hasComponent<C0>(e));
         ASSERT_TRUE(entities.hasComponent<C1>(e));
         ASSERT_TRUE(entities.hasComponent<C2>(e));
 
-        while (i == 1) {
-            volatile auto c0 = entities.getComponent<C0>(e);
-            c0->isMatch(std::to_string(e.value));
-        }
+//        std::cout << entities.getComponent<C1>(e)->entity.value << " vs " << e.value << std::endl;
         ASSERT_EQ(entities.getComponent<C1>(e)->entity, e);
-        ASSERT_TRUE(entities.getComponent<C0>(e)->isMatch(std::to_string(e.value)));
-        if (true || i % 2 == 0) {
+        ASSERT_TRUE(entities.getComponent<C0>(e)->isMatch(e.value));
+        if (i % 2 == 0) {
             entities.removeComponent<C0>(e);
             ASSERT_FALSE(entities.hasComponent<C0>(e));
             ASSERT_TRUE(entities.hasComponent<C1>(e));
             ASSERT_TRUE(entities.hasComponent<C2>(e));
         }
-        if (true || i % 3 == 0) {
+        if (i % 3 == 0) {
             entities.removeComponent<C1>(e);
             ASSERT_FALSE(entities.hasComponent<C1>(e));
             ASSERT_TRUE(entities.hasComponent<C2>(e));
         }
-        if (true || i % 4 == 0) {
+        if (i % 4 == 0) {
             entities.removeComponent<C2>(e);
             ASSERT_FALSE(entities.hasComponent<C0>(e));
             ASSERT_FALSE(entities.hasComponent<C2>(e));

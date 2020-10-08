@@ -20,6 +20,13 @@ Archetype::~Archetype() {
     data_storage_.clear(true);
 }
 
+void Archetype::callDestructor(const ArchetypeComponentDataStorage::ElementView& view) {
+    for (const auto &info : operation_helper_.destroy) {
+        info.destructor(view.getData<FunctionSafety::kUnsafe>(info.component_index));
+    }
+    data_storage_.decrSize();
+}
+
 void Archetype::externalMove(Entity entity, Archetype& prev_archetype, ArchetypeEntityIndex prev_index,
         bool initialize_missing_components) {
 
@@ -44,7 +51,6 @@ void Archetype::externalMove(Entity entity, Archetype& prev_archetype, Archetype
         ++component_index;
     }
 
-    // TODO: use callback to update entity location for prev archetype!
     prev_archetype.remove(*source_view.getEntity<FunctionSafety::kUnsafe>(), prev_index);
 
     world_.entities().updateLocation(entity, id_, index.toArchetypeIndex());
@@ -65,42 +71,45 @@ ArchetypeEntityIndex Archetype::insert(Entity entity, bool call_constructor) {
     return index.toArchetypeIndex();
 }
 
+void Archetype::internalMove(ArchetypeEntityIndex source_index, ArchetypeEntityIndex destination_index) {
+    // moving last entity to index
+    ComponentIndex component_index = ComponentIndex::make(0);
+    auto source_view = data_storage_.getElementView(ComponentStorageIndex::fromArchetypeIndex(source_index));
+    auto dest_view = data_storage_.getElementView(ComponentStorageIndex::fromArchetypeIndex(destination_index));
+    for (auto& info : operation_helper_.internal_move) {
+        auto source_ptr = source_view.getData<FunctionSafety::kUnsafe>(component_index);
+        auto dest_ptr = dest_view.getData<FunctionSafety::kUnsafe>(component_index);
+        info.move(dest_ptr, source_ptr);
+        ++component_index;
+    }
+
+    auto source_entity = *source_view.getEntity<FunctionSafety::kUnsafe>();
+    auto& dest_entity = *dest_view.getEntity<FunctionSafety::kUnsafe>();
+
+    world_.entities().updateLocation(dest_entity, ArchetypeIndex::null(), ArchetypeEntityIndex::null());
+    world_.entities().updateLocation(source_entity, id_, destination_index);
+
+    dest_entity = source_entity;
+
+    callDestructor(source_view);
+}
+
 void Archetype::remove(Entity entity_to_destroy, ArchetypeEntityIndex entity_index) {
-//    Logger{}.debug("Removing entity from: %s pos: %d", mask_.toString(), index.toInt());
-    const auto call_destructors = [this, &entity_to_destroy](ComponentStorageIndex destroy_index) {
-        if (!operation_helper_.destroy.empty()) {
-            auto view = data_storage_.getElementView(destroy_index);
-            for (const auto &info : operation_helper_.destroy) {
-                info.destructor(view.getData<FunctionSafety::kUnsafe>(info.component_index));
-            }
-        }
-        data_storage_.decrSize();
-        world_.entities().updateLocation(entity_to_destroy, ArchetypeIndex::null(), ArchetypeEntityIndex::null());
-    };
+//    Logger{}.debug("Removing entity from: %s pos: %d", mask_.toString(), entity_index.toInt());
 
     const auto last_index = data_storage_.lastItemIndex();
     const auto index = ComponentStorageIndex::fromArchetypeIndex(entity_index);
     if (index == last_index) {
-        call_destructors(last_index);
-        return;
+        if (!operation_helper_.destroy.empty()) {
+            callDestructor(data_storage_.getElementView(index));
+        } else {
+            data_storage_.decrSize();
+        }
+        world_.entities().updateLocation(entity_to_destroy, ArchetypeIndex::null(), ArchetypeEntityIndex::null());
+    } else {
+        // TODO: add test for this part
+        internalMove(last_index.toArchetypeIndex(), entity_index);
     }
-    // TODO: add test for this part
-
-    // moving last entity to index
-    ComponentIndex component_index = ComponentIndex::make(0);
-    auto last_item_view = data_storage_.getElementView(last_index);
-    auto dest_view = data_storage_.getElementView(index);
-    for (auto& info : operation_helper_.internal_move) {
-        auto source_ptr = last_item_view.getData<FunctionSafety::kUnsafe>(component_index);
-        auto dest_ptr = dest_view.getData<FunctionSafety::kUnsafe>(component_index);
-        info.move(dest_ptr, source_ptr);
-    }
-
-    auto last_entity = *last_item_view.getEntity<FunctionSafety::kUnsafe>();
-    *dest_view.getEntity<FunctionSafety::kUnsafe>() = last_entity;
-    call_destructors(last_index);
-
-    world_.entities().updateLocation(last_entity, id_, entity_index);
 }
 
 WorldVersion Archetype::worldVersion() const noexcept {

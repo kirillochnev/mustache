@@ -254,9 +254,9 @@ int main() {
 
 //    foo();
 //    create1m();
-    createEmptyAndAssign();
+//    createEmptyAndAssign();
 //    iterate500k();
 //    remove_component_1();
-//    remove_component_2();
+    remove_component_2();
     return 0;
 }
