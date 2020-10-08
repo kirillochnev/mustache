@@ -498,3 +498,90 @@ TEST(EntityManager, move) {
     }
     ASSERT_EQ(created_components.size(), 0);
 }
+
+TEST(EntityManager, remove_not_last) {
+    struct C0 {
+        C0() = default;
+        C0(uint64_t v):
+                ptr{new uint64_t (v)} {
+
+        }
+        std::unique_ptr<uint64_t> ptr;
+        bool isMatch(uint64_t v) const noexcept {
+            if (!(ptr && v == *ptr)) {
+                return false;
+            }
+            return ptr && v == *ptr;
+        }
+    };
+
+    struct C1 {
+        mustache::Entity entity;
+    };
+
+    struct C2 : public PodComponent<16 * 1024>{};
+
+    using namespace mustache;
+
+    World world{WorldId::make(0)};
+    auto& entities = world.entities();
+
+    std::vector<Entity> entities_arr;
+
+    for (uint32_t i = 0; i < 1024; ++i) {
+        auto e = entities.create();
+        entities.assign<C0>(e, e.value);
+        ASSERT_TRUE(entities.hasComponent<C0>(e));
+        ASSERT_TRUE(entities.getComponent<C0>(e)->isMatch(e.value));
+
+        entities.assign<C1>(e, e);
+        ASSERT_TRUE(entities.hasComponent<C0>(e));
+        ASSERT_TRUE(entities.hasComponent<C1>(e));
+        ASSERT_TRUE(entities.getComponent<C0>(e)->isMatch(e.value));
+        ASSERT_EQ(entities.getComponent<C1>(e)->entity, e);
+
+        entities.assign<C2>(e);
+        ASSERT_TRUE(entities.hasComponent<C0>(e));
+        ASSERT_TRUE(entities.hasComponent<C1>(e));
+        ASSERT_TRUE(entities.hasComponent<C2>(e));
+
+        ASSERT_TRUE(entities.getComponent<C0>(e)->isMatch(e.value));
+        ASSERT_EQ(entities.getComponent<C1>(e)->entity, e);
+        entities_arr.push_back(e);
+    }
+
+    for (auto e : entities_arr) {
+        ASSERT_TRUE(entities.hasComponent<C0>(e));
+        ASSERT_TRUE(entities.hasComponent<C1>(e));
+        ASSERT_TRUE(entities.hasComponent<C2>(e));
+
+        ASSERT_TRUE(entities.getComponent<C0>(e)->isMatch(e.value));
+        ASSERT_EQ(entities.getComponent<C1>(e)->entity, e);
+    }
+
+    for (uint32_t i = 0; i < 1024; ++i) {
+        auto e = entities_arr[i];
+        ASSERT_TRUE(entities.hasComponent<C0>(e));
+        ASSERT_TRUE(entities.hasComponent<C1>(e));
+        ASSERT_TRUE(entities.hasComponent<C2>(e));
+
+        ASSERT_EQ(entities.getComponent<C1>(e)->entity, e);
+        ASSERT_TRUE(entities.getComponent<C0>(e)->isMatch(e.value));
+        if (i % 2 == 0) {
+            entities.removeComponent<C0>(e);
+            ASSERT_FALSE(entities.hasComponent<C0>(e));
+            ASSERT_TRUE(entities.hasComponent<C1>(e));
+            ASSERT_TRUE(entities.hasComponent<C2>(e));
+        }
+        if (i % 3 == 0) {
+            entities.removeComponent<C1>(e);
+            ASSERT_FALSE(entities.hasComponent<C1>(e));
+            ASSERT_TRUE(entities.hasComponent<C2>(e));
+        }
+        if (i % 4 == 0) {
+            entities.removeComponent<C2>(e);
+            ASSERT_FALSE(entities.hasComponent<C0>(e));
+            ASSERT_FALSE(entities.hasComponent<C2>(e));
+        }
+    }
+}
