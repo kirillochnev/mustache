@@ -167,32 +167,16 @@ namespace mustache {
 
     template<FunctionSafety _Safety>
     Entity* ElementView::getEntity() const {
-        auto storage_res = _getEntity<_Safety>();
-        const auto gi = globalIndex();
-        const auto foo = [this, gi]()-> Entity* {
-            if constexpr (isSafe(_Safety)) {
-                if (!isValid()) {
-                    return nullptr;
-                }
-            }
-            if (archetype_->entities_.size() <= gi.toInt()) {
+        if constexpr (isSafe(_Safety)) {
+            if (!isValid()) {
                 return nullptr;
             }
-            // TODO: remove const_cast
-            return const_cast<Entity*>(archetype_->entities_.data()) + gi.toInt();
-        };
-        const auto to_str = [](Entity* e)-> std::string {
-            if (e == nullptr) {
-                return "nullptr";
-            }
-            return std::to_string(e->value);
-        };
-
-        auto arch_res = foo();
-        if ((storage_res == nullptr && arch_res == nullptr) || *arch_res == *storage_res) {
-            return arch_res;
         }
-        throw std::runtime_error("Invalid entity at: " + std::to_string(gi.toInt()) + " " +
-                                         to_str(arch_res) + " vs " + to_str(storage_res));
+        const auto gi = globalIndex();
+        if (archetype_->entities_.size() <= gi.toInt()) {
+            return nullptr;
+        }
+        // TODO: remove const_cast
+        return const_cast<Entity*>(archetype_->entities_.data()) + gi.toInt();
     }
 }

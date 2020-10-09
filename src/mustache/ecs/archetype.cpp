@@ -31,7 +31,7 @@ void Archetype::externalMove(Entity entity, Archetype& prev_archetype, Archetype
         bool initialize_missing_components) {
 
 
-    const auto index = data_storage_.pushBackAndUpdateVersion(entity, worldVersion());
+    const auto index = data_storage_.pushBackAndUpdateVersion(worldVersion());
     if (entities_.size() <= index.toInt()) {
         entities_.resize(index.next().toInt());
     }
@@ -60,7 +60,7 @@ void Archetype::externalMove(Entity entity, Archetype& prev_archetype, Archetype
 }
 
 ArchetypeEntityIndex Archetype::insert(Entity entity, bool call_constructor) {
-    const auto index = data_storage_.pushBackAndUpdateVersion(entity, worldVersion());
+    const auto index = data_storage_.pushBackAndUpdateVersion(worldVersion());
     if (entities_.size() <= index.toInt()) {
         entities_.resize(index.next().toInt());
     }
@@ -91,12 +91,11 @@ void Archetype::internalMove(ArchetypeEntityIndex source_index, ArchetypeEntityI
 
     auto source_entity = *source_view.getEntity<FunctionSafety::kUnsafe>();
     auto& dest_entity = *dest_view.getEntity<FunctionSafety::kUnsafe>();
-    auto& dest_entity2 = *dest_view._getEntity<FunctionSafety::kUnsafe>();
+
     world_.entities().updateLocation(dest_entity, ArchetypeIndex::null(), ArchetypeEntityIndex::null());
     world_.entities().updateLocation(source_entity, id_, destination_index);
 
     dest_entity = source_entity;
-    dest_entity2 = source_entity;
 
     callDestructor(source_view);
 }

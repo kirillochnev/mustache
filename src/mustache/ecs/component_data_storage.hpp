@@ -26,8 +26,6 @@ namespace mustache {
         MUSTACHE_INLINE void clear(bool free_chunks = true);
 
         template<FunctionSafety _Safety = FunctionSafety::kDefault>
-        MUSTACHE_INLINE Entity* getEntityData(ComponentStorageIndex index) const noexcept;
-        template<FunctionSafety _Safety = FunctionSafety::kDefault>
         MUSTACHE_INLINE void* getData(ComponentIndex component_index, ComponentStorageIndex index) const noexcept;
         MUSTACHE_INLINE ElementView getElementView(ComponentStorageIndex index) const noexcept;
 
@@ -39,7 +37,7 @@ namespace mustache {
         MUSTACHE_INLINE void updateVersion(WorldVersion version, ComponentStorageIndex index) noexcept;
 
         template<FunctionSafety _Safety = FunctionSafety::kDefault>
-        MUSTACHE_INLINE ComponentStorageIndex pushBackAndUpdateVersion(Entity entity, WorldVersion world_version);
+        MUSTACHE_INLINE ComponentStorageIndex pushBackAndUpdateVersion(WorldVersion world_version); // TODO: rename
         [[nodiscard]] MUSTACHE_INLINE ComponentStorageIndex lastItemIndex() const noexcept;
 
         /*
@@ -160,18 +158,6 @@ namespace mustache {
     }
 
     template<FunctionSafety _Safety>
-    Entity* ComponentDataStorage::getEntityData(ComponentStorageIndex index) const noexcept {
-        if constexpr (isSafe(_Safety)) {
-            if (index.isNull() || index.toInt() >= size_) {
-                return nullptr;
-            }
-        }
-        const auto index_at_chunk = index % chunk_capacity_;
-        const auto read_offset = entityOffset().add(sizeof(Entity) * index_at_chunk.toInt());
-        return dataPointerWithOffset<Entity>(chunks_[index / chunk_capacity_], read_offset);
-    }
-
-    template<FunctionSafety _Safety>
     void* ComponentDataStorage::getData(ComponentIndex component_index, ComponentStorageIndex index) const noexcept {
         if constexpr (isSafe(_Safety)) {
             if (component_index.isNull() || index.isNull() ||
@@ -240,11 +226,10 @@ namespace mustache {
     }
 
     template<FunctionSafety _Safety>
-    ComponentStorageIndex ComponentDataStorage::pushBackAndUpdateVersion(Entity entity, WorldVersion world_version) {
+    ComponentStorageIndex ComponentDataStorage::pushBackAndUpdateVersion(WorldVersion world_version) {
         reserveForNextItem();
         ComponentStorageIndex index = ComponentStorageIndex::make(size_);
         incSize();
-        *getEntityData<_Safety>(index) = entity;
         updateVersion<_Safety>(world_version, index);
         return index;
     }
@@ -288,17 +273,6 @@ namespace mustache {
             return storage_ && storage_->chunks_.has(chunk_index_) &&
                 storage_->chunkCapacity().isIndexValid(entity_index_) &&
                     globalIndex() <= storage_->lastItemIndex();
-        }
-
-        template<FunctionSafety _Safety = FunctionSafety::kSafe>
-        Entity* _getEntity() const noexcept {
-            if constexpr (isSafe(_Safety)) {
-                if (!isValid()) {
-                    return nullptr;
-                }
-            }
-            auto entity_ptr = dataPointerWithOffset<Entity>(storage_->chunks_[chunk_index_], storage_->entityOffset());
-            return entity_ptr + entity_index_.toInt();
         }
 
         template<FunctionSafety _Safety = FunctionSafety::kSafe>
