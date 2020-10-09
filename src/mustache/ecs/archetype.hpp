@@ -55,16 +55,14 @@ namespace mustache {
                     return Entity{};
                 }
             }
-//            std::terminate();
             auto entity_ptr = data_storage_.getEntityData<_Safety>(ComponentStorageIndex::fromArchetypeIndex(index));
             const auto res = entity_ptr ? *entity_ptr : Entity{};
 
-            if (entities_[index.toInt()] == res) {
-                throw std::runtime_error("Fail!");
+            if (entities_[index.toInt()] != res) {
+                throw std::runtime_error("Fail: at index " + std::to_string(index.toInt())
+                + "  "  + std::to_string(entities_[index.toInt()].value) + " vs " + std::to_string(res.value));
             }
             return entities_[index.toInt()];
-            /*auto entity_ptr = data_storage_.getEntityData<_Safety>(ComponentStorageIndex::fromArchetypeIndex(index));
-            return entity_ptr ? *entity_ptr : Entity{};*/
         }
 
         [[nodiscard]] EntityGroup createGroup(size_t count);

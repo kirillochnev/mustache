@@ -42,7 +42,7 @@ namespace mustache {
         MUSTACHE_INLINE ComponentStorageIndex pushBackAndUpdateVersion(Entity entity, WorldVersion world_version);
         [[nodiscard]] MUSTACHE_INLINE ComponentStorageIndex lastItemIndex() const noexcept;
 
-
+        /*
         template<FunctionSafety _Safety = FunctionSafety::kDefault>
         [[nodiscard]] ChunkHandler getChunkHandler(ChunkIndex index) const noexcept {
             if constexpr (isSafe(_Safety)) {
@@ -98,32 +98,8 @@ namespace mustache {
                 }
                 versions[index.toInt()] = version;
             });
-        }
-
-        /*template<FunctionSafety _Safety = FunctionSafety::kDefault>
-        bool updateComponentVersionIfMatch(ChunkHandler handler, WorldVersion version,
-                const ComponentIndexMask& read_mask, const ComponentIndexMask& write_mask) noexcept {
-            if constexpr (isSafe(_Safety)) {
-                if (!handler) {
-                    return false;
-                }
-            }
-            bool need_update = false;
-            const auto versions = reinterpret_cast<WorldVersion*>(handler);
-            read_mask.forEachItem([&need_update, version, versions,
-                num_components = componentsCount()](ComponentIndex index) {
-                if constexpr (isSafe(_Safety)) {
-                    if (num_components <= index.toInt()) {
-                        return;
-                    }
-                }
-                const auto cur_version =  versions[index.toInt()];
-                if (cur_version > version) {
-                    need_update = true; // TODO: exit now
-                }
-            });
-
         }*/
+
     private:
         struct ComponentDataGetter {
             ComponentOffset offset;
