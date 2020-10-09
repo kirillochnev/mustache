@@ -37,6 +37,9 @@ namespace mustache {
 
         }
 
+        template<FunctionSafety _Safety = FunctionSafety::kSafe>
+        MUSTACHE_INLINE Entity* getEntity() const;
+
         const Archetype* archetype_ = nullptr;
     };
     /**
@@ -51,16 +54,9 @@ namespace mustache {
         template<FunctionSafety _Safety = FunctionSafety::kDefault>
         Entity entityAt(ArchetypeEntityIndex index) const {
             if constexpr (isSafe(_Safety)) {
-                if (!index.isValid() || index.toInt() >= data_storage_.size()) {
+                if (!index.isValid() || index.toInt() >= entities_.size()) {
                     return Entity{};
                 }
-            }
-            auto entity_ptr = data_storage_.getEntityData<_Safety>(ComponentStorageIndex::fromArchetypeIndex(index));
-            const auto res = entity_ptr ? *entity_ptr : Entity{};
-
-            if (entities_[index.toInt()] != res) {
-                throw std::runtime_error("Fail: at index " + std::to_string(index.toInt())
-                + "  "  + std::to_string(entities_[index.toInt()].value) + " vs " + std::to_string(res.value));
             }
             return entities_[index.toInt()];
         }
@@ -130,14 +126,15 @@ namespace mustache {
             };
         }
     private:
-        friend class EntityManager;
+        friend ElementView;
+        friend EntityManager;
 
         template<typename _F>
         void forEachEntity(_F&& callback) {
             if (data_storage_.isEmpty()) {
                 return;
             }
-            auto view = data_storage_.getElementView(ComponentStorageIndex::make(0));
+            auto view = getElementView(ArchetypeEntityIndex::make(0));
             while (view.isValid()) {
                 callback(*view.getEntity<FunctionSafety::kUnsafe>());
                 ++view;
@@ -168,4 +165,34 @@ namespace mustache {
         ArchetypeIndex id_;
     };
 
+    template<FunctionSafety _Safety>
+    Entity* ElementView::getEntity() const {
+        auto storage_res = _getEntity<_Safety>();
+        const auto gi = globalIndex();
+        const auto foo = [this, gi]()-> Entity* {
+            if constexpr (isSafe(_Safety)) {
+                if (!isValid()) {
+                    return nullptr;
+                }
+            }
+            if (archetype_->entities_.size() <= gi.toInt()) {
+                return nullptr;
+            }
+            // TODO: remove const_cast
+            return const_cast<Entity*>(archetype_->entities_.data()) + gi.toInt();
+        };
+        const auto to_str = [](Entity* e)-> std::string {
+            if (e == nullptr) {
+                return "nullptr";
+            }
+            return std::to_string(e->value);
+        };
+
+        auto arch_res = foo();
+        if ((storage_res == nullptr && arch_res == nullptr) || *arch_res == *storage_res) {
+            return arch_res;
+        }
+        throw std::runtime_error("Invalid entity at: " + std::to_string(gi.toInt()) + " " +
+                                         to_str(arch_res) + " vs " + to_str(storage_res));
+    }
 }

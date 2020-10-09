@@ -72,7 +72,7 @@ namespace mustache {
         [[nodiscard]] MUSTACHE_INLINE WorldVersion getWorldVersionOfLastComponentUpdate(Entity entity) const noexcept ;
 
 
-        void tmp() {
+        void tmp() { // TODO: remove me!
             for (auto& arch : archetypes_) {
                 for(uint32_t i = 0; i < arch->size(); ++i) {
                     arch->entityAt(ArchetypeEntityIndex::make(i));

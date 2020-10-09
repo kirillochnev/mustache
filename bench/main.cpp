@@ -174,7 +174,10 @@ void iterate500k() {
 //        }
     }
     benchmark.show();
+    entities.tmp();
+
 }
+
 void createEmptyAndAssign() {
     enum : uint32_t {
         kNumObjects = 100000,
@@ -196,6 +199,7 @@ void createEmptyAndAssign() {
         entities.clear();
     }
     benchmark.show();
+
 
 
 }
@@ -255,8 +259,8 @@ int main() {
 //    foo();
 //    create1m();
 //    createEmptyAndAssign();
-//    iterate500k();
+    iterate500k();
 //    remove_component_1();
-    remove_component_2();
+//    remove_component_2();
     return 0;
 }

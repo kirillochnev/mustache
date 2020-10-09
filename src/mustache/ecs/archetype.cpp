@@ -31,14 +31,17 @@ void Archetype::externalMove(Entity entity, Archetype& prev_archetype, Archetype
         bool initialize_missing_components) {
 
 
-    entities_.push_back(entity);
     const auto index = data_storage_.pushBackAndUpdateVersion(entity, worldVersion());
+    if (entities_.size() <= index.toInt()) {
+        entities_.resize(index.next().toInt());
+    }
+    entities_[index.toInt()] = entity;
 //    Logger{}.debug("Moving entity from: %s pos: %d,  to: %s pos: %d",
 //            prev_archetype.mask_.toString(), prev_index.toInt(), mask_.toString(), index.toInt());
 
     ComponentIndex component_index = ComponentIndex::make(0);
-    const auto source_view = prev_archetype.data_storage_.getElementView(ComponentStorageIndex::fromArchetypeIndex(prev_index));
-    const auto dest_view = data_storage_.getElementView(index);
+    const auto source_view = prev_archetype.getElementView(prev_index);
+    const auto dest_view = getElementView(index.toArchetypeIndex());
     for (const auto& info : operation_helper_.external_move) {
         auto prev_ptr = source_view.getData<FunctionSafety::kSafe>(prev_archetype.getComponentIndex<FunctionSafety::kSafe>(info.id));
         if (prev_ptr != nullptr) {
@@ -58,10 +61,13 @@ void Archetype::externalMove(Entity entity, Archetype& prev_archetype, Archetype
 
 ArchetypeEntityIndex Archetype::insert(Entity entity, bool call_constructor) {
     const auto index = data_storage_.pushBackAndUpdateVersion(entity, worldVersion());
-    entities_.push_back(entity);
+    if (entities_.size() <= index.toInt()) {
+        entities_.resize(index.next().toInt());
+    }
+    entities_[index.toInt()] = entity;
 
     if (call_constructor) {
-        const auto view = data_storage_.getElementView(index);
+        const auto view = getElementView(index.toArchetypeIndex());
         for (const auto &info : operation_helper_.insert) {
             auto component_ptr = view.getData<FunctionSafety::kUnsafe>(info.component_index);
             info.constructor(component_ptr);
@@ -74,8 +80,8 @@ ArchetypeEntityIndex Archetype::insert(Entity entity, bool call_constructor) {
 void Archetype::internalMove(ArchetypeEntityIndex source_index, ArchetypeEntityIndex destination_index) {
     // moving last entity to index
     ComponentIndex component_index = ComponentIndex::make(0);
-    auto source_view = data_storage_.getElementView(ComponentStorageIndex::fromArchetypeIndex(source_index));
-    auto dest_view = data_storage_.getElementView(ComponentStorageIndex::fromArchetypeIndex(destination_index));
+    auto source_view = getElementView(source_index);
+    auto dest_view = getElementView(destination_index);
     for (auto& info : operation_helper_.internal_move) {
         auto source_ptr = source_view.getData<FunctionSafety::kUnsafe>(component_index);
         auto dest_ptr = dest_view.getData<FunctionSafety::kUnsafe>(component_index);
@@ -85,11 +91,12 @@ void Archetype::internalMove(ArchetypeEntityIndex source_index, ArchetypeEntityI
 
     auto source_entity = *source_view.getEntity<FunctionSafety::kUnsafe>();
     auto& dest_entity = *dest_view.getEntity<FunctionSafety::kUnsafe>();
-
+    auto& dest_entity2 = *dest_view._getEntity<FunctionSafety::kUnsafe>();
     world_.entities().updateLocation(dest_entity, ArchetypeIndex::null(), ArchetypeEntityIndex::null());
     world_.entities().updateLocation(source_entity, id_, destination_index);
 
     dest_entity = source_entity;
+    dest_entity2 = source_entity;
 
     callDestructor(source_view);
 }
@@ -97,18 +104,17 @@ void Archetype::internalMove(ArchetypeEntityIndex source_index, ArchetypeEntityI
 void Archetype::remove(Entity entity_to_destroy, ArchetypeEntityIndex entity_index) {
 //    Logger{}.debug("Removing entity from: %s pos: %d", mask_.toString(), entity_index.toInt());
 
-    const auto last_index = data_storage_.lastItemIndex();
-    const auto index = ComponentStorageIndex::fromArchetypeIndex(entity_index);
-    if (index == last_index) {
+    const auto last_index = data_storage_.lastItemIndex().toArchetypeIndex();
+    if (entity_index == last_index) {
         if (!operation_helper_.destroy.empty()) {
-            callDestructor(data_storage_.getElementView(index));
+            callDestructor(getElementView(entity_index));
         } else {
             data_storage_.decrSize();
         }
         world_.entities().updateLocation(entity_to_destroy, ArchetypeIndex::null(), ArchetypeEntityIndex::null());
     } else {
         // TODO: add test for this part
-        internalMove(last_index.toArchetypeIndex(), entity_index);
+        internalMove(last_index, entity_index);
     }
 }
 

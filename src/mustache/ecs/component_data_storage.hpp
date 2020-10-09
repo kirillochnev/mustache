@@ -291,7 +291,7 @@ namespace mustache {
         }
 
         template<FunctionSafety _Safety = FunctionSafety::kSafe>
-        Entity* getEntity() const noexcept {
+        Entity* _getEntity() const noexcept {
             if constexpr (isSafe(_Safety)) {
                 if (!isValid()) {
                     return nullptr;
