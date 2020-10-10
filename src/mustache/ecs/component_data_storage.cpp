@@ -18,10 +18,9 @@ ComponentDataStorage::ComponentDataStorage(const ComponentIdMask& mask):
     element_size_{calculateElementSize(mask)} {
     component_getter_info_.reserve(mask.componentsCount());
 
-    const auto entity_offset = entityOffset();
-    auto offset = entity_offset.add(sizeof(Entity) * chunk_capacity_.toInt());
-    mask.forEachItem([this, &offset, entity_offset, &mask](ComponentId id) {
-        const auto &info = ComponentFactory::componentInfo(id);
+    auto offset = ComponentOffset::make(sizeof(WorldVersion) * mask.componentsCount());
+    mask.forEachItem([this, &offset, &mask](ComponentId id) {
+        const auto& info = ComponentFactory::componentInfo(id);
         ComponentDataGetter getter;
         getter.offset = offset.alignAs(info.align);
         getter.size = info.size;
@@ -35,7 +34,7 @@ ComponentDataStorage::ComponentDataStorage(const ComponentIdMask& mask):
 
 uint32_t ComponentDataStorage::calculateElementSize(const ComponentIdMask& mask) const noexcept {
     // TODO: fix me! element size is too big
-    uint32_t element_size = sizeof(Entity);
+    uint32_t element_size = 0u;
     mask.forEachItem([&element_size](ComponentId id) {
         const auto& info = ComponentFactory::componentInfo(id);
         const auto offset = ComponentOffset::makeAligned(ComponentOffset::make(element_size), info.align);
@@ -56,7 +55,8 @@ ChunkCapacity ComponentDataStorage::calculateChunkCapacity(const ComponentIdMask
 
 void ComponentDataStorage::allocateChunk() {
     const auto chunk_alignment = getChunkAlign(componentsCount());
-    const auto chunk_size = ComponentOffset::make(element_size_ * chunk_capacity_.toInt()).alignAs(chunk_alignment).toInt();
+    const auto chunk_size = ComponentOffset::make(element_size_ *
+            chunk_capacity_.toInt()).alignAs(chunk_alignment).toInt();
 
     // TODO: use memory allocator
 #ifdef _MSC_BUILD

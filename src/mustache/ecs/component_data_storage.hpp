@@ -119,7 +119,6 @@ namespace mustache {
         }
 
         [[nodiscard]] MUSTACHE_INLINE uint32_t componentsCount() const noexcept;
-        [[nodiscard]] MUSTACHE_INLINE ComponentOffset entityOffset() const noexcept;
         [[nodiscard]] MUSTACHE_INLINE ChunkCapacity chunkCapacity() const noexcept;
         MUSTACHE_INLINE void reserveForNextItem();
 
@@ -190,11 +189,6 @@ namespace mustache {
 
     uint32_t ComponentDataStorage::componentsCount() const noexcept {
         return component_getter_info_.size();
-    }
-
-    ComponentOffset ComponentDataStorage::entityOffset() const noexcept {
-        return ComponentOffset::makeAligned(ComponentOffset::make(sizeof(WorldId) * componentsCount()),
-                                            alignof(Entity));
     }
 
     ChunkCapacity ComponentDataStorage::chunkCapacity() const noexcept {
