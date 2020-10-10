@@ -1,11 +1,10 @@
 #pragma once
 
-#include <mustache/ecs/entity.hpp>
 #include <mustache/ecs/component_mask.hpp>
 #include <mustache/utils/array_wrapper.hpp>
 
 #include <array>
-#include <cstddef>
+
 namespace mustache {
 
     using ChunkHandler = uintptr_t;
@@ -30,14 +29,7 @@ namespace mustache {
         MUSTACHE_INLINE ElementView getElementView(ComponentStorageIndex index) const noexcept;
 
         template<FunctionSafety _Safety = FunctionSafety::kDefault>
-        MUSTACHE_INLINE WorldVersion getVersion(ComponentIndex component_index, ComponentStorageIndex index) const noexcept;
-        template<FunctionSafety _Safety = FunctionSafety::kDefault>
-        MUSTACHE_INLINE void updateComponentVersion(WorldVersion version, ComponentIndex component_index, ComponentStorageIndex index) noexcept;
-        template<FunctionSafety _Safety = FunctionSafety::kDefault>
-        MUSTACHE_INLINE void updateVersion(WorldVersion version, ComponentStorageIndex index) noexcept;
-
-        template<FunctionSafety _Safety = FunctionSafety::kDefault>
-        MUSTACHE_INLINE ComponentStorageIndex pushBackAndUpdateVersion(WorldVersion world_version); // TODO: rename
+        MUSTACHE_INLINE ComponentStorageIndex pushBack();
         [[nodiscard]] MUSTACHE_INLINE ComponentStorageIndex lastItemIndex() const noexcept;
 
         /*
@@ -98,8 +90,6 @@ namespace mustache {
             });
         }*/
 
-        [[nodiscard]] uint32_t calculateElementSize(const ComponentIdMask& mask) const noexcept;
-        [[nodiscard]] ChunkCapacity calculateChunkCapacity(const ComponentIdMask& mask) const noexcept;
     private:
         struct ComponentDataGetter {
             ComponentOffset offset;
@@ -129,7 +119,8 @@ namespace mustache {
         uint32_t size_{0u};
         ChunkCapacity chunk_capacity_;
         ArrayWrapper<std::vector<ChunkPtr>, ChunkIndex> chunks_;
-        uint32_t element_size_ {0u};
+        uint32_t chunk_size_ {0u};
+        uint32_t chunk_align_ {0u};
     };
 
     uint32_t ComponentDataStorage::capacity() const noexcept {
@@ -196,53 +187,15 @@ namespace mustache {
     }
 
     template<FunctionSafety _Safety>
-    void ComponentDataStorage::updateComponentVersion(WorldVersion version, ComponentIndex component_index,
-                                                ComponentStorageIndex index) noexcept {
-        if constexpr (isSafe(_Safety)) {
-            if (!component_getter_info_.has(component_index) || index.toInt() >= size_) {
-                return;
-            }
-        }
-        auto& chunk = chunks_[index / chunk_capacity_];
-        auto version_array = data<WorldVersion>(chunk);
-        version_array[component_index.toInt()] = version;
-    }
-    template<FunctionSafety _Safety>
-    void ComponentDataStorage::updateVersion(WorldVersion version, ComponentStorageIndex index) noexcept {
-        if constexpr (isSafe(_Safety)) {
-            if (index.toInt() >= size_) {
-                return;
-            }
-        }
-        auto& chunk = chunks_[index / chunk_capacity_];
-        auto version_array = data<WorldVersion>(chunk);
-        for (uint32_t i = 0; i < componentsCount(); ++i) {
-            version_array[i] = version;
-        }
-    }
-
-    template<FunctionSafety _Safety>
-    ComponentStorageIndex ComponentDataStorage::pushBackAndUpdateVersion(WorldVersion world_version) {
+    ComponentStorageIndex ComponentDataStorage::pushBack() {
         reserveForNextItem();
         ComponentStorageIndex index = ComponentStorageIndex::make(size_);
         incSize();
-        updateVersion<_Safety>(world_version, index);
         return index;
     }
 
     ComponentStorageIndex ComponentDataStorage::lastItemIndex() const noexcept {
         return ComponentStorageIndex::make(size_ - 1);
-    }
-
-    template<FunctionSafety _Safety>
-    WorldVersion ComponentDataStorage::getVersion(ComponentIndex component, ComponentStorageIndex index) const noexcept {
-        if constexpr (isSafe(_Safety)) {
-            if (component.isNull() || component.toInt() >= componentsCount() || size_ <= index.toInt()) {
-                return WorldVersion::null();
-            }
-        }
-        const auto chunk = chunks_[index / chunkCapacity()];
-        return data<WorldVersion>(chunk)[component.toInt()];
     }
 
     class ComponentDataStorage::ElementView { // TODO: rename

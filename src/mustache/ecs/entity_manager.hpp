@@ -71,14 +71,6 @@ namespace mustache {
         template<typename T, FunctionSafety _Safety = FunctionSafety::kSafe>
         [[nodiscard]] MUSTACHE_INLINE WorldVersion getWorldVersionOfLastComponentUpdate(Entity entity) const noexcept ;
 
-
-        void tmp() { // TODO: remove me!
-            for (auto& arch : archetypes_) {
-                for(uint32_t i = 0; i < arch->size(); ++i) {
-                    arch->entityAt(ArchetypeEntityIndex::make(i));
-                }
-            }
-        }
     private:
         friend Archetype;
         void updateLocation(Entity e, ArchetypeIndex archetype, ArchetypeEntityIndex index) noexcept {

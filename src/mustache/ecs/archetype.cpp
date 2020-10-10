@@ -31,7 +31,7 @@ void Archetype::externalMove(Entity entity, Archetype& prev_archetype, Archetype
         bool initialize_missing_components) {
 
 
-    const auto index = data_storage_.pushBackAndUpdateVersion(worldVersion());
+    const auto index = data_storage_.pushBack();
     if (entities_.size() <= index.toInt()) {
         entities_.resize(index.next().toInt());
     }
@@ -60,7 +60,7 @@ void Archetype::externalMove(Entity entity, Archetype& prev_archetype, Archetype
 }
 
 ArchetypeEntityIndex Archetype::insert(Entity entity, bool call_constructor) {
-    const auto index = data_storage_.pushBackAndUpdateVersion(worldVersion());
+    const auto index = data_storage_.pushBack();
     if (entities_.size() <= index.toInt()) {
         entities_.resize(index.next().toInt());
     }
@@ -112,7 +112,6 @@ void Archetype::remove(Entity entity_to_destroy, ArchetypeEntityIndex entity_ind
         }
         world_.entities().updateLocation(entity_to_destroy, ArchetypeIndex::null(), ArchetypeEntityIndex::null());
     } else {
-        // TODO: add test for this part
         internalMove(last_index, entity_index);
     }
 }

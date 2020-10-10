@@ -174,8 +174,6 @@ void iterate500k() {
 //        }
     }
     benchmark.show();
-    entities.tmp();
-
 }
 
 void createEmptyAndAssign() {

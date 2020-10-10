@@ -93,17 +93,6 @@ namespace mustache {
             return operation_helper_.componentIndex<_Safety>(id);
         }
 
-        template<FunctionSafety _Safety = FunctionSafety::kSafe>
-        [[nodiscard]] WorldVersion getWorldVersionComponentUpdate(ComponentId id,
-                ArchetypeEntityIndex index) const noexcept {
-            if constexpr (isSafe(_Safety)) {
-                if (!hasComponent(id)) {
-                    return WorldVersion::null();
-                }
-            }
-            return data_storage_.getVersion(getComponentIndex(id), ComponentStorageIndex::fromArchetypeIndex(index));
-        }
-
         [[nodiscard]] const ComponentIdMask& componentMask() const noexcept {
             return mask_;
         }
