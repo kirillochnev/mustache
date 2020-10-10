@@ -68,7 +68,7 @@ ArchetypeEntityIndex Archetype::insert(Entity entity, bool call_constructor) {
 
     if (call_constructor) {
         const auto view = getElementView(index.toArchetypeIndex());
-        for (const auto &info : operation_helper_.insert) {
+        for (const auto& info : operation_helper_.insert) {
             auto component_ptr = view.getData<FunctionSafety::kUnsafe>(info.component_index);
             info.constructor(component_ptr);
         }

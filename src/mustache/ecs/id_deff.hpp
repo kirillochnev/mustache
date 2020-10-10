@@ -25,11 +25,11 @@ namespace mustache {
     /// index of entity in archetype
     struct ArchetypeEntityIndex : public IndexLike<uint32_t, ArchetypeEntityIndex> {};
 
-    /// index of entity in chunk
-    struct ChunkEntityIndex : public IndexLike<uint32_t, ChunkEntityIndex> {};
+    /// index of item in chunk
+    struct ChunkItemIndex : public IndexLike<uint32_t, ChunkItemIndex> {};
 
     struct ChunkCapacity : public mustache::IndexLike<uint32_t, ChunkCapacity, 0u> {
-        [[nodiscard]] bool isIndexValid(ChunkEntityIndex index) const noexcept {
+        [[nodiscard]] bool isIndexValid(ChunkItemIndex index) const noexcept {
             return index.toInt() < value_;
         }
     };
@@ -51,11 +51,11 @@ namespace mustache {
             }
             return ChunkIndex::make(value_ / capacity.toInt());
         }
-        [[nodiscard]] constexpr ChunkEntityIndex operator%(ChunkCapacity capacity) const noexcept {
+        [[nodiscard]] constexpr ChunkItemIndex operator%(ChunkCapacity capacity) const noexcept {
             if (capacity.isNull()) {
-                return ChunkEntityIndex::null();
+                return ChunkItemIndex::null();
             }
-            return ChunkEntityIndex::make(value_ % capacity.toInt());
+            return ChunkItemIndex::make(value_ % capacity.toInt());
         }
         [[nodiscard]] constexpr ArchetypeEntityIndex toArchetypeIndex() const noexcept {
             return ArchetypeEntityIndex::make(value_);
@@ -83,6 +83,10 @@ namespace mustache {
 
         [[nodiscard]] static constexpr ComponentOffset makeAligned(ComponentOffset offset, uint32_t align) noexcept {
             return ComponentOffset::make((offset.toInt() - 1u + align) & -align);
+        }
+
+        [[nodiscard]] constexpr ComponentOffset alignAs(uint32_t align) const noexcept {
+            return ComponentOffset::make((toInt() - 1u + align) & -align);
         }
     };
 }

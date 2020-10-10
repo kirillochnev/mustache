@@ -247,7 +247,7 @@ namespace mustache {
 #else
             const auto new_index = entity_index_.toInt() + count;
             chunk_index_ = ChunkIndex::make(chunk_index_.toInt() + new_index / chunkCapacity().toInt());
-            entity_index_ = ChunkEntityIndex::make(new_index % chunkCapacity().toInt());
+            entity_index_ = ChunkItemIndex::make(new_index % chunkCapacity().toInt());
 #endif
             return *this;
         }
@@ -262,13 +262,13 @@ namespace mustache {
         ComponentStorageIndex global_index_;
 #else
         ChunkIndex chunk_index_;
-        ChunkEntityIndex entity_index_;
+        ChunkItemIndex entity_index_;
 #endif
         constexpr ElementView(const NewComponentDataStorage* storage,
 #if USE_GLOBAL_INDEX
                               ComponentStorageIndex index):
 #else
-                              ChunkIndex chunk_index, ChunkEntityIndex entity_index):
+                              ChunkIndex chunk_index, ChunkItemIndex entity_index):
 #endif
                 storage_{storage},
 #if USE_GLOBAL_INDEX
