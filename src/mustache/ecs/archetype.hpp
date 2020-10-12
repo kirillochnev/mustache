@@ -143,7 +143,7 @@ namespace mustache {
          * returns new entity at index.
          */
         void remove(Entity entity, ArchetypeEntityIndex index);
-        void callDestructor(const ArchetypeComponentDataStorage::ElementView& view);
+        void callDestructor(const ElementView& view);
 
         World& world_;
         ComponentIdMask mask_;

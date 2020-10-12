@@ -6,7 +6,6 @@
 #include <array>
 
 namespace mustache {
-
     using ChunkHandler = uintptr_t;
 
     class ComponentDataStorage {
@@ -31,64 +30,6 @@ namespace mustache {
         template<FunctionSafety _Safety = FunctionSafety::kDefault>
         MUSTACHE_INLINE ComponentStorageIndex pushBack();
         [[nodiscard]] MUSTACHE_INLINE ComponentStorageIndex lastItemIndex() const noexcept;
-
-        /*
-        template<FunctionSafety _Safety = FunctionSafety::kDefault>
-        [[nodiscard]] ChunkHandler getChunkHandler(ChunkIndex index) const noexcept {
-            if constexpr (isSafe(_Safety)) {
-                if (!chunks_.has(index)) {
-                    return static_cast<ChunkHandler>(0);
-                }
-            }
-            return reinterpret_cast<ChunkHandler>(chunks_[index]);
-        }
-
-        uint32_t getChunksCount() const noexcept {
-            return static_cast<uint32_t>(chunks_.size());
-        }
-
-        template<FunctionSafety _Safety = FunctionSafety::kDefault>
-        WorldVersion getLastUpdateWorldVersion(ChunkHandler handler,
-                const ComponentIndexMask& mask) const noexcept {
-            if constexpr (isSafe(_Safety)) {
-                if (!handler) {
-                    return WorldVersion::null();
-                }
-            }
-            WorldVersion result = WorldVersion::make(0);
-            const auto versions = reinterpret_cast<WorldVersion*>(handler);
-            mask.forEachItem([&result, versions, num_components = componentsCount()](ComponentIndex index) {
-                if constexpr (isSafe(_Safety)) {
-                    if (num_components <= index.toInt()) {
-                        return;
-                    }
-                }
-               const auto cur_version =  versions[index.toInt()];
-               if (cur_version > result) {
-                   result = cur_version;
-               }
-            });
-            return result;
-        }
-
-        template<FunctionSafety _Safety = FunctionSafety::kDefault>
-        void updateComponentVersion(ChunkHandler handler, WorldVersion version,
-                const ComponentIndexMask& write_mask) noexcept {
-            if constexpr (isSafe(_Safety)) {
-                if (!handler) {
-                    return;
-                }
-            }
-            const auto versions = reinterpret_cast<WorldVersion*>(handler);
-            write_mask.forEachItem([version, versions, num_components = componentsCount()](ComponentIndex index) {
-                if constexpr (isSafe(_Safety)) {
-                    if (num_components <= index.toInt()) {
-                        return;
-                    }
-                }
-                versions[index.toInt()] = version;
-            });
-        }*/
 
     private:
         struct ComponentDataGetter {
@@ -202,9 +143,7 @@ namespace mustache {
     public:
 
         [[nodiscard]] ComponentStorageIndex globalIndex() const noexcept {
-            return ComponentStorageIndex::make(
-                chunk_index_.toInt() * storage_->chunkCapacity().toInt() + item_index_.toInt()
-            );
+            return global_index_;
         }
 
         [[nodiscard]] uint32_t elementArraySize() const noexcept { // TODO: create class to access arrays
@@ -239,6 +178,7 @@ namespace mustache {
 
         ElementView& operator+=(uint32_t count) noexcept {
             const auto new_index = item_index_.toInt() + count;
+            global_index_ = ComponentStorageIndex::make(global_index_.toInt() + count);
             chunk_index_ = ChunkIndex::make(chunk_index_.toInt() + new_index / storage_->chunkCapacity().toInt());
             item_index_ = ChunkItemIndex::make(new_index % storage_->chunkCapacity().toInt());
             return *this;
@@ -249,15 +189,23 @@ namespace mustache {
         }
 
     protected:
+        [[nodiscard]] static ComponentStorageIndex globalIndex(const ComponentDataStorage* storage,
+                ChunkIndex chunk_index, ChunkItemIndex item_index) noexcept {
+            return ComponentStorageIndex::make(
+                    chunk_index.toInt() * storage->chunkCapacity().toInt() + item_index.toInt()
+            );
+        }
+
         friend ComponentDataStorage;
         const ComponentDataStorage* storage_;
         ChunkIndex chunk_index_;
         ChunkItemIndex item_index_;
-        constexpr ElementView(const ComponentDataStorage* storage,
-                              ChunkIndex chunk_index, ChunkItemIndex item_index):
+        ComponentStorageIndex global_index_; // TODO: rename?
+        ElementView(const ComponentDataStorage* storage, ChunkIndex chunk_index, ChunkItemIndex item_index):
                 storage_{storage},
                 chunk_index_{chunk_index},
-                item_index_{item_index} {
+                item_index_{item_index},
+                global_index_{globalIndex(storage, chunk_index, item_index)} {
 
         }
     };

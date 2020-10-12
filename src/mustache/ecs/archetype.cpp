@@ -20,7 +20,7 @@ Archetype::~Archetype() {
     data_storage_.clear(true);
 }
 
-void Archetype::callDestructor(const ArchetypeComponentDataStorage::ElementView& view) {
+void Archetype::callDestructor(const ElementView& view) {
     for (const auto &info : operation_helper_.destroy) {
         info.destructor(view.getData<FunctionSafety::kUnsafe>(info.component_index));
     }
