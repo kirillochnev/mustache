@@ -63,28 +63,75 @@ namespace mustache {
             return TaskElementView{};
         }
 
-        uint32_t current_task_size;
-        PerEntityJobTaskId task_id = PerEntityJobTaskId::make(0u);
+        uint32_t size;
+        PerEntityJobTaskId id = PerEntityJobTaskId::make(0u);
         TaskArchetypeIndex first_archetype = TaskArchetypeIndex::make(0u);
         ArchetypeEntityIndex first_entity = ArchetypeEntityIndex::make(0u);
     };
 
-    struct TaskViewIterator {
+    struct ArchetypeIterator {
+        struct Begin {
+            uint32_t current_size {0u};
+            uint32_t dist_to_end {0u};
+            TaskArchetypeIndex archetype_index = TaskArchetypeIndex::make(0u);
+            DefaultWorldFilterResult* filter_result_ = nullptr;
+
+            Begin(const TaskInfo& info, DefaultWorldFilterResult& fr):
+                dist_to_end{info.size},
+                archetype_index{info.first_archetype},
+                filter_result_{&fr} {
+
+                const auto& archetype_info = filter_result_->filtered_archetypes[archetype_index.toInt()];
+                const uint32_t num_free_entities_in_arch = archetype_info.entities_count - info.first_entity.toInt();
+                current_size = std::min(dist_to_end, num_free_entities_in_arch);
+            }
+
+            uint32_t updateCurrentSize() const noexcept {
+                const auto& archetype_info = filter_result_->filtered_archetypes[archetype_index.toInt()];
+                const uint32_t num_free_entities_in_arch = archetype_info.entities_count;
+                return std::min(dist_to_end, num_free_entities_in_arch);
+            }
+
+            Begin& operator++() noexcept {
+                dist_to_end -= current_size;
+                current_size = updateCurrentSize();
+                return *this;
+            }
+
+            const Begin& operator*() const noexcept {
+                return *this;
+            }
+            bool operator != (nullptr_t) const noexcept {
+                return dist_to_end != 0u;
+            }
+        };
+
+        Begin begin() const noexcept {
+            return begin_;
+        }
+        nullptr_t end() const noexcept {
+            return nullptr;
+        }
+    private:
+        Begin begin_;
+    };
+
+    struct TaskIterator {
     public:
         struct End {
             PerEntityJobTaskId task_id_;
         };
 
         bool operator!=(const End& end) const noexcept {
-            return task_info_.task_id.isValid() && task_info_.task_id != end.task_id_;
+            return task_info_.id.isValid() && task_info_.id != end.task_id_;
         }
 
         void updateTaskSize() noexcept {
-            task_info_.current_task_size = task_info_.task_id.toInt() < tasks_with_extra_item_ ? ept_ + 1 : ept_;
+            task_info_.size = task_info_.id.toInt() < tasks_with_extra_item_ ? ept_ + 1 : ept_;
         }
 
-        TaskViewIterator& operator++() noexcept {
-            uint32_t num_entities_to_iterate = task_info_.current_task_size;
+        TaskIterator& operator++() noexcept {
+            uint32_t num_entities_to_iterate = task_info_.size;
             while (num_entities_to_iterate != 0) {
                 const auto& archetype_info = filter_result_->filtered_archetypes[task_info_.first_archetype.toInt()];
                 const uint32_t num_free_entities_in_arch = archetype_info.entities_count - task_info_.first_entity.toInt();
@@ -97,7 +144,7 @@ namespace mustache {
                     task_info_.first_entity = ArchetypeEntityIndex::make(0);
                 }
             }
-            ++task_info_.task_id;
+            ++task_info_.id;
             updateTaskSize();
             return *this;
         }
@@ -105,35 +152,41 @@ namespace mustache {
             return task_info_;
         }
 
-    private:
-        friend struct TaskView;
-        TaskViewIterator(DefaultWorldFilterResult& filter_result, uint32_t num_tasks):
+        TaskIterator(DefaultWorldFilterResult& filter_result, uint32_t num_tasks):
                 filter_result_{&filter_result},
                 ept_{filter_result.total_entity_count / num_tasks},
                 tasks_with_extra_item_ {filter_result.total_entity_count - num_tasks * ept_} {
             updateTaskSize();
         }
+
+    private:
         DefaultWorldFilterResult* filter_result_;
         uint32_t ept_;
         uint32_t tasks_with_extra_item_;
         TaskInfo task_info_;
     };
 
-    struct TaskView {
-        TaskView(DefaultWorldFilterResult& filter_result, uint32_t num_tasks):
-                begin_{filter_result, num_tasks},
-                end_ {PerEntityJobTaskId::make(num_tasks)} {
+    MUSTACHE_INLINE auto splitByTasks(DefaultWorldFilterResult& filter_result, uint32_t num_tasks) {
+        struct Result {
+            Result(DefaultWorldFilterResult &filter_result, uint32_t num_tasks) :
+                    begin_{filter_result, num_tasks},
+                    end_{PerEntityJobTaskId::make(num_tasks)} {
 
-        }
+            }
 
-        TaskViewIterator begin() noexcept {
-            return begin_;
-        }
-        TaskViewIterator::End end() const noexcept {
-            return end_;
-        }
-    private:
-        TaskViewIterator begin_;
-        TaskViewIterator::End end_;
-    };
+            TaskIterator begin() noexcept {
+                return begin_;
+            }
+
+            TaskIterator::End end() const noexcept {
+                return end_;
+            }
+
+        private:
+            TaskIterator begin_;
+            TaskIterator::End end_;
+        };
+
+        return Result{filter_result, num_tasks};
+    }
 }

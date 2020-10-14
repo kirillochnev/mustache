@@ -74,10 +74,9 @@ namespace mustache {
         MUSTACHE_INLINE void runParallel(World&, Dispatcher& dispatcher, uint32_t task_count) override {
             static constexpr auto index_sequence = std::make_index_sequence<Info::FunctionInfo::components_count>();
 
-            for (const auto &info : TaskView{filter_result_, task_count}) {
-                dispatcher.addParallelTask([info, this] {
-                    singleTask(info.task_id, info.first_archetype, info.first_entity, info.current_task_size,
-                               index_sequence);
+            for (const auto& task : splitByTasks(filter_result_, task_count)) {
+                dispatcher.addParallelTask([task, this] {
+                    singleTask(task.id, task.first_archetype, task.first_entity, task.size, index_sequence);
                 });
             }
 
@@ -151,11 +150,10 @@ namespace mustache {
         template<size_t... _I>
         MUSTACHE_INLINE void singleTask(PerEntityJobTaskId task_id, TaskArchetypeIndex archetype_index,
                                         ArchetypeEntityIndex begin, uint32_t count, const std::index_sequence<_I...>&) {
-//            const uint32_t num_archetypes = filter_result_.filtered_archetypes.size();
             JobInvocationIndex invocation_index;
             invocation_index.task_index = task_id;
             invocation_index.entity_index_in_task = PerEntityJobEntityIndexInTask::make(0);
-            while (count != 0/* && archetype_index.toInt() < num_archetypes*/) {
+            while (count != 0) {
                 auto& archetype_info = filter_result_.filtered_archetypes[archetype_index.toInt()];
                 const uint32_t num_free_entities_in_arch = archetype_info.entities_count - begin.toInt();
                 const uint32_t objects_to_iterate = std::min(count, num_free_entities_in_arch);
