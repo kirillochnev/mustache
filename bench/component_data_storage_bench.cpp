@@ -51,7 +51,7 @@ namespace {
             });
         }
         dispatcher.waitForParallelFinish();*/
-        for (const auto& task : TaskView{filter_result, task_count}) {
+        for (const auto& task : splitByTasks(filter_result, task_count)) {
             dispatcher.addParallelTask([task] {
                 for (auto element : task.elementView()) {
                     callMePerElement(element);

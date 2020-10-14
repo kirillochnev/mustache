@@ -70,14 +70,27 @@ namespace mustache {
             singleTask(PerEntityJobTaskId::make(0), TaskArchetypeIndex::make(0),
                        ArchetypeEntityIndex::make(0), filter_result_.total_entity_count, index_sequence);
         }
+        template<size_t... _I>
+        MUSTACHE_INLINE void applyPerArrayFunction(TaskArchetypeIndex archetype_index, ArchetypeEntityIndex first,
+                uint32_t count, JobInvocationIndex invocation_index, const std::index_sequence<_I...>&) {
+            auto archetype = filter_result_.filtered_archetypes[archetype_index.toInt()].archetype;
+            applyPerArrayFunction<_I...>(*archetype, first, ComponentArraySize::make(count), invocation_index);
+        }
 
         MUSTACHE_INLINE void runParallel(World&, Dispatcher& dispatcher, uint32_t task_count) override {
             static constexpr auto index_sequence = std::make_index_sequence<Info::FunctionInfo::components_count>();
-
+            JobInvocationIndex invocation_index;
+            invocation_index.task_index = PerEntityJobTaskId::make(0);
+            invocation_index.entity_index_in_task = PerEntityJobEntityIndexInTask::make(0);
             for (const auto& task : splitByTasks(filter_result_, task_count)) {
-                dispatcher.addParallelTask([task, this] {
-                    singleTask(task.id, task.first_archetype, task.first_entity, task.size, index_sequence);
+                dispatcher.addParallelTask([task, this, invocation_index] {
+                    for (const auto& info : ArchetypeIterator{task, filter_result_}) {
+                        applyPerArrayFunction(info.archetype_index, info.first_entity, info.current_size,
+                                invocation_index, index_sequence);
+
+                    }
                 });
+                ++invocation_index.task_index;
             }
 
             dispatcher.waitForParallelFinish();
