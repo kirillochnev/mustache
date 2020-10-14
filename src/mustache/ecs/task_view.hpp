@@ -71,49 +71,42 @@ namespace mustache {
 
     struct ArchetypeIterator {
         ArchetypeIterator(const TaskInfo& info, DefaultWorldFilterResult& fr):
-            begin_{info, fr} {
-        }
-
-        struct Begin {
-            uint32_t current_size {0u};
-            uint32_t dist_to_end {0u};
-            TaskArchetypeIndex archetype_index = TaskArchetypeIndex::make(0u);
-            decltype(DefaultWorldFilterResult::filtered_archetypes)* filtered_archetypes = nullptr;
-            ArchetypeEntityIndex first_entity = ArchetypeEntityIndex::make(0u);
-
-            Begin(const TaskInfo& info, DefaultWorldFilterResult& fr):
                 dist_to_end{info.size},
                 archetype_index{info.first_archetype},
                 filtered_archetypes{&fr.filtered_archetypes},
                 first_entity{info.first_entity} {
+            const auto& archetype_info = (*filtered_archetypes)[archetype_index.toInt()];
+            const uint32_t num_free_entities_in_arch = archetype_info.entities_count - info.first_entity.toInt();
+            current_size = std::min(dist_to_end, num_free_entities_in_arch);
+        }
+        void incrementArchetype() {
+            dist_to_end -= current_size;
+            const auto& archetype_info = (*filtered_archetypes)[archetype_index.toInt()];
+            const uint32_t num_free_entities_in_arch = archetype_info.entities_count;
+            current_size = std::min(dist_to_end, num_free_entities_in_arch);
+            first_entity = ArchetypeEntityIndex::make(0);
+        }
 
-                const auto& archetype_info = (*filtered_archetypes)[archetype_index.toInt()];
-                const uint32_t num_free_entities_in_arch = archetype_info.entities_count - info.first_entity.toInt();
-                current_size = std::min(dist_to_end, num_free_entities_in_arch);
-            }
+        ArchetypeIterator& operator++() noexcept {
+            incrementArchetype();
+            return *this;
+        }
 
-            void incrementArchetype() {
-                dist_to_end -= current_size;
-                const auto& archetype_info = (*filtered_archetypes)[archetype_index.toInt()];
-                const uint32_t num_free_entities_in_arch = archetype_info.entities_count;
-                current_size = std::min(dist_to_end, num_free_entities_in_arch);
-                first_entity = ArchetypeEntityIndex::make(0);
-            }
-
-            Begin& operator++() noexcept {
-                incrementArchetype();
-                return *this;
-            }
-
-            const Begin& operator*() const noexcept { return *this; }
-            bool operator != (nullptr_t) const noexcept {  return dist_to_end != 0u; }
-        };
-
-        Begin begin() const noexcept { return begin_; }
+        const ArchetypeIterator& operator*() const noexcept { return *this; }
+        bool operator != (nullptr_t) const noexcept {  return dist_to_end != 0u; }
+        ArchetypeIterator begin() const noexcept { return *this; }
         nullptr_t end() const noexcept { return nullptr; }
-    private:
-        Begin begin_;
+//    private:
+        uint32_t current_size {0u};
+        uint32_t dist_to_end {0u};
+        TaskArchetypeIndex archetype_index = TaskArchetypeIndex::make(0u);
+        decltype(DefaultWorldFilterResult::filtered_archetypes)* filtered_archetypes = nullptr;
+        ArchetypeEntityIndex first_entity = ArchetypeEntityIndex::make(0u);
     };
+
+    /*struct ArrayIterator {
+        ArchetypeIterator archetype_iterator;
+    };*/
 
     struct TaskIterator {
     public:
