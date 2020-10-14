@@ -10,7 +10,9 @@ Archetype::Archetype(World& world, ArchetypeIndex id, const ComponentIdMask& mas
     mask_{mask},
     operation_helper_{mask},
     data_storage_{mask},
+    components_count_{mask.componentsCount()},
     id_{id} {
+
 }
 
 Archetype::~Archetype() {
@@ -35,9 +37,7 @@ void Archetype::externalMove(Entity entity, Archetype& prev_archetype, Archetype
     if (entities_.size() <= index.toInt()) {
         entities_.resize(index.next().toInt());
     }
-    entities_[index.toInt()] = entity;
-//    Logger{}.debug("Moving entity from: %s pos: %d,  to: %s pos: %d",
-//            prev_archetype.mask_.toString(), prev_index.toInt(), mask_.toString(), index.toInt());
+    entities_[index.toArchetypeIndex()] = entity;
 
     ComponentIndex component_index = ComponentIndex::make(0);
     const auto source_view = prev_archetype.getElementView(prev_index);
@@ -56,6 +56,7 @@ void Archetype::externalMove(Entity entity, Archetype& prev_archetype, Archetype
 
     prev_archetype.remove(*source_view.getEntity<FunctionSafety::kUnsafe>(), prev_index);
 
+    updateAllVersions(index.toArchetypeIndex(), worldVersion());
     world_.entities().updateLocation(entity, id_, index.toArchetypeIndex());
 }
 
@@ -64,7 +65,7 @@ ArchetypeEntityIndex Archetype::insert(Entity entity, bool call_constructor) {
     if (entities_.size() <= index.toInt()) {
         entities_.resize(index.next().toInt());
     }
-    entities_[index.toInt()] = entity;
+    entities_[index.toArchetypeIndex()] = entity;
 
     if (call_constructor) {
         const auto view = getElementView(index.toArchetypeIndex());
@@ -73,6 +74,7 @@ ArchetypeEntityIndex Archetype::insert(Entity entity, bool call_constructor) {
             info.constructor(component_ptr);
         }
     }
+    updateAllVersions(index.toArchetypeIndex(), worldVersion());
     world_.entities().updateLocation(entity, id_, index.toArchetypeIndex());
     return index.toArchetypeIndex();
 }
@@ -92,6 +94,10 @@ void Archetype::internalMove(ArchetypeEntityIndex source_index, ArchetypeEntityI
     auto source_entity = *source_view.getEntity<FunctionSafety::kUnsafe>();
     auto& dest_entity = *dest_view.getEntity<FunctionSafety::kUnsafe>();
 
+    const auto world_version = worldVersion();
+    updateAllVersions(source_index, world_version);
+    updateAllVersions(destination_index, world_version);
+
     world_.entities().updateLocation(dest_entity, ArchetypeIndex::null(), ArchetypeEntityIndex::null());
     world_.entities().updateLocation(source_entity, id_, destination_index);
 
@@ -110,6 +116,7 @@ void Archetype::remove(Entity entity_to_destroy, ArchetypeEntityIndex entity_ind
         } else {
             data_storage_.decrSize();
         }
+        updateAllVersions(entity_index, worldVersion());
         world_.entities().updateLocation(entity_to_destroy, ArchetypeIndex::null(), ArchetypeEntityIndex::null());
     } else {
         internalMove(last_index, entity_index);

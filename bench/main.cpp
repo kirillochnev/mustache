@@ -54,7 +54,7 @@ void destroy(std::byte*& ptr, const mustache::ComponentId& id) {
 
 //namespace {
     struct Position {
-        glm::vec3 value = glm::vec3(1,2, 3);
+        glm::vec3 value;// = glm::vec3(1,2, 3);
     };
 
     struct Velocity {
@@ -160,6 +160,7 @@ void iterate500k() {
 
     mustache::Logger{}.info("Task Begin!");
     mustache::Dispatcher dispatcher;
+//    dispatcher.setSingleThreadMode(true);
     const auto task_count = dispatcher.threadCount() + 1;
     for (uint32_t i = 0; i < kNumIteration; ++i) {
 //        update_pos_job.count = 0;
@@ -237,6 +238,7 @@ void showComponentInfo() {
 
 void remove_component_1();
 void remove_component_2();
+void testGlobalIndex();
 int main() {
 //    showComponentInfo<Component0>();
 //    showComponentInfo<Component0*>();
@@ -260,5 +262,6 @@ int main() {
     iterate500k();
 //    remove_component_1();
 //    remove_component_2();
+//    testGlobalIndex();
     return 0;
 }

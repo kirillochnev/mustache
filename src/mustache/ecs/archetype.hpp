@@ -27,10 +27,6 @@ namespace mustache {
         using Super = ArchetypeComponentDataStorage::ElementView;
         using Super::Super;
 
-        /*explicit ElementView(const Super& view) noexcept :
-                Super{view} {
-
-        }*/
         ElementView(const Super& view, const Archetype& archetype):
             Super{view},
             archetype_{&archetype} {
@@ -58,7 +54,7 @@ namespace mustache {
                     return Entity{};
                 }
             }
-            return entities_[index.toInt()];
+            return entities_[index];
         }
 
         [[nodiscard]] EntityGroup createGroup(size_t count);
@@ -114,9 +110,89 @@ namespace mustache {
                 *this
             };
         }
+
+        template<FunctionSafety _Safety = FunctionSafety::kDefault>
+        [[nodiscard]] WorldVersion getComponentVersion(ChunkIndex index, ComponentIndex component_index) const noexcept {
+            if constexpr (isSafe(_Safety)) {
+                if (components_count_ <= component_index.toInt() ||
+                    versions_.size() / components_count_ <= index.toInt()) {
+                    return WorldVersion::null();
+                }
+            }
+            return versions_[versionIndex(index, component_index)];
+        }
+
+        // NOTE: can not resize versions_
+        template<FunctionSafety _Safety = FunctionSafety::kDefault>
+        void updateComponentsVersion(ChunkIndex index, const ComponentIndexMask& update_mask,
+                                     WorldVersion version_to_set) noexcept {
+            const auto first_index = components_count_ * index.toInt();
+
+            if constexpr (isSafe(_Safety)) {
+                const auto last_index = first_index + components_count_;
+                if (!index.isValid() || !version_to_set.isValid() || versions_.size() <= last_index) {
+                    return;
+                }
+            }
+
+            auto versions = versions_.data() + first_index;
+            update_mask.forEachItem([this, versions, version_to_set](ComponentIndex component_index) {
+                if constexpr(isSafe(_Safety)) {
+                    if (component_index.toInt() >= components_count_) {
+                        return;
+                    }
+                }
+                versions[component_index.toInt()] = version_to_set;
+            });
+        }
+
+        // NOTE: can not resize versions_
+        template<FunctionSafety _Safety = FunctionSafety::kDefault>
+        void updateComponentsVersion(typename std::conditional<isSafe(_Safety),
+                const ComponentIndexMask&, ComponentIndexMask>::type update_mask,
+                WorldVersion version_to_set) noexcept {
+            if constexpr (isSafe(_Safety)) {
+                if (!version_to_set.isValid()) {
+                    return;
+                }
+                update_mask.forEachItem([&update_mask, this](ComponentIndex index) {
+                    if (index.toInt() >= components_count_) {
+                        update_mask.reset(index);
+                    }
+                });
+            }
+            const auto num_chunks = size() / chunk_size_;
+            for (uint32_t i = 0; i < num_chunks; ++i) {
+                updateComponentsVersion<FunctionSafety::kUnsafe>(ChunkIndex::make(i), update_mask, version_to_set);
+            }
+        }
+
     private:
         friend ElementView;
         friend EntityManager;
+
+        // NOTE: can resize versions_
+        template<FunctionSafety _Safety = FunctionSafety::kDefault>
+        void updateAllVersions(ArchetypeEntityIndex index, WorldVersion world_version) noexcept {
+            if constexpr (isSafe(_Safety)) {
+                if (!entities_.has(index) || !index.isValid() || !world_version.isValid()) {
+                    return;
+                }
+            }
+            const auto first_index = components_count_ * index.toInt() / chunk_size_;
+            const auto last_index = first_index + components_count_;
+
+            if (versions_.size() <= last_index) {
+                versions_.resize(last_index + 1);
+            }
+            for (uint32_t i = first_index; i < last_index; ++i) {
+                versions_[i] = world_version;
+            }
+        }
+
+        MUSTACHE_INLINE uint32_t versionIndex(ChunkIndex chunk_index, ComponentIndex component_index) const noexcept {
+            return chunk_index.toInt() * components_count_ + component_index.toInt();
+        }
 
         template<typename _F>
         void forEachEntity(_F&& callback) {
@@ -149,7 +225,10 @@ namespace mustache {
         ComponentIdMask mask_;
         ArchetypeOperationHelper operation_helper_;
         ArchetypeComponentDataStorage data_storage_;
-        std::vector<Entity> entities_;
+        ArrayWrapper<std::vector<Entity>, ArchetypeEntityIndex> entities_;
+        uint32_t components_count_;
+        uint32_t chunk_size_ = 1024;
+        std::vector<WorldVersion> versions_;
 
         ArchetypeIndex id_;
     };
@@ -168,4 +247,5 @@ namespace mustache {
         // TODO: remove const_cast
         return const_cast<Entity*>(archetype_->entities_.data()) + gi.toInt();
     }
+
 }

@@ -14,6 +14,12 @@ namespace mustache {
                 array_(std::forward<ARGS>(args)...) {
 
         }
+        decltype(auto) data() noexcept (noexcept(_ArrayType::data)) {
+            return array_.data();
+        }
+        decltype(auto) data() const noexcept (noexcept(_ArrayType::data)) {
+            return array_.data();
+        }
         auto size() const noexcept {
             return array_.size();
         }

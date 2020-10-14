@@ -4,7 +4,8 @@
 #include <mustache/ecs/world.hpp>
 #include <mustache/ecs/entity_manager.hpp>
 #include <mustache/ecs/job_arg_parcer.hpp>
-#include <mustache//ecs/world_filter.hpp>
+#include <mustache/ecs/world_filter.hpp>
+#include <mustache//ecs/task_view.hpp>
 #include <mustache/utils/dispatch.hpp>
 
 namespace mustache {
@@ -150,14 +151,14 @@ namespace mustache {
         template<size_t... _I>
         MUSTACHE_INLINE void singleTask(PerEntityJobTaskId task_id, TaskArchetypeIndex archetype_index,
                                         ArchetypeEntityIndex begin, uint32_t count, const std::index_sequence<_I...>&) {
-            const uint32_t num_archetypes = filter_result_.filtered_archetypes.size();
+//            const uint32_t num_archetypes = filter_result_.filtered_archetypes.size();
             JobInvocationIndex invocation_index;
             invocation_index.task_index = task_id;
             invocation_index.entity_index_in_task = PerEntityJobEntityIndexInTask::make(0);
-            while (count != 0 && archetype_index.toInt() < num_archetypes) {
+            while (count != 0/* && archetype_index.toInt() < num_archetypes*/) {
                 auto& archetype_info = filter_result_.filtered_archetypes[archetype_index.toInt()];
                 const uint32_t num_free_entities_in_arch = archetype_info.entities_count - begin.toInt();
-                const uint32_t objects_to_iterate = count < num_free_entities_in_arch ? count : num_free_entities_in_arch;
+                const uint32_t objects_to_iterate = std::min(count, num_free_entities_in_arch);
                 const auto array_size = ComponentArraySize::make(objects_to_iterate);
                 applyPerArrayFunction<_I...>(*archetype_info.archetype, begin, array_size, invocation_index);
                 count -= objects_to_iterate;
