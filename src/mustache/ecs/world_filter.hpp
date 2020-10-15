@@ -7,10 +7,14 @@ namespace mustache {
      * Stores result of archetype filtering
      */
     struct DefaultWorldFilterResult {
+        struct EntityBlock {
+            uint32_t begin;
+            uint32_t end;
+        };
         struct ArchetypeFilterResult {
             Archetype* archetype {nullptr};
             uint32_t entities_count {0};
-            std::vector<ChunkIndex> chunks;
+            std::vector<EntityBlock> blocks;
         };
         void apply(World& world);
         std::vector<ArchetypeFilterResult> filtered_archetypes;

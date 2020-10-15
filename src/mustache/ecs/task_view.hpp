@@ -1,72 +1,70 @@
 #pragma once
 
 #include <mustache/ecs/world_filter.hpp>
+#include <mustache/ecs/archetype.hpp>
 
 namespace mustache {
 
-    struct TaskArrayView {
-        struct ArrayHandler {
-            ArrayHandler& operator++() noexcept {
-                auto& archetype_info = filter_result_->filtered_archetypes[archetype_index.toInt()];
-                const uint32_t num_free_entities_in_arch = archetype_info.entities_count - entity_index.toInt();
-                current_iteration_array_size = std::min(entities_count, num_free_entities_in_arch);
-
-//                applyPerArrayFunction<_I...>(*archetype_info.archetype, begin, array_size, invocation_index);
-
-                entities_count -= current_iteration_array_size;
-                entity_index = ArchetypeEntityIndex::make(0);
-                ++archetype_index;
-                return *this;
-            }
-            ArrayHandler& operator*() noexcept {
-                return *this;
-            }
-
-            bool operator!=(nullptr_t) const noexcept {
-                return entities_count != 0;
-            }
-            DefaultWorldFilterResult* filter_result_ = nullptr;
-            uint32_t entities_count = 0u;
-            uint32_t current_iteration_array_size = 0u;
-            TaskArchetypeIndex archetype_index = TaskArchetypeIndex::make(0u);
-            ArchetypeEntityIndex entity_index = ArchetypeEntityIndex::make(0u);
-            JobInvocationIndex invocation_index;
-        };
-
-        ArrayHandler begin_;
-
-        ArrayHandler begin() const noexcept {return ArrayHandler{};}
-        nullptr_t end() const noexcept {return nullptr;}
-    };
-
-    struct TaskElementView {
-        struct Element {
-            Element& operator++() noexcept {
-                return *this;
-            }
-            Element& operator*() noexcept {
-                return *this;
-            }
-            bool operator!=(nullptr_t) const noexcept {
-                return true;
-            }
-        };
-        Element begin() const noexcept {return Element{};}
-        nullptr_t end() const noexcept {return nullptr;}
-    };
-
     struct TaskInfo {
-        TaskArrayView arrayView() const noexcept {
-            return TaskArrayView{};
-        }
-        TaskElementView elementView() const noexcept {
-            return TaskElementView{};
-        }
-
         uint32_t size;
         PerEntityJobTaskId id = PerEntityJobTaskId::make(0u);
         TaskArchetypeIndex first_archetype = TaskArchetypeIndex::make(0u);
         ArchetypeEntityIndex first_entity = ArchetypeEntityIndex::make(0u);
+    };
+
+
+    struct FilterResultArrayView : private ElementView {
+        using FilrerResult = DefaultWorldFilterResult::ArchetypeFilterResult;
+
+        FilterResultArrayView(DefaultWorldFilterResult& filter_result, TaskArchetypeIndex archetype_index,
+                ArchetypeEntityIndex first_entity, uint32_t size):
+                ElementView{filter_result.filtered_archetypes[archetype_index.toInt()].archetype->getElementView(first_entity)},
+                dist_to_end_ {std::min(size, archetype_->size() - first_entity.toInt())},
+                filter_result_ {&filter_result.filtered_archetypes[archetype_index.toInt()]} {
+            if (dist_to_end_ > 0) {
+                const auto index_in_archetype = globalIndex().toInt();
+
+                auto dist_to_block_end = filter_result_->blocks[current_block_].end - index_in_archetype;
+                if (dist_to_block_end == 0u) {
+                    ++current_block_;
+                    dist_to_block_end = filter_result_->blocks[current_block_].end - index_in_archetype;
+                }
+                array_size_ = std::min(dist_to_block_end, std::min(elementArraySize(), dist_to_end_));
+            }
+        }
+
+        FilterResultArrayView& begin() { return *this; }
+        nullptr_t end() const noexcept { return nullptr; }
+        bool operator != (nullptr_t) const noexcept { return dist_to_end_ != 0u; }
+        const FilterResultArrayView& operator*() const noexcept { return *this; }
+
+        FilterResultArrayView& operator++() noexcept {
+            dist_to_end_ -= array_size_;
+            *this += array_size_;
+            if (dist_to_end_ > 0) {
+                const auto index_in_archetype = globalIndex().toInt();
+
+                auto dist_to_block_end = filter_result_->blocks[current_block_].end - index_in_archetype;
+                if (dist_to_block_end == 0u) {
+                    ++current_block_;
+                    dist_to_block_end = filter_result_->blocks[current_block_].end - index_in_archetype;
+                }
+                array_size_ = std::min(dist_to_block_end, std::min(elementArraySize(), dist_to_end_));
+            }
+
+            return *this;
+        }
+
+        using ElementView::getData;
+        using ElementView::getEntity;
+        [[nodiscard]] uint32_t arraySize() const noexcept {
+            return array_size_;
+        }
+    private:
+        uint32_t current_block_ = 0u;
+        uint32_t array_size_ = 0u;
+        uint32_t dist_to_end_ = 0u;
+        FilrerResult* filter_result_ = nullptr;
     };
 
     struct ArchetypeIterator {
@@ -96,17 +94,13 @@ namespace mustache {
         bool operator != (nullptr_t) const noexcept {  return dist_to_end != 0u; }
         ArchetypeIterator begin() const noexcept { return *this; }
         nullptr_t end() const noexcept { return nullptr; }
-//    private:
+
         uint32_t current_size {0u};
         uint32_t dist_to_end {0u};
         TaskArchetypeIndex archetype_index = TaskArchetypeIndex::make(0u);
         decltype(DefaultWorldFilterResult::filtered_archetypes)* filtered_archetypes = nullptr;
         ArchetypeEntityIndex first_entity = ArchetypeEntityIndex::make(0u);
     };
-
-    /*struct ArrayIterator {
-        ArchetypeIterator archetype_iterator;
-    };*/
 
     struct TaskIterator {
     public:
@@ -140,8 +134,9 @@ namespace mustache {
             updateTaskSize();
             return *this;
         }
-        const TaskInfo& operator*() const noexcept {
-            return task_info_;
+
+        ArchetypeIterator operator*() const noexcept {
+            return ArchetypeIterator{task_info_, *filter_result_};
         }
 
         TaskIterator(DefaultWorldFilterResult& filter_result, uint32_t num_tasks):

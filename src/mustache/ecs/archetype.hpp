@@ -38,6 +38,7 @@ namespace mustache {
 
         const Archetype* archetype_ = nullptr;
     };
+
     /**
      * Stores Entities with same component set
      * NOTE: It is has no information about entity manager, so Archetype's methods don't effects entity location.
@@ -69,6 +70,14 @@ namespace mustache {
             return id_;
         }
 
+        [[nodiscard]] uint32_t chunkCount() const noexcept {
+            return entities_.size() / chunk_size_;
+        }
+
+        [[nodiscard]] ChunkCapacity chunkCapacity() const noexcept {
+            return ChunkCapacity::make(chunk_size_);
+        }
+
         bool isMatch(const ComponentIdMask& mask) const noexcept {
             return mask_.isMatch(mask);
         }
@@ -76,6 +85,7 @@ namespace mustache {
         bool hasComponent(ComponentId component_id) const noexcept {
             return mask_.has(component_id);
         }
+
         template<typename T>
         bool hasComponent() const noexcept {
             static const auto component_id = ComponentFactory::registerComponent<T>();
@@ -227,7 +237,7 @@ namespace mustache {
         ArchetypeComponentDataStorage data_storage_;
         ArrayWrapper<std::vector<Entity>, ArchetypeEntityIndex> entities_;
         uint32_t components_count_;
-        uint32_t chunk_size_ = 1024;
+        uint32_t chunk_size_ = 16u;
         std::vector<WorldVersion> versions_;
 
         ArchetypeIndex id_;

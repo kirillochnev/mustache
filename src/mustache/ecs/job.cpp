@@ -17,6 +17,7 @@ void DefaultWorldFilterResult::apply(World &world) {
             ArchetypeFilterResult item;
             item.archetype = &arch;
             item.entities_count = arch.size();
+            item.blocks.push_back(EntityBlock{0, item.entities_count});
             filtered_archetypes.push_back(item);
         }
     }

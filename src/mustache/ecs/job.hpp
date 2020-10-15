@@ -64,12 +64,27 @@ namespace mustache {
         PerEntityJob() {
             filter_result_.mask_ = Info::componentMask();
         }
+
         MUSTACHE_INLINE void runCurrentThread(World& world) override {
             filter_result_.apply(world);
             static constexpr auto index_sequence = std::make_index_sequence<Info::FunctionInfo::components_count>();
-            singleTask(PerEntityJobTaskId::make(0), TaskArchetypeIndex::make(0),
-                       ArchetypeEntityIndex::make(0), filter_result_.total_entity_count, index_sequence);
+            JobInvocationIndex invocation_index;
+            invocation_index.task_index = PerEntityJobTaskId::make(0);
+            invocation_index.entity_index_in_task = PerEntityJobEntityIndexInTask::make(0);
+            uint32_t count = filter_result_.total_entity_count;
+            TaskArchetypeIndex archetype_index = TaskArchetypeIndex::make(0);
+            ArchetypeEntityIndex begin = ArchetypeEntityIndex::make(0);
+            while (count != 0) {
+                auto& archetype_info = filter_result_.filtered_archetypes[archetype_index.toInt()];
+                const uint32_t num_free_entities_in_arch = archetype_info.entities_count - begin.toInt();
+                const uint32_t objects_to_iterate = std::min(count, num_free_entities_in_arch);
+                applyPerArrayFunction(archetype_index, begin, objects_to_iterate, invocation_index, index_sequence);
+                count -= objects_to_iterate;
+                begin = ArchetypeEntityIndex::make(0);
+                ++archetype_index;
+            }
         }
+
         template<size_t... _I>
         MUSTACHE_INLINE void applyPerArrayFunction(TaskArchetypeIndex archetype_index, ArchetypeEntityIndex first,
                 uint32_t count, JobInvocationIndex invocation_index, const std::index_sequence<_I...>&) {
@@ -82,9 +97,9 @@ namespace mustache {
             JobInvocationIndex invocation_index;
             invocation_index.task_index = PerEntityJobTaskId::make(0);
             invocation_index.entity_index_in_task = PerEntityJobEntityIndexInTask::make(0);
-            for (const auto& task : splitByTasks(filter_result_, task_count)) {
+            for (auto task : splitByTasks(filter_result_, task_count)) {
                 dispatcher.addParallelTask([task, this, invocation_index] {
-                    for (const auto& info : ArchetypeIterator{task, filter_result_}) {
+                    for (const auto& info : task) {
                         applyPerArrayFunction(info.archetype_index, info.first_entity, info.current_size,
                                 invocation_index, index_sequence);
 
@@ -156,25 +171,6 @@ namespace mustache {
 
                 view += arr_len;
                 elements_rest -= arr_len;
-            }
-        }
-
-        /// NOTE: world filtering required
-        template<size_t... _I>
-        MUSTACHE_INLINE void singleTask(PerEntityJobTaskId task_id, TaskArchetypeIndex archetype_index,
-                                        ArchetypeEntityIndex begin, uint32_t count, const std::index_sequence<_I...>&) {
-            JobInvocationIndex invocation_index;
-            invocation_index.task_index = task_id;
-            invocation_index.entity_index_in_task = PerEntityJobEntityIndexInTask::make(0);
-            while (count != 0) {
-                auto& archetype_info = filter_result_.filtered_archetypes[archetype_index.toInt()];
-                const uint32_t num_free_entities_in_arch = archetype_info.entities_count - begin.toInt();
-                const uint32_t objects_to_iterate = std::min(count, num_free_entities_in_arch);
-                const auto array_size = ComponentArraySize::make(objects_to_iterate);
-                applyPerArrayFunction<_I...>(*archetype_info.archetype, begin, array_size, invocation_index);
-                count -= objects_to_iterate;
-                begin = ArchetypeEntityIndex::make(0);
-                ++archetype_index;
             }
         }
 
