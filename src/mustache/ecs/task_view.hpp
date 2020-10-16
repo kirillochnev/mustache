@@ -57,6 +57,9 @@ namespace mustache {
 
         using ElementView::getData;
         using ElementView::getEntity;
+        Archetype* archetype() const noexcept {
+            return filter_result_->archetype;
+        }
         [[nodiscard]] uint32_t arraySize() const noexcept {
             return array_size_;
         }
@@ -79,10 +82,15 @@ namespace mustache {
         }
         void incrementArchetype() {
             dist_to_end -= current_size;
-            const auto& archetype_info = (*filtered_archetypes)[archetype_index.toInt()];
-            const uint32_t num_free_entities_in_arch = archetype_info.entities_count;
-            current_size = std::min(dist_to_end, num_free_entities_in_arch);
-            first_entity = ArchetypeEntityIndex::make(0);
+            if (dist_to_end > 0) {
+                ++archetype_index;
+                const auto &archetype_info = (*filtered_archetypes)[archetype_index.toInt()];
+                const uint32_t num_free_entities_in_arch = archetype_info.entities_count;
+                current_size = std::min(dist_to_end, num_free_entities_in_arch);
+                first_entity = ArchetypeEntityIndex::make(0);
+            } else {
+                current_size = 0;
+            }
         }
 
         ArchetypeIterator& operator++() noexcept {
@@ -90,6 +98,9 @@ namespace mustache {
             return *this;
         }
 
+        Archetype* archetype() const noexcept {
+            return (*filtered_archetypes)[archetype_index.toInt()].archetype;
+        }
         const ArchetypeIterator& operator*() const noexcept { return *this; }
         bool operator != (nullptr_t) const noexcept {  return dist_to_end != 0u; }
         ArchetypeIterator begin() const noexcept { return *this; }

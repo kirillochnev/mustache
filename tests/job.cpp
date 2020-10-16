@@ -366,3 +366,81 @@ TEST(Job, iterate_multithread_4_archetypes_match_4_not) {
         }
     }
 }
+
+TEST(Job, iterate_and_check_value) {
+    static_data.reset();
+
+    struct SharedPositionComponent {
+        std::shared_ptr<Position> value {new Position{0,0,0}};
+    };
+
+    struct PosInfo {
+        SharedPositionComponent ptr;
+        mustache::Entity entity;
+    };
+    std::vector<PosInfo > pos_array;
+    std::vector<mustache::Entity> created_entities;
+    mustache::World world{mustache::WorldId::make(0)};
+    auto& entities = world.entities();
+    struct UpdateJob : public mustache::PerEntityJob<UpdateJob> {
+        void operator()(SharedPositionComponent position, const Velocity& velocity, const Orientation& orientation) {
+            position.value->x += velocity.value * orientation.x;
+            position.value->y += velocity.value * orientation.y;
+            position.value->z += velocity.value * orientation.z;
+            ++static_data.count;
+        }
+    };
+    std::array archetypes {
+            &entities.getArchetype<SharedPositionComponent, Orientation, Velocity, Component0>(),
+            &entities.getArchetype<SharedPositionComponent, Velocity, Component1>(),
+            &entities.getArchetype<SharedPositionComponent, Orientation >(),
+            &entities.getArchetype<SharedPositionComponent, Orientation, Velocity, Component2>(),
+    };
+
+    for (uint32_t i = 0; i < kNumObjects / 2; ++i) {
+        for (auto archetype : archetypes) {
+            auto entity = entities.create(*archetype);
+            if (entities.hasComponent<SharedPositionComponent>(entity) && entities.hasComponent<Velocity>(entity) &&
+                entities.hasComponent<Orientation>(entity)) {
+                created_entities.push_back(entity);
+                PosInfo info;
+                info.entity = entity;
+                info.ptr = *entities.getComponent<SharedPositionComponent>(entity);
+                pos_array.push_back(info);
+            }
+            if (entities.hasComponent<Velocity>(entity)) {
+                entities.getComponent<Velocity>(entity)->value = entity.id().toInt() % 128;
+            }
+            if (entities.hasComponent<Orientation>(entity)) {
+                *entities.getComponent<Orientation>(entity) = Orientation{1, 2, 3};
+            }
+        }
+    }
+    ASSERT_EQ(pos_array.size(), kNumObjects);
+
+    UpdateJob update_job;
+    for (uint32_t i = 0; i < kNumIteration; ++i) {
+        ++static_data.cur_iteration;
+
+        update_job.run(world, dispatcher);
+
+        ASSERT_EQ(static_data.count, kNumObjects);
+
+        for (const auto& info : pos_array) {
+            ASSERT_TRUE(entities.hasComponent<SharedPositionComponent>(info.entity));
+            ASSERT_TRUE(entities.hasComponent<Velocity>(info.entity));
+            ASSERT_TRUE(entities.hasComponent<Orientation>(info.entity));
+            const auto& pos_ptr = entities.getComponent<SharedPositionComponent>(info.entity)->value;
+            ASSERT_EQ(pos_ptr, info.ptr.value);
+            const Position& position = *pos_ptr;
+            const Velocity& velocity = *entities.getComponent<Velocity>(info.entity);
+            const Orientation& orientation = *entities.getComponent<Orientation>(info.entity);
+            ASSERT_EQ(position.x, static_data.cur_iteration * velocity.value * orientation.x);
+            ASSERT_EQ(position.y, static_data.cur_iteration * velocity.value * orientation.y);
+            ASSERT_EQ(position.z, static_data.cur_iteration * velocity.value * orientation.z);
+            --static_data.count;
+        }
+
+        ASSERT_EQ(static_data.count, 0);
+    }
+}

@@ -65,23 +65,12 @@ namespace mustache {
             filter_result_.mask_ = Info::componentMask();
         }
 
-        MUSTACHE_INLINE void runCurrentThread(World& world) override {
-            filter_result_.apply(world);
+        MUSTACHE_INLINE void runCurrentThread(World&) override {
             static constexpr auto index_sequence = std::make_index_sequence<Info::FunctionInfo::components_count>();
-            JobInvocationIndex invocation_index;
-            invocation_index.task_index = PerEntityJobTaskId::make(0);
-            invocation_index.entity_index_in_task = PerEntityJobEntityIndexInTask::make(0);
-            uint32_t count = filter_result_.total_entity_count;
-            TaskArchetypeIndex archetype_index = TaskArchetypeIndex::make(0);
-            ArchetypeEntityIndex begin = ArchetypeEntityIndex::make(0);
-            while (count != 0) {
-                auto& archetype_info = filter_result_.filtered_archetypes[archetype_index.toInt()];
-                const uint32_t num_free_entities_in_arch = archetype_info.entities_count - begin.toInt();
-                const uint32_t objects_to_iterate = std::min(count, num_free_entities_in_arch);
-                applyPerArrayFunction(archetype_index, begin, objects_to_iterate, invocation_index, index_sequence);
-                count -= objects_to_iterate;
-                begin = ArchetypeEntityIndex::make(0);
-                ++archetype_index;
+            PerEntityJobTaskId task_id = PerEntityJobTaskId::make(0);
+            for (auto task : splitByTasks(filter_result_, 1)) {
+                singleTask(task, task_id, index_sequence);
+                ++task_id;
             }
         }
 
@@ -94,20 +83,13 @@ namespace mustache {
 
         MUSTACHE_INLINE void runParallel(World&, Dispatcher& dispatcher, uint32_t task_count) override {
             static constexpr auto index_sequence = std::make_index_sequence<Info::FunctionInfo::components_count>();
-            JobInvocationIndex invocation_index;
-            invocation_index.task_index = PerEntityJobTaskId::make(0);
-            invocation_index.entity_index_in_task = PerEntityJobEntityIndexInTask::make(0);
+            PerEntityJobTaskId task_id = PerEntityJobTaskId::make(0);
             for (auto task : splitByTasks(filter_result_, task_count)) {
-                dispatcher.addParallelTask([task, this, invocation_index] {
-                    for (const auto& info : task) {
-                        applyPerArrayFunction(info.archetype_index, info.first_entity, info.current_size,
-                                invocation_index, index_sequence);
-
-                    }
+                dispatcher.addParallelTask([task, this, task_id] {
+                    singleTask(task, task_id, index_sequence);
                 });
-                ++invocation_index.task_index;
+                ++task_id;
             }
-
             dispatcher.waitForParallelFinish();
         }
 
@@ -138,6 +120,35 @@ namespace mustache {
                 // TODO: it is possible to avoid per array check.
                 auto ptr = view.template getData<FunctionSafety::kSafe>(index);
                 return OptionalComponent<Component> {reinterpret_cast<Component*>(ptr)};
+            }
+        }
+
+        template<size_t... _I>
+        MUSTACHE_INLINE void singleTask(ArchetypeIterator archetype_iterator, PerEntityJobTaskId task_id,
+                const std::index_sequence<_I...>&) {
+            JobInvocationIndex invocation_index;
+            invocation_index.task_index = task_id;
+            invocation_index.entity_index_in_task = PerEntityJobEntityIndexInTask::make(0);
+            for (const auto& info : archetype_iterator) {
+                auto& archetype = *info.archetype();
+                static const std::array<ComponentId, sizeof...(_I)> ids {
+                        ComponentFactory::registerComponent<typename ComponentType<typename Info::FunctionInfo::
+                        template Component<_I>::type>::type>()...
+                };
+                std::array<ComponentIndex, sizeof...(_I)> component_indexes {
+                        archetype.getComponentIndex(ids[_I])...
+                };
+                for (auto& array_view : FilterResultArrayView{filter_result_, info.archetype_index,
+                                                              info.first_entity, info.current_size}) {
+                    if constexpr (Info::FunctionInfo::Position::entity >= 0) {
+                        forEachArrayGenerated(ComponentArraySize::make(array_view.arraySize()), invocation_index,
+                                              array_view.getEntity<FunctionSafety::kUnsafe>(),
+                                              getComponentHandler<_I>(array_view, component_indexes[_I])...);
+                    } else {
+                        forEachArrayGenerated(ComponentArraySize::make(array_view.arraySize()), invocation_index,
+                                              getComponentHandler<_I>(array_view, component_indexes[_I])...);
+                    }
+                }
             }
         }
 
