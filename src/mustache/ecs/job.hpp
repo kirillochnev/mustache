@@ -74,13 +74,6 @@ namespace mustache {
             }
         }
 
-        template<size_t... _I>
-        MUSTACHE_INLINE void applyPerArrayFunction(TaskArchetypeIndex archetype_index, ArchetypeEntityIndex first,
-                uint32_t count, JobInvocationIndex invocation_index, const std::index_sequence<_I...>&) {
-            auto archetype = filter_result_.filtered_archetypes[archetype_index.toInt()].archetype;
-            applyPerArrayFunction<_I...>(*archetype, first, ComponentArraySize::make(count), invocation_index);
-        }
-
         MUSTACHE_INLINE void runParallel(World&, Dispatcher& dispatcher, uint32_t task_count) override {
             static constexpr auto index_sequence = std::make_index_sequence<Info::FunctionInfo::components_count>();
             PerEntityJobTaskId task_id = PerEntityJobTaskId::make(0);
@@ -152,40 +145,6 @@ namespace mustache {
             }
         }
 
-        template<size_t... _I>
-        MUSTACHE_INLINE void applyPerArrayFunction(Archetype& archetype, ArchetypeEntityIndex first,
-                ComponentArraySize count, JobInvocationIndex invocation_index) {
-            if (count.toInt() < 1) {
-                return;
-            }
-
-            static const std::array<ComponentId, sizeof...(_I)> ids {
-                ComponentFactory::registerComponent<typename ComponentType<typename Info::FunctionInfo::
-                template Component<_I>::type>::type>()...
-            };
-            std::array<ComponentIndex, sizeof...(_I)> component_indexes {
-                archetype.getComponentIndex(ids[_I])...
-            };
-
-            auto view = archetype.getElementView(first);
-            auto elements_rest = count.toInt();
-            while (elements_rest != 0) {
-                const auto arr_len = std::min(view.elementArraySize(), elements_rest);
-                if constexpr (Info::FunctionInfo::Position::entity >= 0) {
-                    forEachArrayGenerated(ComponentArraySize::make(arr_len), invocation_index,
-                            view.getEntity<FunctionSafety::kUnsafe>(),
-                            getComponentHandler<_I>(view, component_indexes[_I])...);
-                } else {
-                    forEachArrayGenerated(ComponentArraySize::make(arr_len), invocation_index,
-                            getComponentHandler<_I>(view, component_indexes[_I])...);
-                }
-
-                view += arr_len;
-                elements_rest -= arr_len;
-            }
-        }
-
         WorldFilterResult filter_result_;
     };
-
 }
