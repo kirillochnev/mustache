@@ -177,6 +177,37 @@ namespace mustache {
             }
         }
 
+
+        template<FunctionSafety _Safety = FunctionSafety::kDefault>
+        bool updateComponentVersions(const ComponentIndexMask& components_to_check, WorldVersion version_to_check,
+                const ComponentIndexMask& component_to_update, WorldVersion version_to_set, ChunkIndex chunk) noexcept {
+
+            const auto first_index = components_count_ * chunk.toInt();
+
+            if constexpr (isSafe(_Safety)) {
+                const auto last_index = first_index + components_count_;
+                if (!chunk.isValid() || !version_to_set.isValid() || versions_.size() <= last_index) {
+                    return false;
+                }
+            }
+            auto versions = versions_.data() + first_index;
+            bool result = false;
+            components_to_check.forEachItem([versions, version_to_check, &result](ComponentIndex component_index) {
+                if (versions[component_index.toInt()] > version_to_check) {
+                    result = true;
+                    return false;
+                }
+                return true;
+            });
+
+            if (result) {
+                component_to_update.forEachItem([versions, version_to_set](ComponentIndex component_index) {
+                   versions[component_index.toInt()] = version_to_set;
+                });
+            }
+            return result;
+        }
+
     private:
         friend ElementView;
         friend EntityManager;

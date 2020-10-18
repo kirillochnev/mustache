@@ -68,7 +68,7 @@ namespace mustache {
         MUSTACHE_INLINE void runCurrentThread(World&) override {
             static constexpr auto index_sequence = std::make_index_sequence<Info::FunctionInfo::components_count>();
             PerEntityJobTaskId task_id = PerEntityJobTaskId::make(0);
-            for (auto task : splitByTasks(filter_result_, 1)) {
+            for (auto task : JobView::make(filter_result_, 1)) {
                 singleTask(task, task_id, index_sequence);
                 ++task_id;
             }
@@ -77,7 +77,7 @@ namespace mustache {
         MUSTACHE_INLINE void runParallel(World&, Dispatcher& dispatcher, uint32_t task_count) override {
             static constexpr auto index_sequence = std::make_index_sequence<Info::FunctionInfo::components_count>();
             PerEntityJobTaskId task_id = PerEntityJobTaskId::make(0);
-            for (auto task : splitByTasks(filter_result_, task_count)) {
+            for (auto task : JobView::make(filter_result_, task_count)) {
                 dispatcher.addParallelTask([task, this, task_id] {
                     singleTask(task, task_id, index_sequence);
                 });
@@ -117,12 +117,12 @@ namespace mustache {
         }
 
         template<size_t... _I>
-        MUSTACHE_INLINE void singleTask(ArchetypeIterator archetype_iterator, PerEntityJobTaskId task_id,
-                const std::index_sequence<_I...>&) {
+        MUSTACHE_INLINE void singleTask(TaskView task_view, PerEntityJobTaskId task_id,
+                                        const std::index_sequence<_I...>&) {
             JobInvocationIndex invocation_index;
             invocation_index.task_index = task_id;
             invocation_index.entity_index_in_task = PerEntityJobEntityIndexInTask::make(0);
-            for (const auto& info : archetype_iterator) {
+            for (const auto& info : task_view) {
                 auto& archetype = *info.archetype();
                 static const std::array<ComponentId, sizeof...(_I)> ids {
                         ComponentFactory::registerComponent<typename ComponentType<typename Info::FunctionInfo::
@@ -131,15 +131,15 @@ namespace mustache {
                 std::array<ComponentIndex, sizeof...(_I)> component_indexes {
                         archetype.getComponentIndex(ids[_I])...
                 };
-                for (auto& array_view : FilterResultArrayView{filter_result_, info.archetype_index,
-                                                              info.first_entity, info.current_size}) {
+                for (auto& array : ArchetypeView{filter_result_, info.archetype_index,
+                                                      info.first_entity, info.current_size}) {
                     if constexpr (Info::FunctionInfo::Position::entity >= 0) {
-                        forEachArrayGenerated(ComponentArraySize::make(array_view.arraySize()), invocation_index,
-                                              array_view.getEntity<FunctionSafety::kUnsafe>(),
-                                              getComponentHandler<_I>(array_view, component_indexes[_I])...);
+                        forEachArrayGenerated(ComponentArraySize::make(array.arraySize()), invocation_index,
+                                              array.getEntity<FunctionSafety::kUnsafe>(),
+                                              getComponentHandler<_I>(array, component_indexes[_I])...);
                     } else {
-                        forEachArrayGenerated(ComponentArraySize::make(array_view.arraySize()), invocation_index,
-                                              getComponentHandler<_I>(array_view, component_indexes[_I])...);
+                        forEachArrayGenerated(ComponentArraySize::make(array.arraySize()), invocation_index,
+                                              getComponentHandler<_I>(array, component_indexes[_I])...);
                     }
                 }
             }
