@@ -132,51 +132,22 @@ namespace mustache {
             return versions_[versionIndex(index, component_index)];
         }
 
-        // NOTE: can not resize versions_
         template<FunctionSafety _Safety = FunctionSafety::kDefault>
-        void updateComponentsVersion(ChunkIndex index, const ComponentIndexMask& update_mask,
-                                     WorldVersion version_to_set) noexcept {
-            const auto first_index = components_count_ * index.toInt();
-
-            if constexpr (isSafe(_Safety)) {
-                const auto last_index = first_index + components_count_;
-                if (!index.isValid() || !version_to_set.isValid() || versions_.size() <= last_index) {
-                    return;
-                }
-            }
-
-            auto versions = versions_.data() + first_index;
-            update_mask.forEachItem([this, versions, version_to_set](ComponentIndex component_index) {
-                if constexpr(isSafe(_Safety)) {
-                    if (component_index.toInt() >= components_count_) {
-                        return;
-                    }
-                }
-                versions[component_index.toInt()] = version_to_set;
-            });
+        [[nodiscard]] WorldVersion getComponentVersion(ArchetypeEntityIndex entity_index,
+                ComponentId id) const noexcept {
+            const auto chunk_index = ChunkIndex::make(entity_index.toInt() / chunk_size_);
+            const auto component_index = getComponentIndex<_Safety>(id);
+            return getComponentVersion<_Safety>(chunk_index, component_index);
         }
 
-        // NOTE: can not resize versions_
-        template<FunctionSafety _Safety = FunctionSafety::kDefault>
-        void updateComponentsVersion(typename std::conditional<isSafe(_Safety),
-                const ComponentIndexMask&, ComponentIndexMask>::type update_mask,
-                WorldVersion version_to_set) noexcept {
-            if constexpr (isSafe(_Safety)) {
-                if (!version_to_set.isValid()) {
-                    return;
-                }
-                update_mask.forEachItem([&update_mask, this](ComponentIndex index) {
-                    if (index.toInt() >= components_count_) {
-                        update_mask.reset(index);
-                    }
-                });
+        [[nodiscard]] ChunkIndex lastChunkIndex() const noexcept {
+            const auto entities_count = entities_.size();
+            ChunkIndex result;
+            if (entities_count > 0) {
+                result = ChunkIndex::make(entities_count / chunk_size_);
             }
-            const auto num_chunks = size() / chunk_size_;
-            for (uint32_t i = 0; i < num_chunks; ++i) {
-                updateComponentsVersion<FunctionSafety::kUnsafe>(ChunkIndex::make(i), update_mask, version_to_set);
-            }
+            return result;
         }
-
 
         template<FunctionSafety _Safety = FunctionSafety::kDefault>
         bool updateComponentVersions(const ComponentIndexMask& components_to_check, WorldVersion version_to_check,

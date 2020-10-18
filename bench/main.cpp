@@ -239,6 +239,7 @@ void showComponentInfo() {
 void remove_component_1();
 void remove_component_2();
 void testGlobalIndex();
+void POC();
 int main() {
 //    showComponentInfo<Component0>();
 //    showComponentInfo<Component0*>();
@@ -263,5 +264,7 @@ int main() {
 //    remove_component_1();
 //    remove_component_2();
 //    testGlobalIndex();
+
+//    POC();
     return 0;
 }

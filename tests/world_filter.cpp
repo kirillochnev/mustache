@@ -90,7 +90,7 @@ namespace {
 TEST(WorldFilter, POC) {
 
 }
-/*
+
 TEST(WorldFilter, component_version) {
     auto& world = getWorld();
     auto& entities = world.entities();
@@ -104,4 +104,3 @@ TEST(WorldFilter, component_version) {
     entities.getComponent<Component<0> >(entity)->data.data()[0] = std::byte{0};
     ASSERT_EQ(world.version(), entities.getWorldVersionOfLastComponentUpdate<Component<0> >(entity));
 }
-*/

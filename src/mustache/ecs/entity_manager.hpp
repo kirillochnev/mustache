@@ -69,7 +69,18 @@ namespace mustache {
         [[nodiscard]] MUSTACHE_INLINE bool hasComponent(Entity entity) const noexcept;
 
         template<typename T, FunctionSafety _Safety = FunctionSafety::kSafe>
-        [[nodiscard]] MUSTACHE_INLINE WorldVersion getWorldVersionOfLastComponentUpdate(Entity entity) const noexcept ;
+        [[nodiscard]] MUSTACHE_INLINE WorldVersion getWorldVersionOfLastComponentUpdate(Entity entity) const noexcept {
+            const auto id = entity.id();
+            if constexpr (isSafe(_Safety)) {
+                if (entity.isNull() || !locations_.has(id)) {
+                    return WorldVersion::null();
+                }
+            }
+            const auto location = locations_[entity.id()];
+            const auto& archetype = archetypes_[location.archetype];
+            const auto component_id = ComponentFactory::registerComponent<T>();
+            return archetype->getComponentVersion<_Safety>(location.index, component_id);
+        }
 
     private:
         friend Archetype;

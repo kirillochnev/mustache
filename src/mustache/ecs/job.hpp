@@ -118,7 +118,7 @@ namespace mustache {
 
         template<size_t... _I>
         MUSTACHE_INLINE void singleTask(TaskView task_view, PerEntityJobTaskId task_id,
-                                        const std::index_sequence<_I...>&) {
+                const std::index_sequence<_I...>&) {
             JobInvocationIndex invocation_index;
             invocation_index.task_index = task_id;
             invocation_index.entity_index_in_task = PerEntityJobEntityIndexInTask::make(0);
