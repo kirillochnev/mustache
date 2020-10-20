@@ -5,7 +5,8 @@ using namespace mustache;
 
 EntityManager::EntityManager(World& world):
         world_{world},
-        this_world_id_{world.id()} {
+        this_world_id_{world.id()},
+        world_version_{world.version()} {
 
 }
 
@@ -61,6 +62,7 @@ void EntityManager::clear() {
 }
 
 void EntityManager::update() {
+    world_version_ = world_.version();
     if (marked_for_delete_.empty()) {
         return;
     }

@@ -83,6 +83,10 @@ namespace mustache {
         }
 
     private:
+        [[nodiscard]] WorldVersion worldVersion() const noexcept {
+            return world_version_;
+        }
+
         friend Archetype;
         void updateLocation(Entity e, ArchetypeIndex archetype, ArchetypeEntityIndex index) noexcept {
             if (e.id().isValid()) {
@@ -116,6 +120,7 @@ namespace mustache {
         ArrayWrapper<std::vector<EntityLocationInWorld>, EntityId> locations_;
         std::set<Entity> marked_for_delete_;
         WorldId this_world_id_;
+        WorldVersion world_version_;
         // TODO: replace shared pointed with some kind of unique_ptr but with deleter calling clearArchetype
         // NOTE: must be the last field(for correct default destructor).
         ArrayWrapper<std::vector<std::shared_ptr<Archetype> >, ArchetypeIndex> archetypes_;
@@ -207,7 +212,9 @@ namespace mustache {
 
     template<typename T>
     T* EntityManager::getComponent(Entity entity) const noexcept {
-        static const auto component_id = ComponentFactory::registerComponent<T>();
+        using ComponentType = ComponentType<T>;
+        using Type = typename ComponentType::type;
+        static const auto component_id = ComponentFactory::registerComponent<Type>();
         const auto& location = locations_[entity.id()];
         if (!location.archetype.isValid()) {
             return nullptr;
@@ -217,9 +224,15 @@ namespace mustache {
         if (!index.isValid()) {
             return nullptr;
         }
-        auto ptr = arch->getComponent<FunctionSafety::kUnsafe>(index, location.index);
-        auto typed_ptr = reinterpret_cast<T*>(ptr);
-        return typed_ptr;
+        if constexpr (std::is_const<T>::value) {
+            auto ptr = arch->getConstComponent<FunctionSafety::kUnsafe>(index, location.index);
+            auto typed_ptr = reinterpret_cast<T*>(ptr);
+            return typed_ptr;
+        } else {
+            auto ptr = arch->getComponent<FunctionSafety::kUnsafe>(index, location.index, worldVersion());
+            auto typed_ptr = reinterpret_cast<T*>(ptr);
+            return typed_ptr;
+        }
     }
 
     template<typename T, FunctionSafety _Safety>

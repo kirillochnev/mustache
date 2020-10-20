@@ -16,7 +16,7 @@ namespace mustache {
             uint32_t entities_count {0};
             std::vector<EntityBlock> blocks;
         };
-        void apply(World& world);
+        void apply(World& world, const ComponentIdMask& write_mask, WorldVersion prev_version);
         std::vector<ArchetypeFilterResult> filtered_archetypes;
         ComponentIdMask mask_;
         uint32_t total_entity_count{0u};

@@ -38,17 +38,17 @@ namespace mustache {
         template<typename _F>
         void forEachItem(_F&& function) const noexcept {
             for (size_t i = 0u; i < value_.size(); ++i) {
-                using ResultType = decltype(function(ComponentId::make(0)));
+                using ResultType = decltype(function(_ItemType::make(0)));
                 constexpr bool can_be_interrupted = std::is_same<ResultType, bool>::value;
                 if constexpr (can_be_interrupted) {
                     if (value_.test(i)) {
-                        if (!function(ComponentId::make(i))) {
+                        if (!function(_ItemType::make(i))) {
                             return;
                         }
                     }
                 } else {
                     if (value_.test(i)) {
-                        function(ComponentId::make(i));
+                        function(_ItemType::make(i));
                     }
                 }
             }

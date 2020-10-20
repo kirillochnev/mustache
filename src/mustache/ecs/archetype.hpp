@@ -110,8 +110,20 @@ namespace mustache {
         }
 
         template<FunctionSafety _Safety = FunctionSafety::kDefault>
-        void* getComponent(ComponentIndex component_index, ArchetypeEntityIndex index) const noexcept {
+        const void* getConstComponent(ComponentIndex component_index, ArchetypeEntityIndex index) const noexcept {
             return data_storage_.getData<_Safety>(component_index, ComponentStorageIndex::fromArchetypeIndex(index));
+        }
+
+        template<FunctionSafety _Safety = FunctionSafety::kDefault>
+        void* getComponent(ComponentIndex component_index, ArchetypeEntityIndex index, WorldVersion version) noexcept {
+            auto res = data_storage_.getData<_Safety>(component_index, ComponentStorageIndex::fromArchetypeIndex(index));
+            if (res != nullptr) {
+                const auto chunk = index.toInt() / chunk_size_;
+                auto versions = versions_.data() + components_count_ * chunk;
+                versions[component_index.toInt()] = version;
+            }
+
+            return res;
         }
 
         [[nodiscard]] ElementView getElementView(ArchetypeEntityIndex index) const noexcept {
@@ -179,6 +191,17 @@ namespace mustache {
             return result;
         }
 
+        template<FunctionSafety _Safety = FunctionSafety::kDefault>
+        [[nodiscard]] ComponentIndexMask makeComponentMask(const ComponentIdMask& mask) const noexcept {
+            ComponentIndexMask index_mask;
+            mask.forEachItem([&index_mask, this](ComponentId id) {
+                const auto index = getComponentIndex(id);
+                const auto value = !isSafe(_Safety) || index.isValid();
+                index_mask.set(index, value);
+            });
+            return index_mask;
+        }
+
     private:
         friend ElementView;
         friend EntityManager;
@@ -239,7 +262,7 @@ namespace mustache {
         ArchetypeComponentDataStorage data_storage_;
         ArrayWrapper<std::vector<Entity>, ArchetypeEntityIndex> entities_;
         uint32_t components_count_;
-        uint32_t chunk_size_ = 16u;
+        uint32_t chunk_size_ = 1024u;
         std::vector<WorldVersion> versions_;
 
         ArchetypeIndex id_;
