@@ -3,20 +3,23 @@
 #include <mustache/ecs/world.hpp>
 
 namespace mustache {
-/**
+    /**
      * Stores result of archetype filtering
      */
     struct DefaultWorldFilterResult {
         struct EntityBlock {
-            uint32_t begin;
-            uint32_t end;
+            uint32_t begin; // entity index
+            uint32_t end; // entity index
         };
         struct ArchetypeFilterResult {
             Archetype* archetype {nullptr};
             uint32_t entities_count {0};
+            void addBlock(const EntityBlock& block) noexcept;
             std::vector<EntityBlock> blocks;
         };
         void apply(World& world, const ComponentIdMask& write_mask, WorldVersion prev_version);
+        void filterArchetype(World& world, Archetype& archetype, const ComponentIdMask& write_mask,
+                WorldVersion prev_version);
         std::vector<ArchetypeFilterResult> filtered_archetypes;
         ComponentIdMask mask_;
         uint32_t total_entity_count{0u};

@@ -174,7 +174,7 @@ namespace mustache {
                 }
             }
             auto versions = versions_.data() + first_index;
-            bool result = false;
+            bool result = components_to_check.isEmpty();
             components_to_check.forEachItem([versions, version_to_check, &result](ComponentIndex component_index) {
                 if (versions[component_index.toInt()] > version_to_check) {
                     result = true;
@@ -187,6 +187,38 @@ namespace mustache {
                 component_to_update.forEachItem([versions, version_to_set](ComponentIndex component_index) {
                    versions[component_index.toInt()] = version_to_set;
                 });
+            }
+            return result;
+        }
+
+        template<FunctionSafety _Safety = FunctionSafety::kDefault>
+        bool updateComponentVersions(const std::vector<ComponentIndex>& components_to_check,
+                WorldVersion version_to_check, const std::vector<ComponentIndex>& component_to_update,
+                WorldVersion version_to_set, ChunkIndex chunk) noexcept {
+
+            const auto first_index = components_count_ * chunk.toInt();
+
+            if constexpr (isSafe(_Safety)) {
+                const auto last_index = first_index + components_count_;
+                if (!chunk.isValid() || !version_to_set.isValid() || versions_.size() <= last_index) {
+                    return false;
+                }
+            }
+            auto versions = versions_.data() + first_index;
+            bool result = components_to_check.empty();
+            if (!result) {
+                for (auto component_index : components_to_check) {
+                    if (versions[component_index.toInt()] > version_to_check) {
+                        result = true;
+                        break;
+                    }
+                }
+            }
+
+            if (result) {
+                for (auto component_index : component_to_update) {
+                    versions[component_index.toInt()] = version_to_set;
+                }
             }
             return result;
         }

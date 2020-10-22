@@ -6,7 +6,7 @@
 #include <vector>
 #include <cstdint>
 #include <initializer_list>
-
+#include <iostream>
 namespace mustache {
 
     template<typename _ItemType, size_t _MaxElements>
@@ -19,6 +19,10 @@ namespace mustache {
             }
         }
 
+        [[nodiscard]] static constexpr size_t maxElementsCount() noexcept {
+            return _MaxElements;
+        }
+
         [[nodiscard]] uint64_t toUInt64() const noexcept {
             return static_cast<uint64_t>(value_.to_ullong());
         }
@@ -29,9 +33,11 @@ namespace mustache {
 
         [[nodiscard]] std::vector<_ItemType > items() const noexcept {
             std::vector<_ItemType > result;
-            forEachItem([&result](auto id) {
-                result.push_back(id);
-            });
+            for (size_t i = 0u; i < value_.size(); ++i) {
+                if (value_.test(i)) {
+                    result.push_back(_ItemType::make(i));
+                }
+            }
             return result;
         }
 
