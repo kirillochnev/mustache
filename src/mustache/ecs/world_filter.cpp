@@ -59,6 +59,7 @@ void WorldFilterResult::apply(World& world, const WorldFilterParam& check, const
     for (ArchetypeIndex index = ArchetypeIndex::make(0); index < ArchetypeIndex::make(num_archetypes); ++index) {
         auto& arch = entities.getArchetype(index);
         if (arch.size() > 0u && arch.isMatch(mask_)) {
+            archetype_check.components = arch.makeComponentMask(check.mask).items();
             ArchetypeFilterParam archetype_set;
             archetype_set.version = set.version;
             archetype_set.components = arch.makeComponentMask(set.mask).items();

@@ -101,3 +101,53 @@ TEST(WorldFilter, component_version) {
     job.run(world, dispatcher);
 //    ASSERT_EQ(world.version(), entities.getWorldVersionOfLastComponentUpdate<Component<0> >(entity).next().next());
 }
+
+TEST(WorldFilter, chunk_version) {
+    constexpr uint32_t kNumObjects = 50000u;
+
+    struct Job0 : mustache::PerEntityJob<Job0> {
+        uint32_t count = 0;
+        void operator() (Component<0>&, Component<1>&, const Component<2>& ) {
+            ++count;
+        }
+    };
+
+    struct Job1 : mustache::PerEntityJob<Job1> {
+        uint32_t count = 0;
+        void operator() (const Component<0>&, const Component<1>&, const Component<2>& ) {
+            ++count;
+        }
+
+        mustache::ComponentIdMask checkMask() const noexcept {
+            mustache::ComponentIdMask result = mustache::ComponentFactory::makeMask<Component<0>,Component<1> >();
+            return result;
+        }
+    };
+    mustache::World world = mustache::World{mustache::WorldId::make(0)};
+    auto& entities = world.entities();
+    mustache::Dispatcher dispatcher;
+    dispatcher.setSingleThreadMode(true);
+
+    for (uint32_t i = 0; i < kNumObjects; ++i) {
+        (void ) entities.create<Component<0>, Component<1>, Component<2> >();
+    }
+    Job0 job0;
+    Job1 job1;
+
+    for (uint32_t i = 0; i < 100; ++i) {
+        job0.count = 0u;
+        job0.run(world, dispatcher);
+        ASSERT_EQ(job0.count, kNumObjects);
+
+        job1.count = 0u;
+        job1.run(world, dispatcher);
+        ASSERT_EQ(job1.count, kNumObjects);
+
+        world.update();
+
+        job1.count = 0u;
+        job1.run(world, dispatcher);
+        ASSERT_EQ(job1.count, 0u);
+    }
+
+}
