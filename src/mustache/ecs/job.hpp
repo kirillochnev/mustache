@@ -57,9 +57,12 @@ namespace mustache {
         using WorldFilterResult = DefaultWorldFilterResult;//_WorldFilter;
 
         virtual uint32_t applyFilter(World& world) noexcept override {
-            static const ComponentIdMask empty_mask; // TODO: make correct mask
-            const auto prev_version = WorldVersion::make(0); // TODO: replace null
-            filter_result_.apply(world, /*empty_mask*/ filter_result_.mask_, prev_version);
+            static const WorldFilterParam check;
+            const WorldFilterParam set {
+                filter_result_.mask_,
+                world.version()
+            };
+            filter_result_.apply(world, check, set);
             return filter_result_.total_entity_count;
         }
 

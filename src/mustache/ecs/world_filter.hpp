@@ -3,6 +3,12 @@
 #include <mustache/ecs/world.hpp>
 
 namespace mustache {
+
+    struct WorldFilterParam {
+        ComponentIdMask mask;
+        WorldVersion version;
+    };
+
     /**
      * Stores result of archetype filtering
      */
@@ -17,9 +23,8 @@ namespace mustache {
             void addBlock(const EntityBlock& block) noexcept;
             std::vector<EntityBlock> blocks;
         };
-        void apply(World& world, const ComponentIdMask& write_mask, WorldVersion prev_version);
-        void filterArchetype(World& world, Archetype& archetype, const ComponentIdMask& write_mask,
-                WorldVersion prev_version);
+        void apply(World& world, const WorldFilterParam& check, const WorldFilterParam& set);
+        void filterArchetype(Archetype& archetype, const ArchetypeFilterParam& check, const ArchetypeFilterParam& set);
         std::vector<ArchetypeFilterResult> filtered_archetypes;
         ComponentIdMask mask_;
         uint32_t total_entity_count{0u};

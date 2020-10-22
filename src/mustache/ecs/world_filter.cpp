@@ -1,7 +1,6 @@
 #include "job.hpp"
 #include "world_filter.hpp"
 
-#include <mustache/utils/benchmark.hpp>
 using namespace mustache;
 
 void DefaultWorldFilterResult::ArchetypeFilterResult::addBlock(const EntityBlock& block) noexcept {
@@ -12,26 +11,18 @@ void DefaultWorldFilterResult::ArchetypeFilterResult::addBlock(const EntityBlock
     }
 }
 
-void DefaultWorldFilterResult::filterArchetype(World& world, Archetype& archetype, const ComponentIdMask& write_mask,
-        WorldVersion prev_version) {
-    if (archetype.size() < 1) {
-        return;
-    }
-    const auto cur_version = world.version();
+void DefaultWorldFilterResult::filterArchetype(Archetype& archetype, const ArchetypeFilterParam& check,
+        const ArchetypeFilterParam& set) {
     ArchetypeFilterResult item;
     item.archetype = &archetype;
     item.entities_count = 0u;
 
-    ComponentIndexMask mask = archetype.makeComponentMask(write_mask);
     const auto last_index = archetype.lastChunkIndex();
-    const auto component_to_update = mask.items();
-    const std::vector<ComponentIndex> components_to_check;
     bool is_prev_match = false;
     EntityBlock block{0, 0};
     const auto chunk_size = archetype.chunkCapacity().toInt();
     for (auto chunk_index = ChunkIndex::make(0); chunk_index <= last_index; ++chunk_index) {
-        const bool is_match = archetype.updateComponentVersions<FunctionSafety::kUnsafe>(components_to_check,
-                prev_version, component_to_update, cur_version, chunk_index);
+        const bool is_match = archetype.updateComponentVersions<FunctionSafety::kUnsafe>(check, set, chunk_index);
         if (is_match) {
             if (!is_prev_match) {
                 block.begin = chunk_index.toInt() * chunk_size;
@@ -54,7 +45,7 @@ void DefaultWorldFilterResult::filterArchetype(World& world, Archetype& archetyp
     }
 }
 
-void DefaultWorldFilterResult::apply(World& world, const ComponentIdMask& write_mask, WorldVersion prev_version) {
+void DefaultWorldFilterResult::apply(World& world, const WorldFilterParam& check, const WorldFilterParam& set) {
     filtered_archetypes.clear();
     total_entity_count = 0;
 
@@ -62,14 +53,16 @@ void DefaultWorldFilterResult::apply(World& world, const ComponentIdMask& write_
     const auto num_archetypes = entities.getArchetypesCount();
     filtered_archetypes.reserve(num_archetypes);
 
-//    Benchmark benchmark;
-//    benchmark.add([&] {
-        for (ArchetypeIndex index = ArchetypeIndex::make(0); index < ArchetypeIndex::make(num_archetypes); ++index) {
-            auto& arch = entities.getArchetype(index);
-            if (arch.size() > 0u && arch.isMatch(mask_)) {
-                filterArchetype(world, arch, write_mask, prev_version);
-            }
+
+    ArchetypeFilterParam archetype_check;
+    archetype_check.version = check.version;
+    for (ArchetypeIndex index = ArchetypeIndex::make(0); index < ArchetypeIndex::make(num_archetypes); ++index) {
+        auto& arch = entities.getArchetype(index);
+        if (arch.size() > 0u && arch.isMatch(mask_)) {
+            ArchetypeFilterParam archetype_set;
+            archetype_set.version = set.version;
+            archetype_set.components = arch.makeComponentMask(set.mask).items();
+            filterArchetype(arch, archetype_check, archetype_set);
         }
-//    }, 100);
-//    benchmark.show();
+    }
 }

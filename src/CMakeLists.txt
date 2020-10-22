@@ -29,7 +29,6 @@ add_library(${PROJECT_NAME} STATIC
         mustache/ecs/entity_manager.cpp
         mustache/ecs/entity_manager.hpp
         mustache/ecs/entity_manager.hpp
-        mustache/ecs/job.cpp
         mustache/ecs/job.hpp
         mustache/ecs/system.cpp
         mustache/ecs/system.hpp
@@ -45,6 +44,7 @@ add_library(${PROJECT_NAME} STATIC
         mustache/ecs/component_factory.hpp
         mustache/ecs/entity_group.cpp
         mustache/ecs/entity_group.hpp
+        mustache/ecs/world_filter.cpp
         mustache/ecs/world_filter.hpp
         mustache/ecs/component_data_storage.cpp
         mustache/ecs/component_data_storage.hpp

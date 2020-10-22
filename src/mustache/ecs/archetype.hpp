@@ -39,6 +39,11 @@ namespace mustache {
         const Archetype* archetype_ = nullptr;
     };
 
+    struct ArchetypeFilterParam {
+        std::vector<ComponentIndex> components;
+        WorldVersion version;
+    };
+
     /**
      * Stores Entities with same component set
      * NOTE: It is has no information about entity manager, so Archetype's methods don't effects entity location.
@@ -162,53 +167,20 @@ namespace mustache {
         }
 
         template<FunctionSafety _Safety = FunctionSafety::kDefault>
-        bool updateComponentVersions(const ComponentIndexMask& components_to_check, WorldVersion version_to_check,
-                const ComponentIndexMask& component_to_update, WorldVersion version_to_set, ChunkIndex chunk) noexcept {
-
+        bool updateComponentVersions(const ArchetypeFilterParam& check,
+                const ArchetypeFilterParam& set, ChunkIndex chunk) noexcept {
             const auto first_index = components_count_ * chunk.toInt();
-
             if constexpr (isSafe(_Safety)) {
                 const auto last_index = first_index + components_count_;
-                if (!chunk.isValid() || !version_to_set.isValid() || versions_.size() <= last_index) {
+                if (!chunk.isValid() || !set.version.isValid() || versions_.size() <= last_index) {
                     return false;
                 }
             }
             auto versions = versions_.data() + first_index;
-            bool result = components_to_check.isEmpty();
-            components_to_check.forEachItem([versions, version_to_check, &result](ComponentIndex component_index) {
-                if (versions[component_index.toInt()] > version_to_check) {
-                    result = true;
-                    return false;
-                }
-                return true;
-            });
-
-            if (result) {
-                component_to_update.forEachItem([versions, version_to_set](ComponentIndex component_index) {
-                   versions[component_index.toInt()] = version_to_set;
-                });
-            }
-            return result;
-        }
-
-        template<FunctionSafety _Safety = FunctionSafety::kDefault>
-        bool updateComponentVersions(const std::vector<ComponentIndex>& components_to_check,
-                WorldVersion version_to_check, const std::vector<ComponentIndex>& component_to_update,
-                WorldVersion version_to_set, ChunkIndex chunk) noexcept {
-
-            const auto first_index = components_count_ * chunk.toInt();
-
-            if constexpr (isSafe(_Safety)) {
-                const auto last_index = first_index + components_count_;
-                if (!chunk.isValid() || !version_to_set.isValid() || versions_.size() <= last_index) {
-                    return false;
-                }
-            }
-            auto versions = versions_.data() + first_index;
-            bool result = components_to_check.empty();
+            bool result = check.components.empty();
             if (!result) {
-                for (auto component_index : components_to_check) {
-                    if (versions[component_index.toInt()] > version_to_check) {
+                for (auto component_index : check.components) {
+                    if (versions[component_index.toInt()] > check.version) {
                         result = true;
                         break;
                     }
@@ -216,8 +188,8 @@ namespace mustache {
             }
 
             if (result) {
-                for (auto component_index : component_to_update) {
-                    versions[component_index.toInt()] = version_to_set;
+                for (auto component_index : set.components) {
+                    versions[component_index.toInt()] = set.version;
                 }
             }
             return result;
