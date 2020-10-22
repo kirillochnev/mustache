@@ -6,7 +6,7 @@
 #include <vector>
 #include <cstdint>
 #include <initializer_list>
-#include <iostream>
+
 namespace mustache {
 
     template<typename _ItemType, size_t _MaxElements>
