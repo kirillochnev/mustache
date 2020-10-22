@@ -18,26 +18,17 @@ namespace mustache {
         [[nodiscard]] MUSTACHE_INLINE uint32_t size() const noexcept;
         [[nodiscard]] MUSTACHE_INLINE bool isEmpty() const noexcept;
 
-        MUSTACHE_INLINE void reserve(size_t new_capacity);
-        MUSTACHE_INLINE void incSize() noexcept;
-        MUSTACHE_INLINE void decrSize() noexcept;
-        MUSTACHE_INLINE void clear(bool free_chunks = true);
+        void reserve(size_t new_capacity);
+        void incSize() noexcept;
+        void decrSize() noexcept;
+        void clear(bool free_chunks = true);
 
-        template<FunctionSafety _Safety = FunctionSafety::kDefault>
-        MUSTACHE_INLINE Entity* getEntityData(ComponentStorageIndex index) const noexcept;
         template<FunctionSafety _Safety = FunctionSafety::kDefault>
         MUSTACHE_INLINE void* getData(ComponentIndex component_index, ComponentStorageIndex index) const noexcept;
-        MUSTACHE_INLINE ElementView getElementView(ComponentStorageIndex index) const noexcept;
+        ElementView getElementView(ComponentStorageIndex index) const noexcept;
 
         template<FunctionSafety _Safety = FunctionSafety::kDefault>
-        MUSTACHE_INLINE WorldVersion getVersion(ComponentIndex component_index, ComponentStorageIndex index) const noexcept;
-        template<FunctionSafety _Safety = FunctionSafety::kDefault>
-        MUSTACHE_INLINE void updateComponentVersion(WorldVersion version, ComponentIndex component_index, ComponentStorageIndex index) noexcept;
-        template<FunctionSafety _Safety = FunctionSafety::kDefault>
-        MUSTACHE_INLINE void updateVersion(WorldVersion version, ComponentStorageIndex index) noexcept;
-
-        template<FunctionSafety _Safety = FunctionSafety::kDefault>
-        MUSTACHE_INLINE ComponentStorageIndex pushBackAndUpdateVersion(Entity entity, WorldVersion world_version);
+        MUSTACHE_INLINE ComponentStorageIndex pushBack();
         [[nodiscard]] MUSTACHE_INLINE ComponentStorageIndex lastItemIndex() const noexcept;
 
     private:
@@ -66,11 +57,6 @@ namespace mustache {
 #endif
                 data.push_back(static_cast<std::byte*>(ptr));
             }
-            void reserve(uint32_t new_capacity) {
-                while (data.size() * kComponentBlockSize < new_capacity) {
-                    allocate();
-                }
-            }
 
             template<FunctionSafety _Safety = FunctionSafety::kDefault>
             void* get(ComponentStorageIndex index) const noexcept {
@@ -79,7 +65,7 @@ namespace mustache {
                         return nullptr;
                     }
                 }
-                constexpr auto chunk_capacity = chunkCapacity();//ChunkCapacity::make(kComponentBlockSize);
+                constexpr auto chunk_capacity = chunkCapacity();
                 auto block = data[(index / chunk_capacity).toInt()];
                 return block + component_size * (index % chunk_capacity).toInt();
             }
@@ -89,8 +75,6 @@ namespace mustache {
         };
         uint32_t size_ = 0;
         uint32_t capacity_ = 0;
-        std::vector<WorldVersion> versions_;
-        ArrayWrapper<std::vector<Entity>, ComponentStorageIndex> entities_;
         ArrayWrapper<std::vector<ComponentDataHolder>, ComponentIndex> components_;
     };
 
@@ -103,7 +87,7 @@ namespace mustache {
     }
 
     bool NewComponentDataStorage::isEmpty() const noexcept {
-        return entities_.empty();
+        return size_ < 1u;
     }
     void NewComponentDataStorage::allocateBlock() {
         for (auto& component : components_) {
@@ -112,50 +96,11 @@ namespace mustache {
         capacity_ += kComponentBlockSize;
     }
 
-    void NewComponentDataStorage::reserve(size_t new_capacity) {
-        if (capacity_ >= new_capacity) {
-            return;
-        }
-        entities_.reserve(new_capacity);
-        while (capacity_ < new_capacity) {
-            allocateBlock();
-        }
-    }
-
-    void NewComponentDataStorage::incSize() noexcept {
-        ++size_;
-        entities_.emplace_back();
-    }
-
-    void NewComponentDataStorage::decrSize() noexcept {
-        --size_;
-        entities_.pop_back();
-    }
-
-    void NewComponentDataStorage::clear(bool free_chunks) {
-        entities_.clear();
-        size_ = 0;
-        if (free_chunks) {
-            versions_.clear();
-            components_.clear();
-            capacity_ = 0;
-        }
-    }
-
-    template<FunctionSafety _Safety>
-    Entity* NewComponentDataStorage::getEntityData(ComponentStorageIndex index) const noexcept {
-        if constexpr (isSafe(_Safety)) {
-            if (!entities_.has(index)) {
-                return nullptr;
-            }
-        }
-        return const_cast<Entity*>(&entities_[index]);
-    }
 
     template<FunctionSafety _Safety>
     void* NewComponentDataStorage::getData(ComponentIndex component_index, ComponentStorageIndex index) const noexcept {
         if constexpr (isSafe(_Safety)) {
-            if (!entities_.has(index) || !components_.has(component_index)) {
+            if (index.toInt() >= size_ || !components_.has(component_index)) {
                 return nullptr;
             }
         }
@@ -163,42 +108,12 @@ namespace mustache {
     }
 
     template<FunctionSafety _Safety>
-    WorldVersion
-    NewComponentDataStorage::getVersion(ComponentIndex component_index, ComponentStorageIndex index) const noexcept {
-        if constexpr (isSafe(_Safety)) {
-            if (!entities_.has(index) || !components_.has(component_index)) {
-                return WorldVersion::null();
-            }
-        }
-        /*constexpr auto chunk_capacity = ChunkCapacity::make(kComponentBlockSize);
-        const auto block_index = index / chunk_capacity;
-        versions_[]*/
-        return WorldVersion();
-    }
-
-    template<FunctionSafety _Safety>
-    void NewComponentDataStorage::updateComponentVersion(WorldVersion version, ComponentIndex component_index,
-                                                         ComponentStorageIndex index) noexcept {
-        (void) version;
-        (void ) component_index;
-        (void) index;
-    }
-
-    template<FunctionSafety _Safety>
-    void NewComponentDataStorage::updateVersion(WorldVersion version, ComponentStorageIndex index) noexcept {
-        (void) version;
-        (void) index;
-    }
-
-    template<FunctionSafety _Safety>
-    ComponentStorageIndex NewComponentDataStorage::pushBackAndUpdateVersion(Entity entity, WorldVersion world_version) {
+    ComponentStorageIndex NewComponentDataStorage::pushBack() {
         const auto cur_size = size();
         const auto new_size = cur_size + 1;
         reserve(new_size);
         ComponentStorageIndex index = ComponentStorageIndex::make(cur_size);
         incSize();
-        *getEntityData<_Safety>(index) = entity;
-        updateVersion(world_version, index);
         return index;
     }
 
@@ -206,18 +121,11 @@ namespace mustache {
         return ComponentStorageIndex::make(size() - 1);
     }
 
-#define USE_GLOBAL_INDEX 0
-    class NewComponentDataStorage::ElementView { // TODO: rename
+    class NewComponentDataStorage::ElementView {
     public:
 
         [[nodiscard]] ComponentStorageIndex globalIndex() const noexcept {
-#if USE_GLOBAL_INDEX
             return global_index_;
-#else
-            return ComponentStorageIndex::make(
-                    chunk_index_.toInt() * chunkCapacity().toInt() + entity_index_.toInt()
-            );
-#endif
         }
 
         [[nodiscard]] uint32_t elementArraySize() const noexcept {
@@ -237,23 +145,12 @@ namespace mustache {
         }
 
         template<FunctionSafety _Safety = FunctionSafety::kSafe>
-        Entity* getEntity() noexcept {
-            return storage_->getEntityData<_Safety>(globalIndex());
-        }
-
-        template<FunctionSafety _Safety = FunctionSafety::kSafe>
         void* getData(ComponentIndex component_index) const noexcept {
             return storage_->getData<_Safety>(component_index, globalIndex());
         }
 
         ElementView& operator+=(uint32_t count) noexcept {
-#if USE_GLOBAL_INDEX
             global_index_ = ComponentStorageIndex::make(global_index_.toInt() + count);
-#else
-            const auto new_index = entity_index_.toInt() + count;
-            chunk_index_ = ChunkIndex::make(chunk_index_.toInt() + new_index / chunkCapacity().toInt());
-            entity_index_ = ChunkItemIndex::make(new_index % chunkCapacity().toInt());
-#endif
             return *this;
         }
 
@@ -263,34 +160,11 @@ namespace mustache {
     private:
         friend NewComponentDataStorage;
         const NewComponentDataStorage* storage_;
-#if USE_GLOBAL_INDEX
         ComponentStorageIndex global_index_;
-#else
-        ChunkIndex chunk_index_;
-        ChunkItemIndex entity_index_;
-#endif
         constexpr ElementView(const NewComponentDataStorage* storage,
-#if USE_GLOBAL_INDEX
                               ComponentStorageIndex index):
-#else
-                              ChunkIndex chunk_index, ChunkItemIndex entity_index):
-#endif
                 storage_{storage},
-#if USE_GLOBAL_INDEX
                 global_index_{index} {
-#else
-                chunk_index_{chunk_index},
-                entity_index_{entity_index} {
-#endif
         }
     };
-
-    NewComponentDataStorage::ElementView NewComponentDataStorage::getElementView(ComponentStorageIndex index) const noexcept {
-        (void ) index;
-#if USE_GLOBAL_INDEX
-        return ElementView {this,index};
-#else
-        return ElementView {this, index / chunkCapacity(), index % chunkCapacity()};
-#endif
-    }
 }

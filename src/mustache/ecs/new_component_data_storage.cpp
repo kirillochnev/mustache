@@ -20,3 +20,33 @@ NewComponentDataStorage::NewComponentDataStorage(const ComponentIdMask& mask) {
                    mask.toString().c_str(), chunkCapacity().toInt());
 }
 
+
+void NewComponentDataStorage::incSize() noexcept {
+    ++size_;
+}
+
+void NewComponentDataStorage::decrSize() noexcept {
+    --size_;
+}
+
+void NewComponentDataStorage::clear(bool free_chunks) {
+    size_ = 0;
+    if (free_chunks) {
+        components_.clear();
+        capacity_ = 0;
+    }
+}
+
+void NewComponentDataStorage::reserve(size_t new_capacity) {
+    if (capacity_ >= new_capacity) {
+        return;
+    }
+
+    while (capacity_ < new_capacity) {
+        allocateBlock();
+    }
+}
+
+NewComponentDataStorage::ElementView NewComponentDataStorage::getElementView(ComponentStorageIndex index) const noexcept {
+    return ElementView {this, index};
+}
