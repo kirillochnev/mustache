@@ -36,7 +36,7 @@ void testGlobalIndex() {
 using namespace mustache;
 
 namespace {
-    DefaultWorldFilterResult filter_result;
+    WorldFilterResult filter_result;
 
     template<typename... ARGS>
     void callMePerElement(ARGS&&...) {}

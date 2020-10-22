@@ -12,7 +12,7 @@ namespace mustache {
     /**
      * Stores result of archetype filtering
      */
-    struct DefaultWorldFilterResult {
+    struct WorldFilterResult {
         struct EntityBlock {
             uint32_t begin; // entity index
             uint32_t end; // entity index

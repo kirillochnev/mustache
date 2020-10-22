@@ -51,22 +51,25 @@ namespace mustache {
 
     };
 
-    template<typename T/*, typename _WorldFilter = DefaultWorldFilterResult*/>
+    template<typename T>
     class PerEntityJob : public APerEntityJob {
     public:
         using Info = JobInfo<T>;
-        using WorldFilterResult = DefaultWorldFilterResult;
 
         virtual uint32_t applyFilter(World& world) noexcept override {
+            const auto cur_world_version = world.version();
             const WorldFilterParam check {
                 checkMask(),
-                WorldVersion::null()
+                last_update_version_
             };
             const WorldFilterParam set {
                 updateMask(),
-                world.version()
+                cur_world_version
             };
             filter_result_.apply(world, check, set);
+            if (filter_result_.total_entity_count > 0) {
+                last_update_version_ = cur_world_version;
+            }
             return filter_result_.total_entity_count;
         }
 
@@ -163,5 +166,6 @@ namespace mustache {
         }
 
         WorldFilterResult filter_result_;
+        WorldVersion last_update_version_;
     };
 }

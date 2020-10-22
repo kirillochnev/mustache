@@ -14,9 +14,9 @@ namespace mustache {
 
 
     struct ArchetypeView : private ElementView {
-        using FilrerResult = DefaultWorldFilterResult::ArchetypeFilterResult;
+        using FilrerResult = WorldFilterResult::ArchetypeFilterResult;
 
-        ArchetypeView(DefaultWorldFilterResult& filter_result, TaskArchetypeIndex archetype_index,
+        ArchetypeView(WorldFilterResult& filter_result, TaskArchetypeIndex archetype_index,
                       ArchetypeEntityIndex first_entity, uint32_t size):
                 ElementView{filter_result.filtered_archetypes[archetype_index.toInt()].archetype->getElementView(first_entity)},
                 dist_to_end_ {std::min(size, archetype_->size() - first_entity.toInt())},
@@ -71,7 +71,7 @@ namespace mustache {
     };
 
     struct TaskView {
-        TaskView(const TaskInfo& info, DefaultWorldFilterResult& fr):
+        TaskView(const TaskInfo& info, WorldFilterResult& fr):
                 dist_to_end{info.size},
                 archetype_index{info.first_archetype},
                 filtered_archetypes{&fr.filtered_archetypes},
@@ -109,7 +109,7 @@ namespace mustache {
         uint32_t current_size {0u};
         uint32_t dist_to_end {0u};
         TaskArchetypeIndex archetype_index = TaskArchetypeIndex::make(0u);
-        decltype(DefaultWorldFilterResult::filtered_archetypes)* filtered_archetypes = nullptr;
+        decltype(WorldFilterResult::filtered_archetypes)* filtered_archetypes = nullptr;
         ArchetypeEntityIndex first_entity = ArchetypeEntityIndex::make(0u);
     };
 
@@ -150,16 +150,16 @@ namespace mustache {
             return TaskView{task_info_, *filter_result_};
         }
 
-        JobView(DefaultWorldFilterResult& filter_result, uint32_t num_tasks):
+        JobView(WorldFilterResult& filter_result, uint32_t num_tasks):
                 filter_result_{&filter_result},
                 ept_{filter_result.total_entity_count / num_tasks},
                 tasks_with_extra_item_ {filter_result.total_entity_count - num_tasks * ept_} {
             updateTaskSize();
         }
 
-        static auto make(DefaultWorldFilterResult& filter_result, uint32_t num_tasks) noexcept {
+        static auto make(WorldFilterResult& filter_result, uint32_t num_tasks) noexcept {
             struct Result {
-                Result(DefaultWorldFilterResult &filter_result, uint32_t num_tasks) :
+                Result(WorldFilterResult &filter_result, uint32_t num_tasks) :
                         begin_{filter_result, num_tasks},
                         end_{PerEntityJobTaskId::make(num_tasks)} {
 
@@ -181,7 +181,7 @@ namespace mustache {
             return Result{filter_result, num_tasks};
         }
     private:
-        DefaultWorldFilterResult* filter_result_;
+        WorldFilterResult* filter_result_;
         uint32_t ept_;
         uint32_t tasks_with_extra_item_;
         TaskInfo task_info_;

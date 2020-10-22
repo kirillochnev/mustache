@@ -3,7 +3,7 @@
 
 using namespace mustache;
 
-void DefaultWorldFilterResult::ArchetypeFilterResult::addBlock(const EntityBlock& block) noexcept {
+void WorldFilterResult::ArchetypeFilterResult::addBlock(const EntityBlock& block) noexcept {
     const auto block_size = block.end - block.begin;
     if (block_size > 0) {
         entities_count += block_size;
@@ -11,8 +11,8 @@ void DefaultWorldFilterResult::ArchetypeFilterResult::addBlock(const EntityBlock
     }
 }
 
-void DefaultWorldFilterResult::filterArchetype(Archetype& archetype, const ArchetypeFilterParam& check,
-        const ArchetypeFilterParam& set) {
+void WorldFilterResult::filterArchetype(Archetype& archetype, const ArchetypeFilterParam& check,
+                                        const ArchetypeFilterParam& set) {
     ArchetypeFilterResult item;
     item.archetype = &archetype;
     item.entities_count = 0u;
@@ -45,7 +45,7 @@ void DefaultWorldFilterResult::filterArchetype(Archetype& archetype, const Arche
     }
 }
 
-void DefaultWorldFilterResult::apply(World& world, const WorldFilterParam& check, const WorldFilterParam& set) {
+void WorldFilterResult::apply(World& world, const WorldFilterParam& check, const WorldFilterParam& set) {
     filtered_archetypes.clear();
     total_entity_count = 0;
 
