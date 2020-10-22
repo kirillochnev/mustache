@@ -58,7 +58,12 @@ namespace mustache {
                 }
             }
             void allocate() {
+#ifdef _MSC_BUILD
+                auto ptr = malloc(component_size * kComponentBlockSize);
+                (void ) component_alignment;
+#else
                 auto ptr = aligned_alloc(component_alignment, component_size * kComponentBlockSize);
+#endif
                 data.push_back(static_cast<std::byte*>(ptr));
             }
             void reserve(uint32_t new_capacity) {
