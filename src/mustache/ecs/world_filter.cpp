@@ -4,7 +4,7 @@
 using namespace mustache;
 
 void WorldFilterResult::ArchetypeFilterResult::addBlock(const EntityBlock& block) noexcept {
-    const auto block_size = block.end - block.begin;
+    const auto block_size = block.end.toInt() - block.begin.toInt();
     if (block_size > 0) {
         entities_count += block_size;
         blocks.push_back(block);
@@ -19,15 +19,15 @@ void WorldFilterResult::filterArchetype(Archetype& archetype, const ArchetypeFil
 
     const auto last_index = archetype.lastChunkIndex();
     bool is_prev_match = false;
-    EntityBlock block{0, 0};
+    EntityBlock block{ArchetypeEntityIndex::make(0), ArchetypeEntityIndex::make(0)};
     const auto chunk_size = archetype.chunkCapacity().toInt();
     for (auto chunk_index = ChunkIndex::make(0); chunk_index <= last_index; ++chunk_index) {
         const bool is_match = archetype.updateComponentVersions<FunctionSafety::kUnsafe>(check, set, chunk_index);
         if (is_match) {
             if (!is_prev_match) {
-                block.begin = chunk_index.toInt() * chunk_size;
+                block.begin = ArchetypeEntityIndex::make(chunk_index.toInt() * chunk_size);
             }
-            block.end = chunk_index.next().toInt() * chunk_size;
+            block.end = ArchetypeEntityIndex::make(chunk_index.next().toInt() * chunk_size);
         } else {
             if (is_prev_match) {
                 item.addBlock(block);
@@ -36,7 +36,8 @@ void WorldFilterResult::filterArchetype(Archetype& archetype, const ArchetypeFil
         is_prev_match = is_match;
     }
     if (is_prev_match) {
-        block.end = std::min(archetype.size(), block.end);
+        const auto end_of_archetype = ArchetypeEntityIndex::make(archetype.size());
+        block.end = std::min(end_of_archetype, block.end);
         item.addBlock(block);
     }
     if (item.entities_count > 0) {

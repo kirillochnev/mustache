@@ -14,8 +14,8 @@ namespace mustache {
      */
     struct WorldFilterResult {
         struct EntityBlock {
-            uint32_t begin; // entity index
-            uint32_t end; // entity index
+            ArchetypeEntityIndex begin;
+            ArchetypeEntityIndex end;
         };
         struct ArchetypeFilterResult {
             Archetype* archetype {nullptr};

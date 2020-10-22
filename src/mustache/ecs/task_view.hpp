@@ -24,10 +24,10 @@ namespace mustache {
             if (dist_to_end_ > 0) {
                 const auto index_in_archetype = globalIndex().toInt();
 
-                auto dist_to_block_end = filter_result_->blocks[current_block_].end - index_in_archetype;
+                auto dist_to_block_end = filter_result_->blocks[current_block_].end.toInt() - index_in_archetype;
                 if (dist_to_block_end == 0u) {
                     ++current_block_;
-                    dist_to_block_end = filter_result_->blocks[current_block_].end - index_in_archetype;
+                    dist_to_block_end = filter_result_->blocks[current_block_].end.toInt() - index_in_archetype;
                 }
                 array_size_ = std::min(dist_to_block_end, std::min(elementArraySize(), dist_to_end_));
             }
@@ -44,10 +44,10 @@ namespace mustache {
             if (dist_to_end_ > 0) {
                 const auto index_in_archetype = globalIndex().toInt();
 
-                auto dist_to_block_end = filter_result_->blocks[current_block_].end - index_in_archetype;
+                auto dist_to_block_end = filter_result_->blocks[current_block_].end.toInt() - index_in_archetype;
                 if (dist_to_block_end == 0u) {
                     ++current_block_;
-                    dist_to_block_end = filter_result_->blocks[current_block_].end - index_in_archetype;
+                    dist_to_block_end = filter_result_->blocks[current_block_].end.toInt() - index_in_archetype;
                 }
                 array_size_ = std::min(dist_to_block_end, std::min(elementArraySize(), dist_to_end_));
             }
