@@ -64,32 +64,3 @@ namespace {
         dispatcher.waitForParallelFinish();*/
     }
 }
-
-void POC() {
-    struct C0 {};
-    World world{WorldId::make(0)};
-    auto& entities = world.entities();
-    auto& archetype = entities.getArchetype<C0>();
-    for (uint32_t i = 0; i < 3 * 16; ++i) {
-        (void) entities.create(archetype);
-    }
-
-    filter_result.apply(world);
-    /*filter_result.total_entity_count = 16 * 1024;
-    DefaultWorldFilterResult::ArchetypeFilterResult archetype_filter_result;
-    archetype_filter_result.archetype = &archetype;
-    archetype_filter_result.entities_count = 16 * filter_result.total_entity_count;
-    archetype_filter_result.blocks.push_back(DefaultWorldFilterResult::EntityBlock{0, 16 });
-    archetype_filter_result.blocks.push_back(DefaultWorldFilterResult::EntityBlock{16, 32 });
-    archetype_filter_result.blocks.push_back(DefaultWorldFilterResult::EntityBlock{32, 16 * 1024 });
-    filter_result.filtered_archetypes.push_back(archetype_filter_result);*/
-    ArchetypeView iterator{filter_result, TaskArchetypeIndex::make(0),
-                           ArchetypeEntityIndex::make(3), 64};
-    for (auto& it : iterator) {
-        Entity* entities_ptr = it.getEntity();
-        for (uint32_t i = 0; i < it.arraySize(); ++i) {
-            std::cout << entities_ptr[i].value << std::endl;
-        }
-        std::cout << "-----------------------------------------" << std::endl;
-    }
-}

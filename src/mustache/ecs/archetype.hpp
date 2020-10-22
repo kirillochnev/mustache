@@ -177,7 +177,7 @@ namespace mustache {
                 }
             }
             auto versions = versions_.data() + first_index;
-            bool result = check.components.empty();
+            bool result = check.version.isNull() || check.components.empty();
             if (!result) {
                 for (auto component_index : check.components) {
                     if (versions[component_index.toInt()] > check.version) {

@@ -109,6 +109,7 @@ void iterate500k() {
         kNumIteration = 1000,
     };
     mustache::World world{mustache::WorldId::make(0)};
+    world.update();
     auto& entities = world.entities();
     auto& archetype = entities.getArchetype<Position, Velocity, Rotation>();
 //    auto& archetype2 = entities.getArchetype<Position, Velocity, Rotation, Component0>();
@@ -116,6 +117,7 @@ void iterate500k() {
         (void)entities.create(archetype);
 //        (void)entities.create(archetype2);
     }
+    world.update();
     constexpr float dt = 1.0f / kNumIteration;
     struct UpdatePosJob : public mustache::PerEntityJob <UpdatePosJob> {
 //        uint32_t count = 0;

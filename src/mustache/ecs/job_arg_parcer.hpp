@@ -200,6 +200,32 @@ namespace mustache {
         static ComponentIdMask componentMask() noexcept {
             return componentMask(std::make_index_sequence<FunctionInfo::components_count>());
         }
+
+        template<typename _C>
+        static std::pair<ComponentId, bool> componentInfo() noexcept {
+            using Component = typename ComponentType<_C>::type;
+            return std::make_pair(ComponentFactory::registerComponent<Component>(),
+                    IsComponentMutable<_C>::value);
+        }
+
+        template<size_t... _I>
+        static ComponentIdMask updateMask(std::index_sequence<_I...>&&) noexcept {
+            ComponentIdMask result;
+            std::array array {
+                componentInfo<typename FunctionInfo::template Component<_I> ::type>()...
+            };
+            for (const auto& pair : array) {
+                result.set(pair.first, pair.second);
+            }
+            return result;
+        }
+        static ComponentIdMask updateMask() noexcept {
+            if constexpr (FunctionInfo::components_count < 1) {
+                return ComponentIdMask{};
+            } else {
+                return updateMask(std::make_index_sequence<FunctionInfo::components_count>());
+            }
+        }
     };
 
     template<typename T, size_t... _I>

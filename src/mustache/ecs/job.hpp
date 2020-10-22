@@ -42,7 +42,8 @@ namespace mustache {
 
         virtual void runParallel(World&, Dispatcher&, uint32_t num_tasks) = 0;
         virtual void runCurrentThread(World&) = 0;
-
+        virtual ComponentIdMask checkMask() const noexcept = 0;
+        virtual ComponentIdMask updateMask() const noexcept = 0;
         virtual uint32_t applyFilter(World&) noexcept = 0;
         virtual uint32_t taskCount(const Dispatcher& dispatcher, uint32_t entity_count) const noexcept {
             return std::min(entity_count, dispatcher.threadCount() + 1);
@@ -54,12 +55,15 @@ namespace mustache {
     class PerEntityJob : public APerEntityJob {
     public:
         using Info = JobInfo<T>;
-        using WorldFilterResult = DefaultWorldFilterResult;//_WorldFilter;
+        using WorldFilterResult = DefaultWorldFilterResult;
 
         virtual uint32_t applyFilter(World& world) noexcept override {
-            static const WorldFilterParam check;
+            const WorldFilterParam check {
+                checkMask(),
+                WorldVersion::null()
+            };
             const WorldFilterParam set {
-                filter_result_.mask_,
+                updateMask(),
                 world.version()
             };
             filter_result_.apply(world, check, set);
@@ -68,6 +72,14 @@ namespace mustache {
 
         PerEntityJob() {
             filter_result_.mask_ = Info::componentMask();
+        }
+
+        ComponentIdMask checkMask() const noexcept override {
+            return ComponentIdMask{};
+        }
+
+        ComponentIdMask updateMask() const noexcept override {
+            return Info::updateMask();
         }
 
         MUSTACHE_INLINE void runCurrentThread(World&) override {

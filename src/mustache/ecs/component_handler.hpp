@@ -101,6 +101,41 @@ namespace mustache {
     };
 
     template<typename T>
+    struct IsComponentMutable<const T*> {
+        constexpr static bool value = false;
+    };
+
+    template<typename T>
+    struct IsComponentMutable<const T* const> {
+        constexpr static bool value = false;
+    };
+
+    template<typename T>
+    struct IsComponentMutable<const T&> {
+        constexpr static bool value = false;
+    };
+
+    template<typename T>
+    struct IsComponentMutable<const RequiredComponent<const T>&> {
+        constexpr static bool value = false;
+    };
+
+    template<typename T>
+    struct IsComponentMutable<RequiredComponent<const T> > {
+        constexpr static bool value = false;
+    };
+
+    template<typename T>
+    struct IsComponentMutable<const OptionalComponent<const T>&> {
+        constexpr static bool value = false;
+    };
+
+    template<typename T>
+    struct IsComponentMutable<OptionalComponent<const T> > {
+        constexpr static bool value = false;
+    };
+
+    template<typename T>
     struct IsComponentMutable<T*> {
         constexpr static bool value = true;
     };
