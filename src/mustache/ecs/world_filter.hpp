@@ -17,11 +17,12 @@ namespace mustache {
             ArchetypeEntityIndex begin;
             ArchetypeEntityIndex end;
         };
+        struct BlockIndex : public IndexLike<uint32_t, BlockIndex>{};
         struct ArchetypeFilterResult {
             Archetype* archetype {nullptr};
             uint32_t entities_count {0};
             void addBlock(const EntityBlock& block) noexcept;
-            std::vector<EntityBlock> blocks;
+            ArrayWrapper<std::vector<EntityBlock>, BlockIndex> blocks;
         };
         void apply(World& world, const WorldFilterParam& check, const WorldFilterParam& set);
         void filterArchetype(Archetype& archetype, const ArchetypeFilterParam& check, const ArchetypeFilterParam& set);

@@ -64,7 +64,7 @@ namespace mustache {
             return array_size_;
         }
     private:
-        uint32_t current_block_ = 0u;
+        WorldFilterResult::BlockIndex current_block_ = WorldFilterResult::BlockIndex::make(0u);
         uint32_t array_size_ = 0u;
         uint32_t dist_to_end_ = 0u;
         FilrerResult* filter_result_ = nullptr;
