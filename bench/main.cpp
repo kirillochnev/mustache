@@ -54,7 +54,7 @@ void destroy(std::byte*& ptr, const mustache::ComponentId& id) {
 
 //namespace {
     struct Position {
-        glm::vec3 value;// = glm::vec3(1,2, 3);
+        glm::vec3 value = glm::vec3(1,2, 3);
     };
 
     struct Velocity {
@@ -109,7 +109,6 @@ void iterate500k() {
         kNumIteration = 1000,
     };
     mustache::World world{mustache::WorldId::make(0)};
-    world.update();
     auto& entities = world.entities();
     auto& archetype = entities.getArchetype<Position, Velocity, Rotation>();
 //    auto& archetype2 = entities.getArchetype<Position, Velocity, Rotation, Component0>();
@@ -117,22 +116,22 @@ void iterate500k() {
         (void)entities.create(archetype);
 //        (void)entities.create(archetype2);
     }
-    world.update();
+
     constexpr float dt = 1.0f / kNumIteration;
     struct UpdatePosJob : public mustache::PerEntityJob <UpdatePosJob> {
 //        uint32_t count = 0;
-//        struct alignas(128) AlignedUint {
-//            uint32_t value = 0;
-//        };
-//        std::vector<AlignedUint> count;
-
-//        uint32_t totalCount() const {
-//            uint32_t result = 0;
-//            for (auto i : count) {
-//                result += i.value;
-//            }
-//            return result;
-//        }
+        struct alignas(128) AlignedUint {
+            uint32_t value = 0;
+        };
+        std::vector<AlignedUint> count;
+//
+        uint32_t totalCount() const {
+            uint32_t result = 0;
+            for (auto i : count) {
+                result += i.value;
+            }
+            return result;
+        }
         /// FIX: uint32_t size is looks like component type, so no archetype match built mask
         /*void forEachArray(uint32_t size, Position* position,
                 Velocity* velocity, const Rotation* rotation, mustache::JobInvocationIndex invocation_index) {
@@ -153,7 +152,7 @@ void iterate500k() {
 //                std::terminate();
 //            }
             pos.value += dt * vel.value * forward(rot->orient);
-//            ++count[invocation_index.task_index.toInt()].value;
+            ++count[invocation_index.task_index.toInt()].value;
 //            ++count;
         }
     };
@@ -166,15 +165,15 @@ void iterate500k() {
     const auto task_count = dispatcher.threadCount() + 1;
     for (uint32_t i = 0; i < kNumIteration; ++i) {
 //        update_pos_job.count = 0;
-//        update_pos_job.count.clear();
-//        update_pos_job.count.resize(task_count);
+        update_pos_job.count.clear();
+        update_pos_job.count.resize(task_count);
         benchmark.add([&world, &update_pos_job, &dispatcher, task_count] {
             update_pos_job.run(world, dispatcher, mustache::JobRunMode::kParallel);
 //            update_pos_job.runParallel(world, task_count, dispatcher);
         });
-//        if (update_pos_job.totalCount() != kNumObjects) {
-//            throw std::runtime_error(std::to_string(update_pos_job.totalCount()) + " vs " + std::to_string(static_cast<uint32_t>(kNumObjects)));
-//        }
+        if (update_pos_job.totalCount() != kNumObjects) {
+            throw std::runtime_error(std::to_string(update_pos_job.totalCount()) + " vs " + std::to_string(static_cast<uint32_t>(kNumObjects)));
+        }
     }
     benchmark.show();
 }
@@ -238,8 +237,6 @@ void showComponentInfo() {
             << "\t\t\t| component is " << (is_component_required ? "" : "NOT ") << "required" <<std::endl;
 }
 
-void remove_component_1();
-void remove_component_2();
 void testGlobalIndex();
 void POC();
 int main() {
@@ -263,8 +260,6 @@ int main() {
 //    create1m();
 //    createEmptyAndAssign();
     iterate500k();
-//    remove_component_1();
-//    remove_component_2();
 //    testGlobalIndex();
 
 //    POC();
