@@ -57,10 +57,10 @@ namespace mustache {
         void freeChunk(ChunkPtr chunk) noexcept;
 
         MemoryManager* memory_manager_;
-        ArrayWrapper<ComponentDataGetter, ComponentIndex> component_getter_info_; // ComponentIndex -> {offset, size}
+        ArrayWrapper<ComponentDataGetter, ComponentIndex, true> component_getter_info_; // ComponentIndex -> {offset, size}
         uint32_t size_{0u};
         ChunkCapacity chunk_capacity_;
-        ArrayWrapper<ChunkPtr, ChunkIndex> chunks_;
+        ArrayWrapper<ChunkPtr, ChunkIndex, true> chunks_;
         uint32_t chunk_size_ {0u};
         uint32_t chunk_align_ {0u};
     };

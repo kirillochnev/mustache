@@ -29,7 +29,7 @@ class MemoryManager : mustache::Uncopiable {
     template<typename T>
     class Allocator {
     public:
-        Allocator(MemoryManager& manager):
+        constexpr Allocator(MemoryManager& manager):
             manager_{&manager} {
 
         }

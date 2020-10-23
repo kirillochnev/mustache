@@ -8,8 +8,9 @@ using namespace mustache;
 Archetype::Archetype(World& world, ArchetypeIndex id, const ComponentIdMask& mask):
     world_{world},
     mask_{mask},
-    operation_helper_{mask},
+    operation_helper_{world.memoryManager(), mask},
     data_storage_{mask, world_.memoryManager()},
+    entities_{world.memoryManager()},
     components_count_{mask.componentsCount()},
     id_{id} {
 

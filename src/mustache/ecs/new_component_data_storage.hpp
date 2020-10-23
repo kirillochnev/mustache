@@ -43,6 +43,12 @@ namespace mustache {
             ~ComponentDataHolder() {
                 clear();
             }
+            explicit ComponentDataHolder(MemoryManager& manager):
+                    memory_manager{&manager},
+                    data{manager} {
+
+            }
+
             void clear() {
                 for (auto ptr : data) {
                     memory_manager->deallocate(ptr);
@@ -65,13 +71,13 @@ namespace mustache {
                 return block + component_size * (index % chunk_capacity).toInt();
             }
             MemoryManager* memory_manager = nullptr;
-            std::vector<std::byte*> data;
+            std::vector<std::byte*, Allocator<std::byte*> > data;
             uint32_t component_size;
             uint32_t component_alignment;
         };
         uint32_t size_ = 0;
         uint32_t capacity_ = 0;
-        ArrayWrapper<ComponentDataHolder, ComponentIndex> components_;
+        ArrayWrapper<ComponentDataHolder, ComponentIndex, true> components_;
         MemoryManager* memory_manager_;
     };
 

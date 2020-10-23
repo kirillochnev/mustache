@@ -7,7 +7,7 @@
 #include <vector>
 
 namespace mustache {
-    template<typename _ElementType, typename _IndexType, bool _UseMemoryCustomAllocator = false>
+    template<typename _ElementType, typename _IndexType, bool _UseMemoryCustomAllocator>
     class ArrayWrapper {
         using _ArrayType = typename std::conditional<_UseMemoryCustomAllocator,
                 std::vector<_ElementType, Allocator<_ElementType> >,
@@ -44,6 +44,9 @@ namespace mustache {
         }
         auto resize(size_t new_size) {
             return array_.resize(new_size);
+        }
+        auto resize(size_t new_size, const _ElementType& value) {
+            return array_.resize(new_size, value);
         }
         auto reserve(size_t new_capacity) {
             return array_.reserve(new_capacity);

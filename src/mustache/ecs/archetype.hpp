@@ -264,7 +264,7 @@ namespace mustache {
         ComponentIdMask mask_;
         ArchetypeOperationHelper operation_helper_;
         ArchetypeComponentDataStorage data_storage_;
-        ArrayWrapper<Entity, ArchetypeEntityIndex> entities_;
+        ArrayWrapper<Entity, ArchetypeEntityIndex, true> entities_;
         uint32_t components_count_;
         uint32_t chunk_size_ = 1024u;
         std::vector<WorldVersion> versions_;

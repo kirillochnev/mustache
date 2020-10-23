@@ -22,7 +22,7 @@ namespace mustache {
             Archetype* archetype {nullptr};
             uint32_t entities_count {0};
             void addBlock(const EntityBlock& block) noexcept;
-            ArrayWrapper<EntityBlock, BlockIndex> blocks;
+            ArrayWrapper<EntityBlock, BlockIndex, false> blocks; // TODO: use memory manager
         };
         void apply(World& world, const WorldFilterParam& check, const WorldFilterParam& set);
         void filterArchetype(Archetype& archetype, const ArchetypeFilterParam& check, const ArchetypeFilterParam& set);

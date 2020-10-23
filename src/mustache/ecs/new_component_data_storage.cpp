@@ -5,13 +5,14 @@
 using namespace mustache;
 
 NewComponentDataStorage::NewComponentDataStorage(const ComponentIdMask& mask, MemoryManager& memory_manager):
+    components_{memory_manager},
     memory_manager_{&memory_manager} {
-    components_.resize(mask.componentsCount());
+    components_.reserve(mask.componentsCount());
 
     ComponentIndex index = ComponentIndex::make(0);
     mask.forEachItem([&index, this](ComponentId id) {
         const auto &info = ComponentFactory::componentInfo(id);
-        auto &component = components_[index];
+        auto &component = components_.emplace_back(*memory_manager_);
         component.component_size = info.size;
         component.component_alignment = info.align;
         component.memory_manager = memory_manager_;

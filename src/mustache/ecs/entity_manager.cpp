@@ -5,8 +5,12 @@ using namespace mustache;
 
 EntityManager::EntityManager(World& world):
         world_{world},
+        entities_{world.memoryManager()},
+        locations_{world.memoryManager()},
+//        marked_for_delete_{world.memoryManager()},
         this_world_id_{world.id()},
-        world_version_{world.version()} {
+        world_version_{world.version()},
+        archetypes_{world.memoryManager()} {
 
 }
 

@@ -14,7 +14,7 @@ namespace mustache {
     private:
         friend class Archetype;
 
-        explicit ArchetypeOperationHelper(const ComponentIdMask& mask);
+        ArchetypeOperationHelper(MemoryManager& memory_manager, const ComponentIdMask& mask);
         ArchetypeOperationHelper() = default;
 
         static std::vector<ComponentOffset> offsetsFor(const std::vector<ComponentId>& components);
@@ -49,11 +49,12 @@ namespace mustache {
         }
 
         // NOTE: can be removed?
-        ArrayWrapper<ComponentIndex, ComponentId> component_id_to_component_index;
+        ArrayWrapper<ComponentIndex, ComponentId, true> component_id_to_component_index;
 
+        // TODO: use custom allocator
         std::vector<InsertInfo> insert; // only non null init functions
         std::vector<DestroyInfo> destroy; // only non null destroy functions
-        ArrayWrapper<ExternalMoveInfo, ComponentIndex> external_move;
-        ArrayWrapper<InternalMoveInfo, ComponentIndex> internal_move; // move or copy function
+        ArrayWrapper<ExternalMoveInfo, ComponentIndex, true> external_move;
+        ArrayWrapper<InternalMoveInfo, ComponentIndex, true> internal_move; // move or copy function
     };
 }
