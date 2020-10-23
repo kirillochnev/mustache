@@ -160,10 +160,10 @@ TEST(EntityManager, create_and_destroy_entities_check_id_version3) {
 TEST(EntityManager, clearArchetype) {
     ASSERT_EQ(created_components.size(), 0);
     {
-        constexpr uint32_t kItemPerArchetype = 5;
+        static constexpr uint32_t kItemPerArchetype = 5;
         mustache::World world{mustache::WorldId::make(0)};
         std::vector<mustache::Entity> entity_array;
-        const auto create_for_arch = [&entity_array, &world](mustache::Archetype &archetype) {
+        const auto create_for_arch = [&entity_array, &world](mustache::Archetype& archetype) {
             for (uint32_t i = 0; i < kItemPerArchetype; ++i) {
                 entity_array.push_back(world.entities().create(archetype));
             }

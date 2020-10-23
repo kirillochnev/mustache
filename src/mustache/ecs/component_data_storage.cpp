@@ -38,7 +38,6 @@ void ComponentDataStorage::allocateChunk() {
 
     // TODO: use memory allocator
 #ifdef _MSC_BUILD
-    (void) chunk_alignment;
     ChunkPtr chunk = reinterpret_cast<ChunkPtr>(malloc(chunk_size));
 #else
     ChunkPtr chunk = reinterpret_cast<ChunkPtr>(aligned_alloc(chunk_align_, chunk_size));

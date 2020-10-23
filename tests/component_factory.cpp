@@ -1,5 +1,7 @@
 #include <gtest/gtest.h>
 #include <mustache/ecs/component_factory.hpp>
+#include <array>
+
 namespace {
     template<size_t>
     struct Component {
