@@ -3,16 +3,16 @@
 #include <mustache/ecs/entity.hpp>
 #include <mustache/ecs/component_mask.hpp>
 #include <mustache/utils/array_wrapper.hpp>
+#include <mustache/utils/memory_manager.hpp>
 
 #include <array>
-#include <iostream>
 
 namespace mustache {
     class NewComponentDataStorage {
     public:
         class ElementView;
 
-        explicit NewComponentDataStorage(const ComponentIdMask& mask);
+        NewComponentDataStorage(const ComponentIdMask& mask, MemoryManager& memory_manager);
 
         [[nodiscard]] MUSTACHE_INLINE uint32_t capacity() const noexcept;
         [[nodiscard]] MUSTACHE_INLINE uint32_t size() const noexcept;
@@ -45,16 +45,11 @@ namespace mustache {
             }
             void clear() {
                 for (auto ptr : data) {
-                    free(ptr);
+                    memory_manager->deallocate(ptr);
                 }
             }
             void allocate() {
-#ifdef _MSC_BUILD
-                auto ptr = malloc(component_size * kComponentBlockSize);
-                (void ) component_alignment;
-#else
-                auto ptr = aligned_alloc(component_alignment, component_size * kComponentBlockSize);
-#endif
+                auto* ptr = memory_manager->allocate(component_size * kComponentBlockSize, component_alignment);
                 data.push_back(static_cast<std::byte*>(ptr));
             }
 
@@ -69,6 +64,7 @@ namespace mustache {
                 auto block = data[(index / chunk_capacity).toInt()];
                 return block + component_size * (index % chunk_capacity).toInt();
             }
+            MemoryManager* memory_manager = nullptr;
             std::vector<std::byte*> data;
             uint32_t component_size;
             uint32_t component_alignment;
@@ -76,6 +72,7 @@ namespace mustache {
         uint32_t size_ = 0;
         uint32_t capacity_ = 0;
         ArrayWrapper<std::vector<ComponentDataHolder>, ComponentIndex> components_;
+        MemoryManager* memory_manager_;
     };
 
     uint32_t NewComponentDataStorage::capacity() const noexcept {

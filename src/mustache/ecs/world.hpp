@@ -3,6 +3,7 @@
 #include <mustache/utils/index_like.hpp>
 #include <mustache/ecs/entity_manager.hpp>
 #include <cstdint>
+#include <mustache/utils/memory_manager.hpp>
 
 namespace mustache {
 
@@ -31,9 +32,13 @@ namespace mustache {
         [[nodiscard]] WorldVersion version() const noexcept {
             return version_;
         }
+        [[nodiscard]] MemoryManager& memoryManager() noexcept {
+            return memory_manager_;
+        }
     private:
         WorldId id_;
         WorldVersion version_ = WorldVersion::make(0u);
         EntityManager entities_;
+        MemoryManager memory_manager_;
     };
 }
