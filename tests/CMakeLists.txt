@@ -17,6 +17,8 @@ add_executable(${PROJECT_NAME}
         job.cpp
         entity.cpp
         component_factory.cpp
+        world_filter.cpp
+        component_mask_test.cpp
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE mustache)

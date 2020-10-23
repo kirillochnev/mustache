@@ -2,190 +2,142 @@
 #include <mustache/utils/logger.hpp>
 #include <mustache/ecs/component_factory.hpp>
 #include <mustache/ecs/world.hpp>
-#include <cstdlib>
 
 using namespace mustache;
 
-namespace {
-
-    void updateVersion(uint32_t version, uint32_t num_components,
-            ComponentOffset version_offset, Chunk* chunk) {
-        auto version_ptr = chunk->dataPointerWithOffset<uint32_t>(version_offset);
-        for (uint32_t i = 0; i < num_components; ++i) {
-            version_ptr[i] = version;
-        }
-    }
-}
-Archetype::Archetype(World& world, ArchetypeIndex id, const ComponentMask& mask):
+Archetype::Archetype(World& world, ArchetypeIndex id, const ComponentIdMask& mask):
     world_{world},
     mask_{mask},
     operation_helper_{mask},
+    data_storage_{mask},
+    components_count_{mask.componentsCount()},
     id_{id} {
-    uint32_t i = 0;
-    for (auto component_id : mask.components()) {
-        const auto& info = ComponentFactory::componentInfo(component_id);
-        name_ += " [" + info.name + "]";
-        Logger{}.debug("Offset of: %s = %d", info.name, operation_helper_.get[ComponentIndex::make(i++)].offset.toInt());
-    }
-    Logger{}.debug("New archetype created, components: %s | chunk size: %d",
-                   name_.c_str(), operation_helper_.chunkCapacity());
+
 }
 
 Archetype::~Archetype() {
-    if (size_ > 0) {
+    if (!data_storage_.isEmpty()) {
         Logger{}.error("Destroying non-empty archetype");
     }
-    for(auto chunk : chunks_) {
-        freeChunk(chunk);
-    }
+    data_storage_.clear(true);
 }
 
-ArchetypeEntityIndex Archetype::insert(Entity entity, Archetype& prev_archetype, ArchetypeEntityIndex prev_index,
+void Archetype::callDestructor(const ElementView& view) {
+    for (const auto &info : operation_helper_.destroy) {
+        info.destructor(view.getData<FunctionSafety::kUnsafe>(info.component_index));
+    }
+    data_storage_.decrSize();
+}
+
+void Archetype::externalMove(Entity entity, Archetype& prev_archetype, ArchetypeEntityIndex prev_index,
         bool initialize_missing_components) {
-    reserve(size() + 1);
-    const auto index = ArchetypeEntityIndex::make(size_++);
 
-    // the item at this index has not been created yet,
-    // but memory has already been allocated, so an unsafe version of entityIndexToInternalLocation must be used
-    const auto location = entityIndexToInternalLocation<FunctionSafety::kUnsafe>(index);
-    updateVersion(world_.version(), operation_helper_.num_components,
-                  operation_helper_.version_offset, location.chunk);
-    const auto entity_offset = operation_helper_.entity_offset.add(location.index.toInt() * sizeof(Entity));
-    new (location.chunk->dataPointerWithOffset<Entity>(entity_offset)) Entity (entity);
 
-    const auto source_location = prev_archetype.entityIndexToInternalLocation(prev_index);
+    const auto index = data_storage_.pushBack();
+    if (entities_.size() <= index.toInt()) {
+        entities_.resize(index.next().toInt());
+    }
+    entities_[index.toArchetypeIndex()] = entity;
+
+    ComponentIndex component_index = ComponentIndex::make(0);
+    const auto source_view = prev_archetype.getElementView(prev_index);
+    const auto dest_view = getElementView(index.toArchetypeIndex());
     for (const auto& info : operation_helper_.external_move) {
-        const auto prev_offset = prev_archetype.getComponentOffset(info.id).add(source_location.index.toInt() * info.size);
-        if (!prev_offset.isNull()) {
-            auto prev_ptr = source_location.chunk->dataPointerWithOffset(prev_offset);
-            const auto component_offset = info.offset.add(location.index.toInt() * info.size);
-            auto component_ptr = location.chunk->dataPointerWithOffset(component_offset);
+        auto prev_ptr = source_view.getData<FunctionSafety::kSafe>(prev_archetype.getComponentIndex<FunctionSafety::kSafe>(info.id));
+        if (prev_ptr != nullptr) {
+            auto component_ptr = dest_view.getData<FunctionSafety::kUnsafe>(component_index);
             info.move(component_ptr, prev_ptr);
-            continue;
-        }
-        if (initialize_missing_components && info.constructor) {
-            const auto component_offset = info.offset.add(location.index.toInt() * info.size);
-            auto component_ptr = location.chunk->dataPointerWithOffset(component_offset);
+        } else if (initialize_missing_components && info.constructor) {
+            auto component_ptr = dest_view.getData<FunctionSafety::kUnsafe>(component_index);
             info.constructor(component_ptr);
         }
+        ++component_index;
     }
-    // TODO: use callback to update entity location for prev archetype!
-    prev_archetype.remove(prev_index);
 
-    return index;
+    prev_archetype.remove(*source_view.getEntity<FunctionSafety::kUnsafe>(), prev_index);
+
+    updateAllVersions(index.toArchetypeIndex(), worldVersion());
+    world_.entities().updateLocation(entity, id_, index.toArchetypeIndex());
 }
 
 ArchetypeEntityIndex Archetype::insert(Entity entity, bool call_constructor) {
-    reserve(size() + 1);
-    const auto index = ArchetypeEntityIndex::make(size_++);
-    // the item at this index has not been created yet,
-    // but memory has already been allocated, so an unsafe version of entityIndexToInternalLocation must be used
-    const auto location = entityIndexToInternalLocation<FunctionSafety::kUnsafe>(index);
-    updateVersion(world_.version(), operation_helper_.num_components,
-            operation_helper_.version_offset, location.chunk);
-    const auto entity_offset = operation_helper_.entity_offset.add(location.index.toInt() * sizeof(Entity));
-    new (location.chunk->dataPointerWithOffset<Entity>(entity_offset)) Entity (entity);
+    const auto index = data_storage_.pushBack();
+    if (entities_.size() <= index.toInt()) {
+        entities_.resize(index.next().toInt());
+    }
+    entities_[index.toArchetypeIndex()] = entity;
+
     if (call_constructor) {
-        for (const auto &info : operation_helper_.insert) {
-            const auto component_offset = info.offset.add(location.index.toInt() * info.component_size);
-            auto component_ptr = location.chunk->dataPointerWithOffset(component_offset);
+        const auto view = getElementView(index.toArchetypeIndex());
+        for (const auto& info : operation_helper_.insert) {
+            auto component_ptr = view.getData<FunctionSafety::kUnsafe>(info.component_index);
             info.constructor(component_ptr);
         }
     }
-    return index;
+    updateAllVersions(index.toArchetypeIndex(), worldVersion());
+    world_.entities().updateLocation(entity, id_, index.toArchetypeIndex());
+    return index.toArchetypeIndex();
 }
 
-Entity Archetype::remove(ArchetypeEntityIndex index) {
-    const auto call_destructors = [this](const ArchetypeInternalEntityLocation& location) {
-        for (const auto& info : operation_helper_.destroy) {
-            const auto component_offset = info.offset.add(location.index.toInt() * info.component_size);
-            auto component_ptr = location.chunk->dataPointerWithOffset(component_offset);
-            info.destructor(component_ptr);
-        }
-        --size_;
-    };
-
-    const auto location = entityIndexToInternalLocation(index);
-    const auto last_item_index = ArchetypeEntityIndex::make(size_ - 1);
-    if (index == last_item_index) {
-        call_destructors(location);
-        return Entity{};
-    }
+void Archetype::internalMove(ArchetypeEntityIndex source_index, ArchetypeEntityIndex destination_index) {
     // moving last entity to index
-    const auto source_location = entityIndexToInternalLocation(ArchetypeEntityIndex::make(size_ - 1));
+    ComponentIndex component_index = ComponentIndex::make(0);
+    auto source_view = getElementView(source_index);
+    auto dest_view = getElementView(destination_index);
     for (auto& info : operation_helper_.internal_move) {
-        const auto source_component_offset = info.offset.add(source_location.index.toInt() * info.component_size);
-        const auto dest_component_offset = info.offset.add(location.index.toInt() * info.component_size);
-        auto source_ptr = location.chunk->dataPointerWithOffset(source_component_offset);
-        auto dest_ptr = location.chunk->dataPointerWithOffset(dest_component_offset);
+        auto source_ptr = source_view.getData<FunctionSafety::kUnsafe>(component_index);
+        auto dest_ptr = dest_view.getData<FunctionSafety::kUnsafe>(component_index);
         info.move(dest_ptr, source_ptr);
+        ++component_index;
     }
-    auto entity_ptr = operation_helper_.getEntity(source_location);
-    if (entity_ptr == nullptr) {
-        entity_ptr = operation_helper_.getEntity(source_location);
+
+    auto source_entity = *source_view.getEntity<FunctionSafety::kUnsafe>();
+    auto& dest_entity = *dest_view.getEntity<FunctionSafety::kUnsafe>();
+
+    const auto world_version = worldVersion();
+    updateAllVersions(source_index, world_version);
+    updateAllVersions(destination_index, world_version);
+
+    world_.entities().updateLocation(dest_entity, ArchetypeIndex::null(), ArchetypeEntityIndex::null());
+    world_.entities().updateLocation(source_entity, id_, destination_index);
+
+    dest_entity = source_entity;
+
+    callDestructor(source_view);
+}
+
+void Archetype::remove(Entity entity_to_destroy, ArchetypeEntityIndex entity_index) {
+//    Logger{}.debug("Removing entity from: %s pos: %d", mask_.toString(), entity_index.toInt());
+
+    const auto last_index = data_storage_.lastItemIndex().toArchetypeIndex();
+    if (entity_index == last_index) {
+        if (!operation_helper_.destroy.empty()) {
+            callDestructor(getElementView(entity_index));
+        } else {
+            data_storage_.decrSize();
+        }
+        updateAllVersions(entity_index, worldVersion());
+        world_.entities().updateLocation(entity_to_destroy, ArchetypeIndex::null(), ArchetypeEntityIndex::null());
+    } else {
+        internalMove(last_index, entity_index);
     }
-    auto source_entity = *entity_ptr;
-    *operation_helper_.getEntity(location) = source_entity;
-    call_destructors(source_location);
-    return source_entity;
 }
 
-void Archetype::reserve(size_t capacity) {
-    while (capacity > capacity_) {
-        allocateChunk();
-    }
-}
-
-void Archetype::allocateChunk() {
-    // TODO: use memory allocator
-#ifdef _MSC_BUILD
-    Chunk* chunk = new Chunk{};
-#else
-    Chunk* chunk = reinterpret_cast<Chunk*>(aligned_alloc(alignof(Entity), sizeof(Chunk)));
-#endif
-//    auto chunk = new Chunk{};
-    chunks_.push_back(chunk);
-    capacity_ += operation_helper_.chunkCapacity();
-}
-
-void Archetype::freeChunk(Chunk* chunk) {
-    // TODO: use memory allocator
-#ifdef _MSC_BUILD
-    delete chunk;
-#else
-    free(chunk);
-#endif
-}
-
-uint32_t Archetype::worldVersion() const noexcept {
+WorldVersion Archetype::worldVersion() const noexcept {
     return world_.version();
 }
 
 void Archetype::clear() {
-    if (size_ == 0) {
+    if (data_storage_.isEmpty()) {
         return;
     }
 
-    const auto for_each_location = [this, size = size_](auto&& f) {
-        const auto chunk_last_index = operation_helper_.index_of_last_entity_in_chunk;
-        auto num_items = size;
-        ArchetypeInternalEntityLocation location;
-        for (auto chunk : chunks_) {
-            location.chunk = chunk;
-            for (location.index = ChunkEntityIndex::make(0); location.index <= chunk_last_index; ++location.index) {
-                f(location);
-                if (--num_items == 0) {
-                    return;
-                }
-            }
-        }
-    };
     for (const auto& info : operation_helper_.destroy) {
-        for_each_location([&info, this](const auto& location){
-            const auto component_offset = info.offset.add(location.index.toInt() * info.component_size);
-            auto component_ptr = location.chunk->dataPointerWithOffset(component_offset);
+        for (auto i = ComponentStorageIndex::make(0); i < data_storage_.lastItemIndex().next(); ++i) {
+            auto component_ptr = data_storage_.getData(info.component_index, i);
             info.destructor(component_ptr);
-        });
+        }
     }
-    size_ = 0;
+
+    data_storage_.clear(false);
 }

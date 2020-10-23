@@ -2,6 +2,7 @@
 
 #include <string>
 #include <mustache/utils/default_settings.hpp>
+#include <memory>
 
 namespace mustache {
     enum class LogLevel : uint32_t {
@@ -13,6 +14,21 @@ namespace mustache {
 
     class LogWriter {
     public:
+        static constexpr const char* toStr(LogLevel lvl) noexcept {
+            switch (lvl) {
+                case LogLevel::kError:
+                    return "Error";
+                case LogLevel::kWarn:
+                    return "Warning";
+                case LogLevel::kInfo:
+                    return "Info";
+                case LogLevel::kDebug:
+                    return "Debug";
+            }
+            return nullptr;
+        }
+
+        static void setActive(const std::shared_ptr<LogWriter>& writer) noexcept;
         static LogWriter& active() noexcept;
 
         LogWriter() = default;
@@ -26,7 +42,6 @@ namespace mustache {
         };
 
         virtual void onMessage(const Context& ctx, LogLevel, std::string, ...);
-
 
     };
 

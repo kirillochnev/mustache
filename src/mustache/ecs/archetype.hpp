@@ -1,10 +1,11 @@
 #pragma once
 
-#include <mustache/ecs/chunk.hpp>
 #include <mustache/ecs/entity.hpp>
 #include <mustache/ecs/id_deff.hpp>
 #include <mustache/ecs/job_arg_parcer.hpp>
 #include <mustache/ecs/archetype_operation_helper.hpp>
+#include <mustache/ecs/component_data_storage.hpp>
+#include <mustache/ecs/new_component_data_storage.hpp>
 #include <mustache/ecs/component_factory.hpp>
 #include <mustache/ecs/entity_group.hpp>
 #include <mustache/utils/uncopiable.hpp>
@@ -17,17 +18,30 @@ namespace mustache {
 
     class World;
     class EntityManager;
-    /// Location in world's entity manager
-    struct EntityLocationInWorld { // TODO: add version here?
-        constexpr static ArchetypeIndex kDefaultArchetype = ArchetypeIndex::null();
-        EntityLocationInWorld() = default;
-        EntityLocationInWorld(ArchetypeEntityIndex i, ArchetypeIndex arch ) noexcept :
-            index{i},
-            archetype{arch} {
+
+    using ArchetypeComponentDataStorage = ComponentDataStorage;
+
+    class Archetype;
+
+    struct ElementView : public ArchetypeComponentDataStorage::ElementView {
+        using Super = ArchetypeComponentDataStorage::ElementView;
+        using Super::Super;
+
+        ElementView(const Super& view, const Archetype& archetype):
+            Super{view},
+            archetype_{&archetype} {
 
         }
-        ArchetypeEntityIndex index = ArchetypeEntityIndex::make(0u);
-        ArchetypeIndex archetype = kDefaultArchetype;
+
+        template<FunctionSafety _Safety = FunctionSafety::kSafe>
+        MUSTACHE_INLINE Entity* getEntity() const;
+
+        const Archetype* archetype_ = nullptr;
+    };
+
+    struct ArchetypeFilterParam {
+        std::vector<ComponentIndex> components;
+        WorldVersion version;
     };
 
     /**
@@ -36,156 +50,241 @@ namespace mustache {
      */
     class Archetype : public Uncopiable {
     public:
-        Archetype(World& world, ArchetypeIndex id, const ComponentMask& mask);
+        Archetype(World& world, ArchetypeIndex id, const ComponentIdMask& mask);
         ~Archetype();
 
         template<FunctionSafety _Safety = FunctionSafety::kDefault>
-        Entity entityAt(ArchetypeEntityIndex index) const noexcept {
+        Entity entityAt(ArchetypeEntityIndex index) const {
             if constexpr (isSafe(_Safety)) {
-                if (!index.isValid() || index.toInt() >= size_) {
+                if (!index.isValid() || index.toInt() >= entities_.size()) {
                     return Entity{};
                 }
             }
-            ArchetypeInternalEntityLocation location = entityIndexToInternalLocation(index);
-            auto entity_ptr = operation_helper_.getEntity<_Safety>(location);
-            return entity_ptr ? *entity_ptr : Entity{};
+            return entities_[index];
         }
 
         [[nodiscard]] EntityGroup createGroup(size_t count);
 
         [[nodiscard]] uint32_t size() const noexcept {
-            return size_;
+            return data_storage_.size();
         }
         [[nodiscard]] uint32_t capacity() const noexcept {
-            return capacity_;
+            return data_storage_.capacity();
         }
         [[nodiscard]] ArchetypeIndex id() const noexcept {
             return id_;
         }
 
-        void reserve(size_t capacity);
+        [[nodiscard]] uint32_t chunkCount() const noexcept {
+            return entities_.size() / chunk_size_;
+        }
 
-        bool isMatch(const ComponentMask& mask) const noexcept {
+        [[nodiscard]] ChunkCapacity chunkCapacity() const noexcept {
+            return ChunkCapacity::make(chunk_size_);
+        }
+
+        bool isMatch(const ComponentIdMask& mask) const noexcept {
             return mask_.isMatch(mask);
         }
 
         bool hasComponent(ComponentId component_id) const noexcept {
             return mask_.has(component_id);
         }
+
         template<typename T>
         bool hasComponent() const noexcept {
             static const auto component_id = ComponentFactory::registerComponent<T>();
             return mask_.has(component_id);
         }
+
+        WorldVersion worldVersion() const noexcept;
+
+        template<FunctionSafety _Safety = FunctionSafety::kSafe>
+        [[nodiscard]] ComponentIndex getComponentIndex(ComponentId id) const noexcept {
+            return operation_helper_.componentIndex<_Safety>(id);
+        }
+
+        [[nodiscard]] const ComponentIdMask& componentMask() const noexcept {
+            return mask_;
+        }
+
         template<FunctionSafety _Safety = FunctionSafety::kDefault>
-        Chunk* getChunk(ChunkIndex index) const noexcept {
+        void* getComponent(ComponentId component_id, ArchetypeEntityIndex index) const noexcept {
+            return data_storage_.getData<_Safety>(operation_helper_.componentIndex(component_id),
+                    ComponentStorageIndex::fromArchetypeIndex(index));
+        }
+
+        template<FunctionSafety _Safety = FunctionSafety::kDefault>
+        const void* getConstComponent(ComponentIndex component_index, ArchetypeEntityIndex index) const noexcept {
+            return data_storage_.getData<_Safety>(component_index, ComponentStorageIndex::fromArchetypeIndex(index));
+        }
+
+        template<FunctionSafety _Safety = FunctionSafety::kDefault>
+        void* getComponent(ComponentIndex component_index, ArchetypeEntityIndex index, WorldVersion version) noexcept {
+            auto res = data_storage_.getData<_Safety>(component_index, ComponentStorageIndex::fromArchetypeIndex(index));
+            if (res != nullptr) {
+                const auto chunk = index.toInt() / chunk_size_;
+                auto versions = versions_.data() + components_count_ * chunk;
+                versions[component_index.toInt()] = version;
+            }
+
+            return res;
+        }
+
+        [[nodiscard]] ElementView getElementView(ArchetypeEntityIndex index) const noexcept {
+            return ElementView {
+                data_storage_.getElementView(ComponentStorageIndex::fromArchetypeIndex(index)),
+                *this
+            };
+        }
+
+        template<FunctionSafety _Safety = FunctionSafety::kDefault>
+        [[nodiscard]] WorldVersion getComponentVersion(ChunkIndex index, ComponentIndex component_index) const noexcept {
             if constexpr (isSafe(_Safety)) {
-                if (!index.isValid() || !chunks_.has(index)) {
-                    return nullptr;
+                if (components_count_ <= component_index.toInt() ||
+                    versions_.size() / components_count_ <= index.toInt()) {
+                    return WorldVersion::null();
                 }
             }
-            return chunks_[index];
-        }
-        size_t chunkCount() const noexcept {
-            return chunks_.size();
-        }
-        const ArchetypeOperationHelper& operations() const noexcept {
-            return operation_helper_;
+            return versions_[versionIndex(index, component_index)];
         }
 
-        uint32_t worldVersion() const noexcept;
+        template<FunctionSafety _Safety = FunctionSafety::kDefault>
+        [[nodiscard]] WorldVersion getComponentVersion(ArchetypeEntityIndex entity_index,
+                ComponentId id) const noexcept {
+            const auto chunk_index = ChunkIndex::make(entity_index.toInt() / chunk_size_);
+            const auto component_index = getComponentIndex<_Safety>(id);
+            return getComponentVersion<_Safety>(chunk_index, component_index);
+        }
 
-        [[nodiscard]] ComponentOffset getComponentOffset(ComponentId id) const noexcept {
-            ComponentOffset result;
-            if (hasComponent(id)) {
-                const auto index = operation_helper_.component_id_to_component_index[id];
-                result = operation_helper_.get[index].offset;
+        [[nodiscard]] ChunkIndex lastChunkIndex() const noexcept {
+            const auto entities_count = entities_.size();
+            ChunkIndex result;
+            if (entities_count > 0) {
+                result = ChunkIndex::make(entities_count / chunk_size_);
             }
             return result;
+        }
+
+        template<FunctionSafety _Safety = FunctionSafety::kDefault>
+        bool updateComponentVersions(const ArchetypeFilterParam& check,
+                const ArchetypeFilterParam& set, ChunkIndex chunk) noexcept {
+            const auto first_index = components_count_ * chunk.toInt();
+            if constexpr (isSafe(_Safety)) {
+                const auto last_index = first_index + components_count_;
+                if (!chunk.isValid() || !set.version.isValid() || versions_.size() <= last_index) {
+                    return false;
+                }
+            }
+            auto versions = versions_.data() + first_index;
+            bool result = check.version.isNull() || check.components.empty();
+            if (!result) {
+                for (auto component_index : check.components) {
+                    if (versions[component_index.toInt()] > check.version) {
+                        result = true;
+                        break;
+                    }
+                }
+            }
+
+            if (result) {
+                for (auto component_index : set.components) {
+                    versions[component_index.toInt()] = set.version;
+                }
+            }
+            return result;
+        }
+
+        template<FunctionSafety _Safety = FunctionSafety::kDefault>
+        [[nodiscard]] ComponentIndexMask makeComponentMask(const ComponentIdMask& mask) const noexcept {
+            ComponentIndexMask index_mask;
+            mask.forEachItem([&index_mask, this](ComponentId id) {
+                const auto index = getComponentIndex(id);
+                const auto value = !isSafe(_Safety) || index.isValid();
+                index_mask.set(index, value);
+            });
+            return index_mask;
         }
 
     private:
-        friend class EntityManager;
+        friend ElementView;
+        friend EntityManager;
 
+        // NOTE: can resize versions_
         template<FunctionSafety _Safety = FunctionSafety::kDefault>
-        ArchetypeInternalEntityLocation entityIndexToInternalLocation(ArchetypeEntityIndex index) const noexcept {
-            ArchetypeInternalEntityLocation result {
-                    nullptr,
-                    ChunkEntityIndex::null()
-            };
+        void updateAllVersions(ArchetypeEntityIndex index, WorldVersion world_version) noexcept {
             if constexpr (isSafe(_Safety)) {
-                if (index.toInt() >= size_) {
-                    return result;
+                if (!entities_.has(index) || !index.isValid() || !world_version.isValid()) {
+                    return;
                 }
             }
-            const auto chunk_capacity = operation_helper_.chunkCapacity();
-            result.chunk = chunks_[ChunkIndex::make(index.toInt() / chunk_capacity)];
-            result.index = ChunkEntityIndex::make(index.toInt() % chunk_capacity);
-            return result;
+            const auto first_index = components_count_ * index.toInt() / chunk_size_;
+            const auto last_index = first_index + components_count_;
+
+            if (versions_.size() <= last_index) {
+                versions_.resize(last_index + 1);
+            }
+            for (uint32_t i = first_index; i < last_index; ++i) {
+                versions_[i] = world_version;
+            }
+        }
+
+        MUSTACHE_INLINE uint32_t versionIndex(ChunkIndex chunk_index, ComponentIndex component_index) const noexcept {
+            return chunk_index.toInt() * components_count_ + component_index.toInt();
         }
 
         template<typename _F>
         void forEachEntity(_F&& callback) {
-            if (size_ < 1) {
+            if (data_storage_.isEmpty()) {
                 return;
             }
-            auto num_items = size_;
-            ArchetypeInternalEntityLocation location;
-            const auto chunk_last_index = operation_helper_.index_of_last_entity_in_chunk;
-            for (auto chunk : chunks_) {
-                location.chunk = chunk;
-                for (location.index = ChunkEntityIndex::make(0); location.index <= chunk_last_index; ++location.index) {
-                    if (num_items == 0) {
-                        return;
-                    }
-                    callback(*operation_helper_.getEntity(location));
-                    --num_items;
-                }
+            auto view = getElementView(ArchetypeEntityIndex::make(0));
+            while (view.isValid()) {
+                callback(*view.getEntity<FunctionSafety::kUnsafe>());
+                ++view;
             }
         }
 
         void clear();
-        [[nodiscard]] Entity create();
 
         /// Entity must belong to default(empty) archetype
         ArchetypeEntityIndex insert(Entity entity, bool call_constructor = true);
 
-        ArchetypeEntityIndex insert(Entity entity, Archetype& prev_archetype,
-                ArchetypeEntityIndex prev_index, bool initialize_missing_components = true);
-
+        void externalMove(Entity entity, Archetype& prev, ArchetypeEntityIndex prev_index, bool init_missing = true);
+        void internalMove(ArchetypeEntityIndex from, ArchetypeEntityIndex to);
         /**
          * removes entity from archetype, calls destructor for each trivially destructible component
          * moves last entity at index.
          * returns new entity at index.
          */
-        Entity remove(ArchetypeEntityIndex index);
+        void remove(Entity entity, ArchetypeEntityIndex index);
+        void callDestructor(const ElementView& view);
 
-        ComponentIndex componentIndex(ComponentId id) const noexcept {
-            auto result = ComponentIndex::null();
-            if (operation_helper_.component_id_to_component_index.has(id)) {
-                result = operation_helper_.component_id_to_component_index[id];
-            }
-            return result;
-        }
-        template<FunctionSafety _Safety = FunctionSafety::kDefault>
-        void* getComponentFromArchetype(ArchetypeEntityIndex entity, ComponentIndex component) const noexcept {
-            const auto location = entityIndexToInternalLocation(entity);
-            return operation_helper_.getComponent<_Safety>(component, location);
-        }
-        template<FunctionSafety _Safety = FunctionSafety::kDefault>
-        void* getComponentFromArchetype(ArchetypeEntityIndex entity, ComponentId component) const noexcept {
-            return getComponentFromArchetype<_Safety>(entity, componentIndex(component));
-        }
-        void allocateChunk();
-        void freeChunk(Chunk* chunk);
         World& world_;
-        ComponentMask mask_;
+        ComponentIdMask mask_;
         ArchetypeOperationHelper operation_helper_;
+        ArchetypeComponentDataStorage data_storage_;
+        ArrayWrapper<std::vector<Entity>, ArchetypeEntityIndex> entities_;
+        uint32_t components_count_;
+        uint32_t chunk_size_ = 1024u;
+        std::vector<WorldVersion> versions_;
 
-        ArrayWrapper<std::vector<Chunk*>, ChunkIndex> chunks_;
-        uint32_t size_{0};
-        uint32_t capacity_{0};
         ArchetypeIndex id_;
-        std::string name_;
     };
+
+    template<FunctionSafety _Safety>
+    Entity* ElementView::getEntity() const {
+        if constexpr (isSafe(_Safety)) {
+            if (!isValid()) {
+                return nullptr;
+            }
+        }
+        const auto gi = globalIndex();
+        if (archetype_->entities_.size() <= gi.toInt()) {
+            return nullptr;
+        }
+        // TODO: remove const_cast
+        return const_cast<Entity*>(archetype_->entities_.data()) + gi.toInt();
+    }
+
 }

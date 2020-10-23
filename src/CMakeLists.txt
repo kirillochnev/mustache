@@ -29,7 +29,6 @@ add_library(${PROJECT_NAME} STATIC
         mustache/ecs/entity_manager.cpp
         mustache/ecs/entity_manager.hpp
         mustache/ecs/entity_manager.hpp
-        mustache/ecs/job.cpp
         mustache/ecs/job.hpp
         mustache/ecs/system.cpp
         mustache/ecs/system.hpp
@@ -43,10 +42,14 @@ add_library(${PROJECT_NAME} STATIC
         mustache/ecs/world.hpp
         mustache/ecs/component_factory.cpp
         mustache/ecs/component_factory.hpp
-        mustache/ecs/chunk.cpp
-        mustache/ecs/chunk.hpp
         mustache/ecs/entity_group.cpp
         mustache/ecs/entity_group.hpp
+        mustache/ecs/world_filter.cpp
+        mustache/ecs/world_filter.hpp
+        mustache/ecs/component_data_storage.cpp
+        mustache/ecs/component_data_storage.hpp
+        mustache/ecs/new_component_data_storage.cpp
+        mustache/ecs/new_component_data_storage.hpp
 )
 
 target_include_directories(${PROJECT_NAME}
@@ -54,8 +57,3 @@ target_include_directories(${PROJECT_NAME}
 )
 
 target_link_libraries(${PROJECT_NAME} ${CMAKE_THREAD_LIBS_INIT})
-
-if (MUSTACHE_BUILD_BENCHMARK)
-    add_executable(mustache_exe main.cpp)
-    target_link_libraries(mustache_exe mustache)
-endif()

@@ -73,12 +73,12 @@ namespace mustache {
     }
 
     template<typename F, size_t... I, typename... ARGS>
-    auto invokeWithIndexSequence(F&& func, const std::index_sequence<I...>&, ARGS&&... args) {
+    MUSTACHE_INLINE auto invokeWithIndexSequence(F&& func, const std::index_sequence<I...>&, ARGS&&... args) {
         using FC = utils::function_traits<F>;
         return func(selectArgByType<typename FC::template arg<I>::type>(std::forward<ARGS>(args)...)...);
     }
     template<typename F, typename... ARGS>
-    auto invoke(F&& func, ARGS&&... args) {
+    MUSTACHE_INLINE auto invoke(F&& func, ARGS&&... args) {
         using FC = utils::function_traits<F>;
         return invokeWithIndexSequence(std::forward<F>(func),
                 std::make_index_sequence<FC::arity>(), std::forward<ARGS>(args)...);
@@ -194,11 +194,37 @@ namespace mustache {
         static constexpr bool has_for_each_array = testForEachArray<T>(nullptr);
 
         template<size_t... _I>
-        static ComponentMask componentMask(std::index_sequence<_I...>&&) noexcept {
+        static ComponentIdMask componentMask(std::index_sequence<_I...>&&) noexcept {
             return ComponentFactory::makeMask<typename FunctionInfo::template Component<_I> ::type...>();
         }
-        static ComponentMask componentMask() noexcept {
+        static ComponentIdMask componentMask() noexcept {
             return componentMask(std::make_index_sequence<FunctionInfo::components_count>());
+        }
+
+        template<typename _C>
+        static std::pair<ComponentId, bool> componentInfo() noexcept {
+            using Component = typename ComponentType<_C>::type;
+            return std::make_pair(ComponentFactory::registerComponent<Component>(),
+                    IsComponentMutable<_C>::value);
+        }
+
+        template<size_t... _I>
+        static ComponentIdMask updateMask(std::index_sequence<_I...>&&) noexcept {
+            ComponentIdMask result;
+            std::array array {
+                componentInfo<typename FunctionInfo::template Component<_I> ::type>()...
+            };
+            for (const auto& pair : array) {
+                result.set(pair.first, pair.second);
+            }
+            return result;
+        }
+        static ComponentIdMask updateMask() noexcept {
+            if constexpr (FunctionInfo::components_count < 1) {
+                return ComponentIdMask{};
+            } else {
+                return updateMask(std::make_index_sequence<FunctionInfo::components_count>());
+            }
         }
     };
 

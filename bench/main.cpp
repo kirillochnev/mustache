@@ -84,7 +84,7 @@ void create1m() {
     mustache::ComponentFactory::registerComponent<Rotation>();
     mustache::ComponentFactory::registerComponent<Position>();
     mustache::ComponentFactory::registerComponent<Velocity>();
-    mustache::ComponentMask mask;
+    mustache::ComponentIdMask mask;
     mask.add(mustache::ComponentId::make(0));
     mask.add(mustache::ComponentId::make(1));
     mask.add(mustache::ComponentId::make(2));
@@ -116,6 +116,7 @@ void iterate500k() {
         (void)entities.create(archetype);
 //        (void)entities.create(archetype2);
     }
+
     constexpr float dt = 1.0f / kNumIteration;
     struct UpdatePosJob : public mustache::PerEntityJob <UpdatePosJob> {
 //        uint32_t count = 0;
@@ -123,7 +124,7 @@ void iterate500k() {
             uint32_t value = 0;
         };
         std::vector<AlignedUint> count;
-
+//
         uint32_t totalCount() const {
             uint32_t result = 0;
             for (auto i : count) {
@@ -160,14 +161,15 @@ void iterate500k() {
 
     mustache::Logger{}.info("Task Begin!");
     mustache::Dispatcher dispatcher;
+//    dispatcher.setSingleThreadMode(true);
     const auto task_count = dispatcher.threadCount() + 1;
     for (uint32_t i = 0; i < kNumIteration; ++i) {
 //        update_pos_job.count = 0;
         update_pos_job.count.clear();
         update_pos_job.count.resize(task_count);
         benchmark.add([&world, &update_pos_job, &dispatcher, task_count] {
-//            update_pos_job.run(world, dispatcher);
-            update_pos_job.runParallel(world, task_count, dispatcher);
+            update_pos_job.run(world, dispatcher, mustache::JobRunMode::kParallel);
+//            update_pos_job.runParallel(world, task_count, dispatcher);
         });
         if (update_pos_job.totalCount() != kNumObjects) {
             throw std::runtime_error(std::to_string(update_pos_job.totalCount()) + " vs " + std::to_string(static_cast<uint32_t>(kNumObjects)));
@@ -175,9 +177,10 @@ void iterate500k() {
     }
     benchmark.show();
 }
+
 void createEmptyAndAssign() {
     enum : uint32_t {
-        kNumObjects = 1000000,
+        kNumObjects = 100000,
         kNumIteration = 100,
     };
 
@@ -196,6 +199,7 @@ void createEmptyAndAssign() {
         entities.clear();
     }
     benchmark.show();
+
 
 
 }
@@ -233,6 +237,8 @@ void showComponentInfo() {
             << "\t\t\t| component is " << (is_component_required ? "" : "NOT ") << "required" <<std::endl;
 }
 
+void testGlobalIndex();
+void POC();
 int main() {
 //    showComponentInfo<Component0>();
 //    showComponentInfo<Component0*>();
@@ -254,5 +260,8 @@ int main() {
 //    create1m();
 //    createEmptyAndAssign();
     iterate500k();
+//    testGlobalIndex();
+
+//    POC();
     return 0;
 }

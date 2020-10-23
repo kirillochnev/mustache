@@ -5,11 +5,12 @@ using namespace mustache;
 
 EntityManager::EntityManager(World& world):
         world_{world},
-        this_world_id_{world.id()} {
+        this_world_id_{world.id()},
+        world_version_{world.version()} {
 
 }
 
-Archetype& EntityManager::getArchetype(const ComponentMask& mask) {
+Archetype& EntityManager::getArchetype(const ComponentIdMask& mask) {
     if (mask.isEmpty()) {
         // NOTE: it might make sense to create null value for the "empty" archetype
         throw std::runtime_error("Mask is empty");
@@ -61,6 +62,7 @@ void EntityManager::clear() {
 }
 
 void EntityManager::update() {
+    world_version_ = world_.version();
     if (marked_for_delete_.empty()) {
         return;
     }

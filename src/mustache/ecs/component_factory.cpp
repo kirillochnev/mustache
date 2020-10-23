@@ -25,7 +25,7 @@ namespace {
     }
 }
 
-ComponentId ComponentFactory::componentId(const TypeInfo &info) {
+ComponentId ComponentFactory::componentId(const TypeInfo& info) {
     const auto find_res = type_map.find(info.name);
     if(find_res != type_map.end()) {
         if(components_info.size() <= find_res->second.id.toInt()) {

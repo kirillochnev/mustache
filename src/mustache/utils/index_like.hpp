@@ -18,12 +18,26 @@ namespace mustache {
             return result;
         }
 
+        explicit constexpr IndexLike(IndexLike&& v) noexcept :
+                value_{v.value_} {
+        }
+
         explicit constexpr IndexLike(const IndexLike& v) noexcept :
                 value_{v.value_} {
         }
 
         explicit constexpr IndexLike(T v) noexcept :
                 value_{v} {
+        }
+
+        IndexLike& operator=(const IndexLike& rhs) noexcept {
+            value_ = rhs.value_;
+            return *this;
+        }
+
+        IndexLike& operator=(IndexLike&& rhs) noexcept {
+            value_ = rhs.value_;
+            return *this;
         }
 
         template <typename T1 = T>

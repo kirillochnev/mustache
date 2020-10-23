@@ -7,3 +7,8 @@ World::World(mustache::WorldId id):
     entities_{*this} {
 
 }
+
+void World::update() {
+    ++version_;
+    entities().update();
+}

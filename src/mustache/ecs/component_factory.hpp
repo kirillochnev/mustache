@@ -1,6 +1,5 @@
 #pragma once
 
-#include <mustache/ecs/chunk.hpp>
 #include <mustache/ecs/entity.hpp>
 #include <mustache/ecs/id_deff.hpp>
 #include <mustache/ecs/component_mask.hpp>
@@ -9,9 +8,6 @@
 #include <mustache/utils/default_settings.hpp>
 
 namespace mustache {
-
-    class Context;
-    class Chunk;
 
     class ComponentFactory {
     public:
@@ -29,7 +25,7 @@ namespace mustache {
         }
 
         template<typename _C>
-        static void applyToMask(ComponentMask& mask) noexcept {
+        static void applyToMask(ComponentIdMask& mask) noexcept {
             using Component = typename ComponentType<_C>::type;
             if constexpr (IsComponentRequired<_C>::value) {
                 static const auto id = registerComponent< typename ComponentType<_C>::type >();
@@ -37,8 +33,8 @@ namespace mustache {
             }
         }
         template <typename... _C>
-        static ComponentMask makeMask() noexcept {
-            ComponentMask mask;
+        static ComponentIdMask makeMask() noexcept {
+            ComponentIdMask mask;
             (applyToMask<_C>(mask), ...);
             return mask;
         }

@@ -14,6 +14,22 @@ namespace mustache {
                 array_(std::forward<ARGS>(args)...) {
 
         }
+
+        decltype(auto) data()
+#ifndef _MSC_BUILD
+            noexcept (noexcept(_ArrayType::data))
+#endif
+        {
+            return array_.data();
+        }
+
+        decltype(auto) data() const
+#ifndef _MSC_BUILD
+            noexcept (noexcept(_ArrayType::data))
+#endif
+        {
+            return array_.data();
+        }
         auto size() const noexcept {
             return array_.size();
         }
@@ -68,6 +84,9 @@ namespace mustache {
         decltype(auto) cend() const noexcept {
             return array_.cend();
         }
+        decltype(auto) pop_back() {
+            return array_.pop_back();
+        }
         template<typename T>
         decltype(auto) push_back(T&& item) {
             return array_.push_back(std::forward<T>(item));
@@ -103,6 +122,10 @@ namespace mustache {
         }
         decltype(auto) clear() noexcept (noexcept(array_.clear())){
             array_.clear();
+        }
+
+        bool empty() const noexcept {
+            return array_.empty();
         }
     };
 }
