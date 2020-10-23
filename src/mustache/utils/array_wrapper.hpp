@@ -1,12 +1,18 @@
 #pragma once
 
 #include <mustache/utils/default_settings.hpp>
+#include <mustache/utils/memory_manager.hpp>
 #include <cstddef>
 #include <utility>
+#include <vector>
 
 namespace mustache {
-    template<typename _ArrayType, typename _IndexType>
+    template<typename _ElementType, typename _IndexType, bool _UseMemoryCustomAllocator = false>
     class ArrayWrapper {
+        using _ArrayType = typename std::conditional<_UseMemoryCustomAllocator,
+                std::vector<_ElementType, Allocator<_ElementType> >,
+                std::vector<_ElementType> >::type;
+
         _ArrayType array_;
     public:
         template<typename... ARGS>

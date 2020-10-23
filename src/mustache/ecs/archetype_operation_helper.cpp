@@ -6,7 +6,7 @@ using namespace mustache;
 
 ArchetypeOperationHelper::ArchetypeOperationHelper(const ComponentIdMask& mask) {
 
-    ArrayWrapper<std::vector<ComponentId>, ComponentIndex> component_index_to_component_id{mask.items()};
+    ArrayWrapper<ComponentId, ComponentIndex> component_index_to_component_id{mask.items()};
 
     ComponentIndex component_index = ComponentIndex::make(0);
 

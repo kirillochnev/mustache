@@ -49,11 +49,11 @@ namespace mustache {
         }
 
         // NOTE: can be removed?
-        ArrayWrapper<std::vector<ComponentIndex>, ComponentId> component_id_to_component_index;
+        ArrayWrapper<ComponentIndex, ComponentId> component_id_to_component_index;
 
         std::vector<InsertInfo> insert; // only non null init functions
         std::vector<DestroyInfo> destroy; // only non null destroy functions
-        ArrayWrapper<std::vector<ExternalMoveInfo>, ComponentIndex> external_move;
-        ArrayWrapper<std::vector<InternalMoveInfo>, ComponentIndex> internal_move; // move or copy function
+        ArrayWrapper<ExternalMoveInfo, ComponentIndex> external_move;
+        ArrayWrapper<InternalMoveInfo, ComponentIndex> internal_move; // move or copy function
     };
 }

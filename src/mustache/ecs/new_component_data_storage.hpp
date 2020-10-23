@@ -71,7 +71,7 @@ namespace mustache {
         };
         uint32_t size_ = 0;
         uint32_t capacity_ = 0;
-        ArrayWrapper<std::vector<ComponentDataHolder>, ComponentIndex> components_;
+        ArrayWrapper<ComponentDataHolder, ComponentIndex> components_;
         MemoryManager* memory_manager_;
     };
 
