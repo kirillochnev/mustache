@@ -37,8 +37,8 @@ namespace mustache {
         }
     private:
         WorldId id_;
+        MemoryManager memory_manager_;
         WorldVersion version_ = WorldVersion::make(0u);
         EntityManager entities_;
-        MemoryManager memory_manager_;
     };
 }

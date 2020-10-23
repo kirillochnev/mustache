@@ -261,15 +261,15 @@ namespace mustache {
         void callDestructor(const ElementView& view);
 
         World& world_;
-        ComponentIdMask mask_;
+        const ComponentIdMask mask_;
         ArchetypeOperationHelper operation_helper_;
         ArchetypeComponentDataStorage data_storage_;
         ArrayWrapper<Entity, ArchetypeEntityIndex, true> entities_;
-        uint32_t components_count_;
-        uint32_t chunk_size_ = 1024u;
-        std::vector<WorldVersion> versions_;
+        const uint32_t components_count_;
+        const uint32_t chunk_size_ = 1024u;
+        std::vector<WorldVersion, Allocator<WorldVersion> > versions_; // TODO: change the way data stored and make in ArrayWrapper
 
-        ArchetypeIndex id_;
+        const ArchetypeIndex id_;
     };
 
     template<FunctionSafety _Safety>

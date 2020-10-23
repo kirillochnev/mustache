@@ -6,6 +6,8 @@ using namespace mustache;
 
 ArchetypeOperationHelper::ArchetypeOperationHelper(MemoryManager& memory_manager, const ComponentIdMask& mask):
         component_id_to_component_index{memory_manager},
+        insert{memory_manager},
+        destroy{memory_manager},
         external_move{memory_manager},
         internal_move{memory_manager} {
 
