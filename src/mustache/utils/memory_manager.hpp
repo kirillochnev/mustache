@@ -25,12 +25,12 @@ class MemoryManager : mustache::Uncopiable {
         void showStatistic() const noexcept;
     template<typename T>
     Allocator<T> allocator() {
-        return Allocator<T>{this};
+        return Allocator<T>{*this};
     }
 
     template<typename T>
     operator Allocator<T>() noexcept {
-        return Allocator<T>(this);
+        return Allocator<T>(*this);
     }
 
     private:
@@ -51,6 +51,10 @@ class MemoryManager : mustache::Uncopiable {
 
         void deallocate(T* ptr, size_t /*count*/ MEMORY_MANAGER_STATISTICS_ARG_DECL) noexcept {
             manager_->deallocate(ptr MEMORY_MANAGER_STATISTICS_FORWARD_ARG);
+        }
+
+        operator MemoryManager&() const noexcept {
+            return *manager_;
         }
         using value_type = T;
     private:

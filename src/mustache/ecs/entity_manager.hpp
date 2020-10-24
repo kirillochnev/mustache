@@ -118,7 +118,7 @@ namespace mustache {
         uint32_t empty_slots_{0};
         ArrayWrapper<Entity, EntityId, true> entities_;
         ArrayWrapper<EntityLocationInWorld, EntityId, true> locations_;
-        std::set<Entity, std::less<Entity> > marked_for_delete_;
+        std::set<Entity, std::less<Entity>, Allocator<Entity> > marked_for_delete_;
         WorldId this_world_id_;
         WorldVersion world_version_;
         // TODO: replace shared pointed with some kind of unique_ptr but with deleter calling clearArchetype

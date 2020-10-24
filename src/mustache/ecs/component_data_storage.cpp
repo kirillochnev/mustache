@@ -11,7 +11,7 @@ namespace {
 
 ComponentDataStorage::ComponentDataStorage(const ComponentIdMask& mask, MemoryManager& memory_manager):
     memory_manager_{&memory_manager},
-    component_getter_info_ {memory_manager},
+    component_getter_info_{memory_manager},
     chunk_capacity_{kChunkCapacity},
     chunks_{memory_manager} {
     component_getter_info_.reserve(mask.componentsCount());
