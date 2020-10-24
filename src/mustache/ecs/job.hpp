@@ -89,7 +89,7 @@ namespace mustache {
             static constexpr auto index_sequence = std::make_index_sequence<Info::FunctionInfo::components_count>();
             PerEntityJobTaskId task_id = PerEntityJobTaskId::make(0);
             for (auto task : JobView::make(filter_result_, 1)) {
-                singleTask(task, task_id, index_sequence);
+                singleTask(task, task_id, ThreadId::make(0), index_sequence);
                 ++task_id;
             }
         }
@@ -98,8 +98,8 @@ namespace mustache {
             static constexpr auto index_sequence = std::make_index_sequence<Info::FunctionInfo::components_count>();
             PerEntityJobTaskId task_id = PerEntityJobTaskId::make(0);
             for (auto task : JobView::make(filter_result_, task_count)) {
-                dispatcher.addParallelTask([task, this, task_id] {
-                    singleTask(task, task_id, index_sequence);
+                dispatcher.addParallelTask([task, this, task_id](ThreadId thread_id) {
+                    singleTask(task, task_id, thread_id, index_sequence);
                 });
                 ++task_id;
             }
@@ -137,11 +137,12 @@ namespace mustache {
         }
 
         template<size_t... _I>
-        MUSTACHE_INLINE void singleTask(TaskView task_view, PerEntityJobTaskId task_id,
+        MUSTACHE_INLINE void singleTask(TaskView task_view, PerEntityJobTaskId task_id, ThreadId thread_id,
                 const std::index_sequence<_I...>&) {
             JobInvocationIndex invocation_index;
             invocation_index.task_index = task_id;
             invocation_index.entity_index_in_task = PerEntityJobEntityIndexInTask::make(0);
+            invocation_index.thread_id = thread_id;
             for (const auto& info : task_view) {
                 auto& archetype = *info.archetype();
                 static const std::array<ComponentId, sizeof...(_I)> ids {

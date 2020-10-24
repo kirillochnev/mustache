@@ -152,7 +152,7 @@ void iterate500k() {
 //                std::terminate();
 //            }
             pos.value += dt * vel.value * forward(rot->orient);
-            ++count[invocation_index.task_index.toInt()].value;
+            ++count[invocation_index.thread_id.toInt()].value;
 //            ++count;
         }
     };

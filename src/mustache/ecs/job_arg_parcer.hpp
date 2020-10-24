@@ -1,12 +1,14 @@
 #pragma once
 
 #include <mustache/ecs/component_mask.hpp>
-#include <mustache/utils/function_traits.hpp>
 #include <mustache/ecs/component_handler.hpp>
 #include <mustache/ecs/component_factory.hpp>
 #include <mustache/ecs/entity.hpp>
 
 #include <mustache/utils/type_info.hpp>
+#include <mustache/utils/function_traits.hpp>
+#include <mustache/utils/dispatch.hpp>
+
 #include <array>
 #include <iostream>
 #include <cstdint>
@@ -16,6 +18,7 @@ namespace mustache {
     struct JobInvocationIndex {
         PerEntityJobTaskId task_index;
         PerEntityJobEntityIndexInTask entity_index_in_task;
+        ThreadId thread_id;
     };
 
     template <typename T>
