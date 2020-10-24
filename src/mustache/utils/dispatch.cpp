@@ -94,7 +94,7 @@ struct Dispatcher::Data {
 
 #define DOUBLE_LOCK 1
 
-    void threadTask() noexcept {
+    void threadTask(ThreadId thread_id) noexcept {
         JobQueue* queue = nullptr;
         while (!terminate) {
             std::unique_lock<std::mutex> lock{ mutex };
@@ -113,11 +113,12 @@ struct Dispatcher::Data {
             if (terminate) {
                 break;
             }
+
             auto job = std::move(queue->front());
             queue->pop();
             queue->onTaskBegin();
             lock.unlock();
-            job();
+            job(thread_id);
 #if DOUBLE_LOCK
             lock.lock();
             queue->onTaskEnd();
@@ -132,10 +133,11 @@ struct Dispatcher::Data {
                 break;
             }
             auto job = std::move(queue.front());
+
             queue.pop();
             queue.onTaskBegin();
             lock.unlock();
-            job();
+            job(ThreadId::make(0));
             lock.lock();
             queue.onTaskEnd();
         }
@@ -161,8 +163,8 @@ Dispatcher::Dispatcher(uint32_t thread_count):
 
     data_->threads.reserve(thread_count);
     for(uint32_t i = 0; i < thread_count; ++i) {
-        data_->threads.emplace_back([this]() noexcept {
-            data_->threadTask();
+        data_->threads.emplace_back([this, i]() noexcept {
+            data_->threadTask(ThreadId::make(i + 1));
         });
     }
 }
@@ -195,7 +197,7 @@ void Dispatcher::waitForParallelFinish() const noexcept {
 
 void Dispatcher::addJob(Job&& job) {
     if(data_->single_thread_mode) {
-        job();
+        job(ThreadId::make(0));
         return;
     }
     {
