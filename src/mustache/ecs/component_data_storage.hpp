@@ -2,17 +2,17 @@
 
 #include <mustache/ecs/component_mask.hpp>
 #include <mustache/utils/array_wrapper.hpp>
+#include <mustache/utils/memory_manager.hpp>
 
 #include <array>
 
 namespace mustache {
     using ChunkHandler = uintptr_t;
-
     class ComponentDataStorage {
     public:
         class ElementView;
 
-        explicit ComponentDataStorage(const ComponentIdMask& mask);
+        ComponentDataStorage(const ComponentIdMask& mask, MemoryManager& memory_manager);
 
         [[nodiscard]] MUSTACHE_INLINE uint32_t capacity() const noexcept;
         [[nodiscard]] MUSTACHE_INLINE uint32_t size() const noexcept;
@@ -56,10 +56,11 @@ namespace mustache {
         void allocateChunk();
         void freeChunk(ChunkPtr chunk) noexcept;
 
-        ArrayWrapper<std::vector<ComponentDataGetter>, ComponentIndex> component_getter_info_; // ComponentIndex -> {offset, size}
+        MemoryManager* memory_manager_;
+        ArrayWrapper<ComponentDataGetter, ComponentIndex, true> component_getter_info_; // ComponentIndex -> {offset, size}
         uint32_t size_{0u};
         ChunkCapacity chunk_capacity_;
-        ArrayWrapper<std::vector<ChunkPtr>, ChunkIndex> chunks_;
+        ArrayWrapper<ChunkPtr, ChunkIndex, true> chunks_;
         uint32_t chunk_size_ {0u};
         uint32_t chunk_align_ {0u};
     };

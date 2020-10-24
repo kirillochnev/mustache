@@ -4,9 +4,19 @@
 
 using namespace mustache;
 
-ArchetypeOperationHelper::ArchetypeOperationHelper(const ComponentIdMask& mask) {
+ArchetypeOperationHelper::ArchetypeOperationHelper(MemoryManager& memory_manager, const ComponentIdMask& mask):
+        component_id_to_component_index{memory_manager},
+        insert{memory_manager},
+        destroy{memory_manager},
+        external_move{memory_manager},
+        internal_move{memory_manager} {
 
-    ArrayWrapper<std::vector<ComponentId>, ComponentIndex> component_index_to_component_id{mask.items()};
+    const auto items = mask.items();
+    const ArrayWrapper<ComponentId, ComponentIndex, true> component_index_to_component_id { // TODO: use stack allocator
+        items.begin(),
+        items.end(),
+        memory_manager
+    };
 
     ComponentIndex component_index = ComponentIndex::make(0);
 

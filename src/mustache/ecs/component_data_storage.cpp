@@ -9,8 +9,11 @@ namespace {
     constexpr auto kChunkCapacity = ChunkCapacity::make(1024 * 16);
 }
 
-ComponentDataStorage::ComponentDataStorage(const ComponentIdMask& mask):
-    chunk_capacity_{kChunkCapacity} {
+ComponentDataStorage::ComponentDataStorage(const ComponentIdMask& mask, MemoryManager& memory_manager):
+    memory_manager_{&memory_manager},
+    component_getter_info_{memory_manager},
+    chunk_capacity_{kChunkCapacity},
+    chunks_{memory_manager} {
     component_getter_info_.reserve(mask.componentsCount());
 
     auto offset = ComponentOffset::make(0u);
@@ -34,22 +37,13 @@ ComponentDataStorage::ComponentDataStorage(const ComponentIdMask& mask):
 
 
 void ComponentDataStorage::allocateChunk() {
-    const auto chunk_size = chunk_size_;
-
-    // TODO: use memory allocator
-#ifdef _MSC_BUILD
-    ChunkPtr chunk = reinterpret_cast<ChunkPtr>(malloc(chunk_size));
-#else
-    ChunkPtr chunk = reinterpret_cast<ChunkPtr>(aligned_alloc(chunk_align_, chunk_size));
-#endif
+    auto chunk = static_cast<ChunkPtr>(memory_manager_->allocate(chunk_size_, chunk_align_));
+    if (chunk == nullptr) {
+        throw std::runtime_error("Can not allocate memory for chunk: " + std::to_string(chunks_.size()));
+    }
     chunks_.push_back(chunk);
 }
 
 void ComponentDataStorage::freeChunk(ChunkPtr chunk) noexcept {
-    // TODO: use memory allocator
-#ifdef _MSC_BUILD
-    free (chunk);
-#else
-    free(chunk);
-#endif
+    memory_manager_->deallocate(chunk);
 }

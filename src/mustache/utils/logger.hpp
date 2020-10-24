@@ -47,7 +47,7 @@ namespace mustache {
 
     class Logger {
     public:
-        Logger(const char* file = ART_FILE, const char* function = ART_FUNCTION, uint32_t line = ART_LINE):
+        Logger(const char* file = MUSTACHE_FILE, const char* function = MUSTACHE_FUNCTION, uint32_t line = MUSTACHE_LINE):
                 context_{file, function, line} {
 
         }
