@@ -2,8 +2,8 @@
 
 #include <mustache/utils/index_like.hpp>
 #include <mustache/ecs/entity_manager.hpp>
-#include <cstdint>
 #include <mustache/utils/memory_manager.hpp>
+#include <cstdint>
 
 namespace mustache {
 

@@ -18,7 +18,11 @@ namespace {
 #endif
 
 void* mustache::MemoryManager::allocate(size_t size, size_t align MEMORY_MANAGER_STATISTICS_ARG_DECL) noexcept {
+#ifdef _MSC_BUILD
+    void* ptr = (align == 0) ? malloc(size) : _aligned_malloc(size, align);
+#else
     void* ptr = (align == 0) ? malloc(size) : std::aligned_alloc(align, size);
+#endif
 #if MEMORY_MANAGER_COLLECT_STATISTICS
     total_size += size;
     const auto location = file + std::string(":") + std::to_string(line);
@@ -43,7 +47,13 @@ void mustache::MemoryManager::deallocate(void* ptr MEMORY_MANAGER_STATISTICS_ARG
         total_size -= size;
         file_to_size[ptr_to_file[ptr]] -= size;
 #endif
+
+#ifdef _MSC_BUILD
+        _aligned_free(ptr);
+#else
         free(ptr);
+#endif
+
     }
 }
 

@@ -12,7 +12,7 @@ Archetype::Archetype(World& world, ArchetypeIndex id, const ComponentIdMask& mas
     data_storage_{mask, world_.memoryManager()},
     entities_{world.memoryManager()},
     components_count_{mask.componentsCount()},
-    versions_ {world.memoryManager()},
+    versions_{world.memoryManager()},
     id_{id} {
 
 }
