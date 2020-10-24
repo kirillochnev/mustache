@@ -11,8 +11,6 @@
 
 namespace mustache {
 
-    // 0 - thread is not controlled by Dispatcher.
-    // 1..N for Dispatcher threads, where N - number of threads.
     struct ThreadId : public IndexLike<uint32_t, ThreadId>{};
 
     using Job = std::function<void(ThreadId)>;
@@ -84,6 +82,10 @@ namespace mustache {
         void waitQueue(QueueId queue_id) const noexcept;
 
         void setSingleThreadMode(bool on) noexcept;
+
+        // 0 - thread is not controlled by Dispatcher.
+        // 1..threadCount for Dispatcher threads.
+        [[nodiscard]] ThreadId currentThreadId() const noexcept;
     private:
         void addJob(Job&& job);
         struct Data;

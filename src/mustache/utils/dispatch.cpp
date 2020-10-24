@@ -9,6 +9,8 @@
 #define NUMBER_OF_CORES std::thread::hardware_concurrency()
 #endif
 
+#include <set>
+
 using namespace mustache;
 
 namespace {
@@ -61,6 +63,8 @@ namespace {
             }
         }
     };
+
+    thread_local ThreadId g_thread_id;
 }
 
 struct Dispatcher::Data {
@@ -68,6 +72,7 @@ struct Dispatcher::Data {
     mutable std::mutex mutex;
     std::condition_variable jobs_available;
     std::vector<std::thread> threads;
+    std::set<std::thread::id> thread_ids;
     uint32_t threads_waiting{0u};
 
     struct {
@@ -92,9 +97,18 @@ struct Dispatcher::Data {
         return nullptr;
     }
 
+    [[nodiscard]] ThreadId currentThreadId() noexcept {
+        auto thread_id = g_thread_id;
+        if (thread_id.isNull() || thread_ids.count(std::this_thread::get_id()) < 1) {
+            thread_id = ThreadId::make(0);
+        }
+        return thread_id;
+    }
+
 #define DOUBLE_LOCK 1
 
     void threadTask(ThreadId thread_id) noexcept {
+        g_thread_id = thread_id;
         JobQueue* queue = nullptr;
         while (!terminate) {
             std::unique_lock<std::mutex> lock{ mutex };
@@ -137,7 +151,7 @@ struct Dispatcher::Data {
             queue.pop();
             queue.onTaskBegin();
             lock.unlock();
-            job(ThreadId::make(0));
+            job(currentThreadId());
             lock.lock();
             queue.onTaskEnd();
         }
@@ -163,9 +177,10 @@ Dispatcher::Dispatcher(uint32_t thread_count):
 
     data_->threads.reserve(thread_count);
     for(uint32_t i = 0; i < thread_count; ++i) {
-        data_->threads.emplace_back([this, i]() noexcept {
+        auto& thread = data_->threads.emplace_back([this, i]() noexcept {
             data_->threadTask(ThreadId::make(i + 1));
         });
+        data_->thread_ids.insert(thread.get_id());
     }
 }
 
@@ -244,6 +259,10 @@ void Dispatcher::setSingleThreadMode(bool on) noexcept {
 
 uint32_t mustache::Dispatcher::threadCount() const noexcept {
     return static_cast<uint32_t>(data_->threads.size());
+}
+
+ThreadId mustache::Dispatcher::currentThreadId() const noexcept {
+    return data_->currentThreadId();
 }
 
 void Queue::async(Job&& job) {
