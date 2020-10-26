@@ -2,13 +2,35 @@
 
 using namespace mustache;
 
-World::World(mustache::WorldId id):
+namespace {
+    std::set<WorldId> used_world_ids;
+    WorldId next_id = WorldId::make(0);
+}
+
+World::World(const WorldContext& context, WorldId id):
     id_{id},
+    context_{context},
     entities_{*this} {
 
+}
+
+World::~World() {
+    used_world_ids.erase(id_);
 }
 
 void World::update() {
     ++version_;
     entities().update();
 }
+
+WorldId World::nextWorldId() noexcept {
+    if (!used_world_ids.empty()) {
+        auto result = *used_world_ids.begin();
+        used_world_ids.erase(result);
+        return result;
+    }
+    auto result = next_id;
+    ++next_id;
+    return result;
+}
+

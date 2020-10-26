@@ -160,7 +160,7 @@ void iterate500k() {
     mustache::Benchmark benchmark;
 
     mustache::Logger{}.info("Task Begin!");
-    mustache::Dispatcher dispatcher;
+    mustache::Dispatcher& dispatcher = world.dispatcher();
 //    dispatcher.setSingleThreadMode(true);
     const auto task_count = dispatcher.threadCount() + 1;
     for (uint32_t i = 0; i < kNumIteration; ++i) {
