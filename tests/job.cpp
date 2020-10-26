@@ -68,8 +68,6 @@ namespace {
             }
         }
     };
-
-    mustache::Dispatcher dispatcher;
 }
 
 TEST(Job, iterate_singlethread) {
@@ -101,10 +99,10 @@ TEST(Job, iterate_singlethread) {
     for (uint32_t i = 0; i < kNumIteration; ++i) {
         ++static_data.cur_iteration;
 
-        job_update.run(world, dispatcher);
+        job_update.run(world);
         ASSERT_EQ(static_data.count, kNumObjects);
 
-        job_check.run(world, dispatcher);
+        job_check.run(world);
         ASSERT_EQ(static_data.count, 0);
 
         for (auto entity : created_entities) {
@@ -150,10 +148,10 @@ TEST(Job, iterate_singlethread_with_required_componen) {
     for (uint32_t i = 0; i < kNumIteration; ++i) {
         ++static_data.cur_iteration;
 
-        job_update.run(world, dispatcher);
+        job_update.run(world);
         ASSERT_EQ(static_data.count, kNumObjects);
 
-        job_check.run(world, dispatcher);
+        job_check.run(world);
         ASSERT_EQ(static_data.count, 0);
 
         for (auto entity : created_entities) {
@@ -200,10 +198,10 @@ TEST(Job, iterate_singlethread_with_optional_componen) {
     for (uint32_t i = 0; i < kNumIteration; ++i) {
         ++static_data.cur_iteration;
 
-        job_update.run(world, dispatcher);
+        job_update.run(world);
         ASSERT_EQ(static_data.count, kNumObjects);
 
-        job_check.run(world, dispatcher);
+        job_check.run(world);
         ASSERT_EQ(static_data.count, 0);
 
         for (auto entity : created_entities) {
@@ -269,10 +267,10 @@ TEST(Job, iterate_singlethread_4_archetypes_match_4_not) {
     for (uint32_t i = 0; i < kNumIteration; ++i) {
         ++static_data.cur_iteration;
 
-        job_update.run(world, dispatcher);
+        job_update.run(world);
         ASSERT_EQ(static_data.count, kNumObjects);
 
-        job_check.run(world, dispatcher);
+        job_check.run(world);
         ASSERT_EQ(static_data.count, 0);
 
         for (auto entity : created_entities) {
@@ -345,13 +343,13 @@ TEST(Job, iterate_multithread_4_archetypes_match_4_not) {
     for (uint32_t i = 0; i < kNumIteration2; ++i) {
         ++static_data.cur_iteration;
 
-        job_update.run(world, dispatcher);
+        job_update.run(world);
         for(auto& count : job_update.counter) {
             static_data.count += count.value;
             count.value = 0u;
         }
         ASSERT_EQ(static_data.count, kNumObjects2);
-        job_check.run(world, dispatcher);
+        job_check.run(world);
         ASSERT_EQ(static_data.count, 0);
 
         for (auto entity : created_entities) {
@@ -422,7 +420,7 @@ TEST(Job, iterate_and_check_value) {
     for (uint32_t i = 0; i < kNumIteration; ++i) {
         ++static_data.cur_iteration;
 
-        update_job.run(world, dispatcher);
+        update_job.run(world);
 
         ASSERT_EQ(static_data.count, kNumObjects);
 

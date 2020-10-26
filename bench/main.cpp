@@ -111,69 +111,40 @@ void iterate500k() {
     mustache::World world{mustache::WorldId::make(0)};
     auto& entities = world.entities();
     auto& archetype = entities.getArchetype<Position, Velocity, Rotation>();
-//    auto& archetype2 = entities.getArchetype<Position, Velocity, Rotation, Component0>();
     for (uint32_t i = 0; i < kNumObjects; ++i) {
         (void)entities.create(archetype);
-//        (void)entities.create(archetype2);
     }
 
     constexpr float dt = 1.0f / kNumIteration;
-    struct UpdatePosJob : public mustache::PerEntityJob <UpdatePosJob> {
-//        uint32_t count = 0;
-        struct alignas(128) AlignedUint {
-            uint32_t value = 0;
-        };
-        std::vector<AlignedUint> count;
-//
-        uint32_t totalCount() const {
-            uint32_t result = 0;
-            for (auto i : count) {
-                result += i.value;
-            }
-            return result;
-        }
-        /// FIX: uint32_t size is looks like component type, so no archetype match built mask
-        /*void forEachArray(uint32_t size, Position* position,
-                Velocity* velocity, const Rotation* rotation, mustache::JobInvocationIndex invocation_index) {
-            for (uint32_t i = 0; i < size; ++i) {
-                position[i].value += dt * forward(rotation[i].orient) * velocity[i].value;
-            }
-            count[invocation_index.task_index.toInt()] += size;
-        }*/
-        void operator()(Position& pos, const Velocity& vel, const mustache::RequiredComponent<Rotation>& rot,
-                mustache::JobInvocationIndex invocation_index/*, mustache::OptionalComponent<Component3> invalid*/) {
-//            (void) invalid;
-            (void) pos;
-            (void) vel;
-            (void) rot;
-            (void) invocation_index;
 
-//            if (invalid.ptr) {
-//                std::terminate();
-//            }
-            pos.value += dt * vel.value * forward(rot->orient);
-            ++count[invocation_index.thread_id.toInt()].value;
-//            ++count;
-        }
-    };
-    UpdatePosJob update_pos_job;
     mustache::Benchmark benchmark;
 
     mustache::Logger{}.info("Task Begin!");
-    mustache::Dispatcher dispatcher;
-//    dispatcher.setSingleThreadMode(true);
-    const auto task_count = dispatcher.threadCount() + 1;
-    for (uint32_t i = 0; i < kNumIteration; ++i) {
-//        update_pos_job.count = 0;
-        update_pos_job.count.clear();
-        update_pos_job.count.resize(task_count);
-        benchmark.add([&world, &update_pos_job, &dispatcher, task_count] {
-            update_pos_job.run(world, dispatcher, mustache::JobRunMode::kParallel);
-//            update_pos_job.runParallel(world, task_count, dispatcher);
-        });
-        if (update_pos_job.totalCount() != kNumObjects) {
-            throw std::runtime_error(std::to_string(update_pos_job.totalCount()) + " vs " + std::to_string(static_cast<uint32_t>(kNumObjects)));
+    struct alignas(128) AlignedUint {
+        uint32_t value = 0;
+    };
+    std::vector<AlignedUint> count_arr;
+//
+    const auto count = [&count_arr]() {
+        uint32_t result = 0;
+        for (auto i : count_arr) {
+            result += i.value;
         }
+        return result;
+    };
+    for (uint32_t i = 0; i < kNumIteration; ++i) {
+        count_arr.clear();
+        count_arr.resize(world.dispatcher().threadCount() + 1);
+        benchmark.add([&entities, &count, &count_arr] {
+            entities.forEach([&count_arr](Position& pos, const Velocity& vel, const Rotation& rot,
+                    const mustache::JobInvocationIndex& invocation_index) {
+                pos.value += dt * vel.value * forward(rot.orient);
+                ++count_arr[invocation_index.thread_id.toInt()].value;
+            }, mustache::JobRunMode::kParallel);
+            if (count() != kNumObjects) {
+                throw std::runtime_error("Invalid num objects");
+            }
+        });
     }
     benchmark.show();
 }

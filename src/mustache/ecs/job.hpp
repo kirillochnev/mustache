@@ -14,34 +14,27 @@ namespace mustache {
     class Archetype;
     class World;
 
-    enum class JobRunMode : uint32_t {
-        kCurrentThread = 0u,
-        kParallel = 1u,
-        kSingleThread = 2u,
-        kDefault = kCurrentThread,
-    };
-
     class APerEntityJob {
     public:
         virtual ~APerEntityJob() = default;
 
-        void run(World& world, Dispatcher& dispatcher, JobRunMode mode = JobRunMode::kDefault) {
+        void run(World& world, JobRunMode mode = JobRunMode::kDefault) {
             const auto entities_count = applyFilter(world);
             switch (mode) {
                 case JobRunMode::kCurrentThread:
-                    runCurrentThread(world, dispatcher);
+                    runCurrentThread(world);
                     break;
                 case JobRunMode::kParallel:
-                    runParallel(world, dispatcher, taskCount(dispatcher, entities_count));
+                    runParallel(world, taskCount(world.dispatcher(), entities_count));
                     break;
                 case JobRunMode::kSingleThread:
-                    runParallel(world, dispatcher, 1);
+                    runParallel(world, 1);
                     break;
             };
         }
 
-        virtual void runParallel(World&, Dispatcher&, uint32_t num_tasks) = 0;
-        virtual void runCurrentThread(World&, Dispatcher&) = 0;
+        virtual void runParallel(World&, uint32_t num_tasks) = 0;
+        virtual void runCurrentThread(World&) = 0;
         virtual ComponentIdMask checkMask() const noexcept = 0;
         virtual ComponentIdMask updateMask() const noexcept = 0;
         virtual uint32_t applyFilter(World&) noexcept = 0;
@@ -85,8 +78,9 @@ namespace mustache {
             return Info::updateMask();
         }
 
-        MUSTACHE_INLINE void runCurrentThread(World&, Dispatcher& dispatcher) override {
+        MUSTACHE_INLINE void runCurrentThread(World& world) override {
             static constexpr auto index_sequence = std::make_index_sequence<Info::FunctionInfo::components_count>();
+            auto& dispatcher = world.dispatcher();
             PerEntityJobTaskId task_id = PerEntityJobTaskId::make(0);
             const auto thread_id = dispatcher.currentThreadId();
             for (auto task : JobView::make(filter_result_, 1)) {
@@ -95,9 +89,10 @@ namespace mustache {
             }
         }
 
-        MUSTACHE_INLINE void runParallel(World&, Dispatcher& dispatcher, uint32_t task_count) override {
+        MUSTACHE_INLINE void runParallel(World& world, uint32_t task_count) override {
             static constexpr auto index_sequence = std::make_index_sequence<Info::FunctionInfo::components_count>();
             PerEntityJobTaskId task_id = PerEntityJobTaskId::make(0);
+            auto& dispatcher = world.dispatcher();
             for (auto task : JobView::make(filter_result_, task_count)) {
                 dispatcher.addParallelTask([task, this, task_id](ThreadId thread_id) {
                     singleTask(task, task_id, thread_id, index_sequence);
@@ -170,4 +165,21 @@ namespace mustache {
         WorldFilterResult filter_result_;
         WorldVersion last_update_version_;
     };
+
+    template<typename _F, size_t... _I>
+    void EntityManager::forEach(_F&& function, JobRunMode mode, std::index_sequence<_I...>&&) {
+        using Info = utils::function_traits<_F>;
+        struct TmpJob : public PerEntityJob<TmpJob> {
+            TmpJob(_F&& f):
+                    func{std::forward<_F>(f)} {
+
+            }
+            _F&& func;
+            void operator() (typename Info::template arg<_I>::type&&... args) {
+                func(std::forward<typename Info::template arg<_I>::type>(args)...);
+            }
+        };
+        TmpJob job{std::forward<_F>(function)};
+        job.run(world_, mode);
+    }
 }

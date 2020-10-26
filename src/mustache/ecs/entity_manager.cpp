@@ -67,9 +67,10 @@ void EntityManager::clear() {
 
 void EntityManager::update() {
     world_version_ = world_.version();
-    if (marked_for_delete_.empty()) {
-        return;
+    for (auto entity : marked_for_delete_) {
+        destroyNow(entity);
     }
+    marked_for_delete_.clear();
 }
 
 void EntityManager::clearArchetype(Archetype& archetype) {

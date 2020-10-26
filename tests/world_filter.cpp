@@ -83,7 +83,7 @@ TEST(WorldFilter, component_version) {
     };
     auto& world = getWorld();
     auto& entities = world.entities();
-    mustache::Dispatcher dispatcher;
+
     auto entity = entities.create<Component<0> >();
     ASSERT_EQ(world.version(), mustache::WorldVersion::make(0));
     ASSERT_EQ(world.version(), entities.getWorldVersionOfLastComponentUpdate<Component<0> >(entity));
@@ -98,7 +98,7 @@ TEST(WorldFilter, component_version) {
     entities.getComponent<const Component<0> >(entity);
     ASSERT_EQ(world.version(), entities.getWorldVersionOfLastComponentUpdate<Component<0> >(entity).next());
     Job job;
-    job.run(world, dispatcher);
+    job.run(world);
 //    ASSERT_EQ(world.version(), entities.getWorldVersionOfLastComponentUpdate<Component<0> >(entity).next().next());
 }
 
@@ -125,8 +125,7 @@ TEST(WorldFilter, chunk_version) {
     };
     mustache::World world = mustache::World{mustache::WorldId::make(0)};
     auto& entities = world.entities();
-    mustache::Dispatcher dispatcher;
-    dispatcher.setSingleThreadMode(true);
+    world.dispatcher().setSingleThreadMode(true);
 
     for (uint32_t i = 0; i < kNumObjects; ++i) {
         (void ) entities.create<Component<0>, Component<1>, Component<2> >();
@@ -136,17 +135,17 @@ TEST(WorldFilter, chunk_version) {
 
     for (uint32_t i = 0; i < 100; ++i) {
         job0.count = 0u;
-        job0.run(world, dispatcher);
+        job0.run(world);
         ASSERT_EQ(job0.count, kNumObjects);
 
         job1.count = 0u;
-        job1.run(world, dispatcher);
+        job1.run(world);
         ASSERT_EQ(job1.count, kNumObjects);
 
         world.update();
 
         job1.count = 0u;
-        job1.run(world, dispatcher);
+        job1.run(world);
         ASSERT_EQ(job1.count, 0u);
     }
 
