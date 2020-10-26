@@ -29,7 +29,7 @@ namespace mustache {
             const auto entities_count = applyFilter(world);
             switch (mode) {
                 case JobRunMode::kCurrentThread:
-                    runCurrentThread(world);
+                    runCurrentThread(world, dispatcher);
                     break;
                 case JobRunMode::kParallel:
                     runParallel(world, dispatcher, taskCount(dispatcher, entities_count));
@@ -41,7 +41,7 @@ namespace mustache {
         }
 
         virtual void runParallel(World&, Dispatcher&, uint32_t num_tasks) = 0;
-        virtual void runCurrentThread(World&) = 0;
+        virtual void runCurrentThread(World&, Dispatcher&) = 0;
         virtual ComponentIdMask checkMask() const noexcept = 0;
         virtual ComponentIdMask updateMask() const noexcept = 0;
         virtual uint32_t applyFilter(World&) noexcept = 0;
@@ -85,11 +85,12 @@ namespace mustache {
             return Info::updateMask();
         }
 
-        MUSTACHE_INLINE void runCurrentThread(World&) override {
+        MUSTACHE_INLINE void runCurrentThread(World&, Dispatcher& dispatcher) override {
             static constexpr auto index_sequence = std::make_index_sequence<Info::FunctionInfo::components_count>();
             PerEntityJobTaskId task_id = PerEntityJobTaskId::make(0);
+            const auto thread_id = dispatcher.currentThreadId();
             for (auto task : JobView::make(filter_result_, 1)) {
-                singleTask(task, task_id, index_sequence);
+                singleTask(task, task_id, thread_id, index_sequence);
                 ++task_id;
             }
         }
@@ -98,8 +99,8 @@ namespace mustache {
             static constexpr auto index_sequence = std::make_index_sequence<Info::FunctionInfo::components_count>();
             PerEntityJobTaskId task_id = PerEntityJobTaskId::make(0);
             for (auto task : JobView::make(filter_result_, task_count)) {
-                dispatcher.addParallelTask([task, this, task_id] {
-                    singleTask(task, task_id, index_sequence);
+                dispatcher.addParallelTask([task, this, task_id](ThreadId thread_id) {
+                    singleTask(task, task_id, thread_id, index_sequence);
                 });
                 ++task_id;
             }
@@ -137,11 +138,12 @@ namespace mustache {
         }
 
         template<size_t... _I>
-        MUSTACHE_INLINE void singleTask(TaskView task_view, PerEntityJobTaskId task_id,
+        MUSTACHE_INLINE void singleTask(TaskView task_view, PerEntityJobTaskId task_id, ThreadId thread_id,
                 const std::index_sequence<_I...>&) {
             JobInvocationIndex invocation_index;
             invocation_index.task_index = task_id;
             invocation_index.entity_index_in_task = PerEntityJobEntityIndexInTask::make(0);
+            invocation_index.thread_id = thread_id;
             for (const auto& info : task_view) {
                 auto& archetype = *info.archetype();
                 static const std::array<ComponentId, sizeof...(_I)> ids {

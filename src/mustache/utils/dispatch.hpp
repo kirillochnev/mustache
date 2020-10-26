@@ -6,8 +6,14 @@
 #include <memory>
 #include <future>
 
+#include <mustache/utils/uncopiable.hpp>
+#include <mustache/utils/index_like.hpp>
+
 namespace mustache {
-    using Job = std::function<void()>;
+
+    struct ThreadId : public IndexLike<uint32_t, ThreadId>{};
+
+    using Job = std::function<void(ThreadId)>;
     using QueueId = uint32_t;
     class Dispatcher;
 
@@ -18,7 +24,7 @@ namespace mustache {
         kBackground = -1000
     };
 
-    class Queue {
+    class Queue : public Uncopiable {
     public:
         bool valid() const noexcept {
             return dispatcher_ != nullptr && id_ != static_cast<QueueId>(-1);
@@ -31,7 +37,7 @@ namespace mustache {
         QueueId id_{static_cast<QueueId>(-1)};
     };
 
-    class Dispatcher {
+    class Dispatcher : public Uncopiable {
     public:
         uint32_t threadCount() const noexcept;
         static uint32_t maxThreadCount() noexcept;
@@ -58,12 +64,28 @@ namespace mustache {
             addJob(std::move(job));
         }
 
+        void addParallelTask(std::function<void()>&& job) {
+            addParallelTask([no_arg_job_job = std::move(job)](ThreadId) {
+                no_arg_job_job();
+            });
+        }
+
         Queue createQueue(const std::string& name, int32_t priority = CommonQueuePriority::kDefault);
 
-        void async(uint32_t QueueId, Job&& job);
+        void async(uint32_t queue_id, Job&& job);
+        void async(uint32_t queue_id, std::function<void()>&& job) {
+            async(queue_id, [no_arg_job_job = std::move(job)](ThreadId) {
+                no_arg_job_job();
+            });
+        }
+
         void waitQueue(QueueId queue_id) const noexcept;
 
         void setSingleThreadMode(bool on) noexcept;
+
+        // 0 - thread is not controlled by Dispatcher.
+        // 1..threadCount for Dispatcher threads.
+        [[nodiscard]] ThreadId currentThreadId() const noexcept;
     private:
         void addJob(Job&& job);
         struct Data;
