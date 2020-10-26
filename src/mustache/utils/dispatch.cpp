@@ -1,6 +1,7 @@
 #include "dispatch.hpp"
 #include <queue>
 #include <map>
+#include <set>
 
 #ifdef __EMSCRIPTEN__
 #include<emscripten/threading.h>
@@ -8,8 +9,6 @@
 #else
 #define NUMBER_OF_CORES std::thread::hardware_concurrency()
 #endif
-
-#include <set>
 
 using namespace mustache;
 
