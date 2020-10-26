@@ -15,6 +15,14 @@
 
 namespace mustache {
 
+    enum class JobRunMode : uint32_t {
+        kCurrentThread = 0u,
+        kParallel = 1u,
+        kSingleThread = 2u,
+        kDefault = kCurrentThread,
+    };
+
+
     struct JobInvocationIndex {
         PerEntityJobTaskId task_index;
         PerEntityJobEntityIndexInTask entity_index_in_task;

@@ -8,6 +8,7 @@
 #include <mustache/ecs/archetype.hpp>
 #include <mustache/ecs/component_mask.hpp>
 #include <mustache/ecs/component_factory.hpp>
+#include <mustache/ecs/job_arg_parcer.hpp>
 
 #include <memory>
 #include <map>
@@ -82,6 +83,14 @@ namespace mustache {
             return archetype->getComponentVersion<_Safety>(location.index, component_id);
         }
 
+        template<typename _F, size_t... _I>
+        MUSTACHE_INLINE void forEach(_F&& function, JobRunMode mode, std::index_sequence<_I...>&&);
+
+        template<typename _F>
+        MUSTACHE_INLINE void forEach(_F&& function, JobRunMode mode = JobRunMode::kDefault) {
+            constexpr auto args_count = utils::function_traits<_F>::arity;
+            forEach(std::forward<_F>(function), mode, std::make_index_sequence<args_count>());
+        }
     private:
         [[nodiscard]] WorldVersion worldVersion() const noexcept {
             return world_version_;
