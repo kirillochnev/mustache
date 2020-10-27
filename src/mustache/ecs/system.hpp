@@ -58,26 +58,29 @@ namespace mustache {
     struct ASystem : Uncopiable {
         virtual ~ASystem() = default;
 
-        void onCreate(World&);
-        void onConfigure(World&, SystemConfig&);
-        void onStart(World&);
-        void onUpdate(World&);
-        void onPause(World&);
-        void onStop(World&);
-        void onResume(World&);
-        void onDestroy(World&);
+        void create(World&);
+        void configure(World&, SystemConfig&);
+        void start(World&);
+        void update(World&);
+        void pause(World&);
+        void stop(World&);
+        void resume(World&);
+        void destroy(World&);
 
+        [[nodiscard]] SystemState state() const noexcept {
+            return state_;
+        }
         virtual std::string name() const noexcept = 0;
 
     protected:
-        virtual void onCreateImpl(World&);
-        virtual void onConfigureImpl(World&, SystemConfig&);
-        virtual void onStartImpl(World&);
-        virtual void onUpdateImpl(World&) = 0;
-        virtual void onPauseImpl(World&);
-        virtual void onStopImpl(World&);
-        virtual void onResumeImpl(World&);
-        virtual void onDestroyImpl(World&);
+        virtual void onCreate(World&);
+        virtual void onConfigure(World&, SystemConfig&);
+        virtual void onStart(World&);
+        virtual void onUpdate(World&) = 0;
+        virtual void onPause(World&);
+        virtual void onStop(World&);
+        virtual void onResume(World&);
+        virtual void onDestroy(World&);
 
         void checkState(SystemState expected_state);
         SystemState state_;

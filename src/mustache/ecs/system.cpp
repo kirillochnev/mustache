@@ -3,86 +3,88 @@
 
 using namespace mustache;
 
+// TODO: make this functions execute all patch from current state to target state
+
 void ASystem::checkState(SystemState expected_state) {
     if (state_ != expected_state) {
         throw std::runtime_error("Invalid state");
     }
 }
 
-void ASystem::onCreate(World& world) {
+void ASystem::create(World& world) {
     checkState(SystemState::kUninit);
     if (state_ != SystemState::kUninit) {
         throw std::runtime_error("Invalid state");
     }
-    onCreateImpl(world);
+    onCreate(world);
     state_ = SystemState::kInited;
 }
 
-void ASystem::onConfigure(World& world, SystemConfig& config) {
+void ASystem::configure(World& world, SystemConfig& config) {
     checkState(SystemState::kInited);
-    onConfigureImpl(world, config);
+    onConfigure(world, config);
     state_ = SystemState::kConfigured;
 }
 
-void ASystem::onStart(World& world) {
+void ASystem::start(World& world) {
     checkState(SystemState::kConfigured);
-    onStartImpl(world);
+    onStart(world);
     state_ = SystemState::kActive;
 }
 
-void ASystem::onUpdate(World& world) {
+void ASystem::update(World& world) {
     checkState(SystemState::kActive);
-    onUpdateImpl(world);
+    onUpdate(world);
 }
 
-void ASystem::onPause(World& world) {
+void ASystem::pause(World& world) {
     checkState(SystemState::kActive);
-    onPauseImpl(world);
+    onPause(world);
     state_ = SystemState::kPaused;
 }
 
-void ASystem::onStop(World& world) {
+void ASystem::stop(World& world) {
     checkState(SystemState::kPaused);
-    onStopImpl(world);
+    onStop(world);
     state_ = SystemState::kStopped;
 }
 
-void ASystem::onResume(World& world) {
+void ASystem::resume(World& world) {
     checkState(SystemState::kPaused);
-    onResumeImpl(world);
+    onResume(world);
     state_ = SystemState::kActive;
 }
 
-void ASystem::onDestroy(World& world) {
+void ASystem::destroy(World& world) {
     checkState(SystemState::kStopped);
-    onDestroyImpl(world);
+    onDestroy(world);
     state_ = SystemState::kUninit;
 }
 
-void ASystem::onCreateImpl(World&) {
+void ASystem::onCreate(World&) {
 
 }
 
-void ASystem::onConfigureImpl(World&, SystemConfig&) {
+void ASystem::onConfigure(World&, SystemConfig&) {
 
 }
 
-void ASystem::onStartImpl(World&) {
+void ASystem::onStart(World&) {
 
 }
 
-void ASystem::onPauseImpl(World&) {
+void ASystem::onPause(World&) {
 
 }
 
-void ASystem::onStopImpl(World&) {
+void ASystem::onStop(World&) {
 
 }
 
-void ASystem::onResumeImpl(World&) {
+void ASystem::onResume(World&) {
 
 }
 
-void ASystem::onDestroyImpl(World&) {
+void ASystem::onDestroy(World&) {
 
 }
