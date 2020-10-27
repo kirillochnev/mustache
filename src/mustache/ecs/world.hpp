@@ -2,6 +2,7 @@
 
 #include <mustache/utils/index_like.hpp>
 #include <mustache/ecs/entity_manager.hpp>
+#include <mustache/ecs/system_manager.hpp>
 #include <mustache/utils/memory_manager.hpp>
 #include <mustache/utils/dispatch.hpp>
 
@@ -12,6 +13,7 @@ namespace mustache {
     struct WorldContext {
         std::shared_ptr<MemoryManager> memory_manager;
         std::shared_ptr<Dispatcher> dispatcher;
+        std::shared_ptr<SystemManager> systems;
     };
 
     class World : public Uncopiable {
@@ -30,6 +32,13 @@ namespace mustache {
             return entities_;
         }
 
+        [[nodiscard]] SystemManager& systems() noexcept {
+            if (!context_.systems) {
+                context_.systems = std::make_shared<SystemManager>(*this);
+            }
+            return *context_.systems;
+        }
+
         [[nodiscard]] Dispatcher& dispatcher() noexcept {
             if (!context_.dispatcher) {
                 context_.dispatcher = std::make_shared<Dispatcher>();
@@ -37,9 +46,14 @@ namespace mustache {
             return *context_.dispatcher;
         }
 
-        /*[[nodiscard]] SystemManager& systems() noexcept {
-            return systems_;
+        [[nodiscard]] MemoryManager& memoryManager() noexcept {
+            if (!context_.memory_manager) {
+                context_.memory_manager = std::make_shared<MemoryManager>();
+            }
+            return *context_.memory_manager;
         }
+
+        /*
         [[nodiscard]] EventManager& events() noexcept {
             return events_;
         }*/
@@ -55,12 +69,7 @@ namespace mustache {
         [[nodiscard]] WorldVersion version() const noexcept {
             return version_;
         }
-        [[nodiscard]] MemoryManager& memoryManager() noexcept {
-            if (!context_.memory_manager) {
-                context_.memory_manager = std::make_shared<MemoryManager>();
-            }
-            return *context_.memory_manager;
-        }
+
     private:
         WorldId id_;
         WorldContext context_;

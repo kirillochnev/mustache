@@ -6,6 +6,7 @@
 #include <mustache/ecs/job_arg_parcer.hpp>
 #include <mustache/ecs/world_filter.hpp>
 #include <mustache//ecs/task_view.hpp>
+#include <mustache/ecs/base_job.hpp>
 #include <mustache/utils/dispatch.hpp>
 
 namespace mustache {
@@ -14,38 +15,8 @@ namespace mustache {
     class Archetype;
     class World;
 
-    class APerEntityJob {
-    public:
-        virtual ~APerEntityJob() = default;
-
-        void run(World& world, JobRunMode mode = JobRunMode::kDefault) {
-            const auto entities_count = applyFilter(world);
-            switch (mode) {
-                case JobRunMode::kCurrentThread:
-                    runCurrentThread(world);
-                    break;
-                case JobRunMode::kParallel:
-                    runParallel(world, taskCount(world.dispatcher(), entities_count));
-                    break;
-                case JobRunMode::kSingleThread:
-                    runParallel(world, 1);
-                    break;
-            };
-        }
-
-        virtual void runParallel(World&, uint32_t num_tasks) = 0;
-        virtual void runCurrentThread(World&) = 0;
-        virtual ComponentIdMask checkMask() const noexcept = 0;
-        virtual ComponentIdMask updateMask() const noexcept = 0;
-        virtual uint32_t applyFilter(World&) noexcept = 0;
-        virtual uint32_t taskCount(const Dispatcher& dispatcher, uint32_t entity_count) const noexcept {
-            return std::min(entity_count, dispatcher.threadCount() + 1);
-        }
-
-    };
-
     template<typename T>
-    class PerEntityJob : public APerEntityJob {
+    class PerEntityJob : public BaseJob {
     public:
         using Info = JobInfo<T>;
 

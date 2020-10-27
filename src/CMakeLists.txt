@@ -29,9 +29,13 @@ add_library(${PROJECT_NAME} STATIC
         mustache/ecs/entity_manager.cpp
         mustache/ecs/entity_manager.hpp
         mustache/ecs/entity_manager.hpp
+        mustache/ecs/base_job.cpp
+        mustache/ecs/base_job.hpp
         mustache/ecs/job.hpp
         mustache/ecs/system.cpp
         mustache/ecs/system.hpp
+        mustache/ecs/system_manager.cpp
+        mustache/ecs/system_manager.hpp
         mustache/ecs/archetype.cpp
         mustache/ecs/archetype.hpp
         mustache/ecs/job_arg_parcer.hpp
