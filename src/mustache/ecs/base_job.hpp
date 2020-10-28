@@ -3,10 +3,8 @@
 #include <mustache/ecs/component_mask.hpp>
 
 namespace mustache {
-
     class World;
     class Dispatcher;
-
 
     enum class JobRunMode : uint32_t {
         kCurrentThread = 0u,
@@ -27,6 +25,5 @@ namespace mustache {
         virtual ComponentIdMask updateMask() const noexcept = 0;
         virtual uint32_t applyFilter(World&) noexcept = 0;
         [[nodiscard]] virtual uint32_t taskCount(World&, uint32_t entity_count) const noexcept;
-
     };
 }

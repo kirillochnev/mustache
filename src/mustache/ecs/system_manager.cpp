@@ -20,10 +20,14 @@ struct SystemManager::Data {
     struct SystemInfo {
         SystemPtr system;
         SystemConfig config;
+        bool operator==(const SystemPtr& rhs) const noexcept {
+            return system == rhs;
+        }
     };
     std::vector<SystemInfo> systems_info;
     std::vector<SystemPtr> ordered_systems;
     std::map<std::string, int32_t> group_priorities;
+    std::map<std::string, SystemPtr > system_by_name;
 };
 
 SystemManager::SystemManager(World& world) :
@@ -78,10 +82,15 @@ void mustache::SystemManager::init() {
 
 void mustache::SystemManager::addSystem(SystemManager::SystemPtr system) {
     auto& info = data_->systems_info.emplace_back();
+
     info.system = std::move(system);
+
     if (info.system->state() == SystemState::kUninit) {
         info.system->create(data_->world);
     }
+
+    data_->system_by_name[info.system->name()] = info.system;
+
     if (data_->was_init) {
         info.system->configure(data_->world, info.config);
         reorderSystems();
@@ -159,4 +168,22 @@ int32_t mustache::SystemManager::getGroupPriority(const std::string& group_name)
 
 void mustache::SystemManager::setGroupPriority(const std::string& group_name, int32_t priority) noexcept {
     data_->group_priorities[group_name] = priority;
+}
+
+SystemManager::SystemPtr mustache::SystemManager::findSystem(const std::string& system_name) noexcept {
+    const auto find_res = data_->system_by_name.find(system_name);
+    return find_res == data_->system_by_name.end() ? nullptr : find_res->second;
+}
+
+void mustache::SystemManager::removeSystem(const std::string& system_name) noexcept {
+    const auto find_res = data_->system_by_name.find(system_name);
+    if (find_res == data_->system_by_name.end()) {
+        return;
+    }
+
+    std::remove(data_->ordered_systems.begin(), data_->ordered_systems.end(), find_res->second);
+    std::remove(data_->systems_info.begin(), data_->systems_info.end(), find_res->second);
+    data_->system_by_name.erase(find_res);
+
+    reorderSystems();
 }

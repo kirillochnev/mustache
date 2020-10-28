@@ -99,6 +99,4 @@ namespace mustache {
             return systemName();
         }
     };
-
-
 }
