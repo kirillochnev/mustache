@@ -3,7 +3,7 @@ project("")
 set(CMAKE_CXX_STANDARD 17)
 
 # TODO: Use list
-if (NOT MSVC)
+if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wextra")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror")
@@ -45,7 +45,9 @@ if (NOT MSVC)
 
     #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ffast-math")
     #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native")
-else()
+elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    # TODO: set warn lvl
+elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
     # TODO: set warn lvl
 endif()
 
