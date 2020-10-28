@@ -3,7 +3,8 @@
 
 #include <map>
 #include <vector>
-#include <mustache/utils/benchmark.hpp>
+#include <algorithm>
+#include <stdexcept>
 
 using namespace mustache;
 

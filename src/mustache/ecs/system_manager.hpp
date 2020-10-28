@@ -2,6 +2,7 @@
 
 #include <mustache/utils/uncopiable.hpp>
 #include <memory>
+#include <string>
 
 namespace mustache {
     class World;
