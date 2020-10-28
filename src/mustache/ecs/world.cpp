@@ -20,6 +20,11 @@ World::~World() {
 
 void World::update() {
     ++version_;
+
+    if (systems_) {
+        systems_->update();
+    }
+
     entities().update();
 }
 
