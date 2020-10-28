@@ -60,39 +60,3 @@ TEST(System, system_order) {
     world.systems().init();
     world.update();
 }
-
-TEST(System, test1) {
-    struct Position {
-        float value;
-    };
-    struct Velocity {
-        float value;
-    };
-    struct Acceleration {
-        float value;
-    };
-
-    using namespace mustache;
-    class System1 : public System<System1> {
-    protected:
-        void onUpdate(World& world) override {
-            job_.run(world);
-        }
-
-    private:
-        struct UpdatePosJob : public PerEntityJob<UpdatePosJob> {
-            float dt;
-            void operator()(Position& position, Velocity& velocity, const Acceleration& acceleration) {
-                const auto delta_velocity = acceleration.value * dt;
-                position.value += velocity.value * dt + delta_velocity * dt * 0.5;
-                velocity.value += delta_velocity;
-            }
-        };
-        UpdatePosJob job_;
-    };
-
-    World world;
-    world.systems().addSystem<System1>();
-    world.systems().init();
-    world.update();
-}
