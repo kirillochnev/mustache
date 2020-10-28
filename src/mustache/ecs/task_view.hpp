@@ -76,9 +76,11 @@ namespace mustache {
                 archetype_index{info.first_archetype},
                 filtered_archetypes{&fr.filtered_archetypes},
                 first_entity{info.first_entity} {
-            const auto& archetype_info = (*filtered_archetypes)[archetype_index.toInt()];
-            const uint32_t num_free_entities_in_arch = archetype_info.entities_count - info.first_entity.toInt();
-            current_size = std::min(dist_to_end, num_free_entities_in_arch);
+            if (!filtered_archetypes->empty()) {
+                const auto &archetype_info = (*filtered_archetypes)[archetype_index.toInt()];
+                const uint32_t num_free_entities_in_arch = archetype_info.entities_count - info.first_entity.toInt();
+                current_size = std::min(dist_to_end, num_free_entities_in_arch);
+            }
         }
         void incrementArchetype() {
             dist_to_end -= current_size;
