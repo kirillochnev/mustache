@@ -5,7 +5,7 @@ using namespace mustache;
 
 // TODO: make this functions execute all patch from current state to target state
 
-void ASystem::checkState(SystemState expected_state) {
+void ASystem::checkState(SystemState expected_state) const {
     if (state_ != expected_state) {
         throw std::runtime_error("Invalid state");
     }
@@ -56,7 +56,12 @@ void ASystem::resume(World& world) {
 }
 
 void ASystem::destroy(World& world) {
-    checkState(SystemState::kStopped);
+    if (state_ == SystemState::kActive) {
+        onPause(world);
+    }
+    if (state_ == SystemState::kPaused) {
+        onStop(world);
+    }
     onDestroy(world);
     state_ = SystemState::kUninit;
 }

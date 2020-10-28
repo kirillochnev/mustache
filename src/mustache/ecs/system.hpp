@@ -8,7 +8,6 @@
 namespace mustache {
 
     class World;
-    class APerEntityJob;
 
     struct SystemConfig {
         template <typename... ARGS>
@@ -22,12 +21,13 @@ namespace mustache {
         std::set<std::string> update_before;
         std::set<std::string> update_after;
         std::string update_group = "";
+        int32_t priority = 0;
     };
 
     enum class SystemState : uint32_t {
         kUninit = 0, // After constructor or onDestroy call
-        kConfigured, // After onConfigure call
         kInited, // After onCreate call
+        kConfigured, // After onConfigure call
         kStopped, // After onConfigure or onStop
         kActive, // After onStart or onResume call
         kPaused // After onPause call
@@ -55,7 +55,8 @@ namespace mustache {
      *  onStop() -> onStart()
      *  onStop() -> onDestroy()
      */
-    struct ASystem : Uncopiable {
+    class ASystem : Uncopiable {
+    public:
         virtual ~ASystem() = default;
 
         void create(World&);
@@ -73,23 +74,29 @@ namespace mustache {
         virtual std::string name() const noexcept = 0;
 
     protected:
-        virtual void onCreate(World&);
-        virtual void onConfigure(World&, SystemConfig&);
-        virtual void onStart(World&);
-        virtual void onUpdate(World&) = 0;
-        virtual void onPause(World&);
-        virtual void onStop(World&);
-        virtual void onResume(World&);
-        virtual void onDestroy(World&);
+        virtual void onCreate(World&); // after constructor call
+        virtual void onConfigure(World&, SystemConfig&); // after on create and World::Init()
+        virtual void onStart(World&); // before first update, after configure
+        virtual void onUpdate(World&) = 0; // after start
+        virtual void onPause(World&); // after start before stop
+        virtual void onStop(World&); // after pause
+        virtual void onResume(World&); // after pause
+        virtual void onDestroy(World&); // after pause or create\configure
 
-        void checkState(SystemState expected_state);
-        SystemState state_;
+        void checkState(SystemState expected_state) const;
+        SystemState state_ = SystemState::kUninit;
     };
 
     template<typename _SystemType>
     class System : public ASystem {
+    public:
+        static const std::string& systemName() noexcept {
+            static const std::string& result = type_name<_SystemType>();
+            return result;
+        }
+
         std::string name() const noexcept override {
-            return type_name<_SystemType>();
+            return systemName();
         }
     };
 

@@ -10,10 +10,10 @@
 
 namespace mustache {
 
+    // Shared data
     struct WorldContext {
         std::shared_ptr<MemoryManager> memory_manager;
         std::shared_ptr<Dispatcher> dispatcher;
-        std::shared_ptr<SystemManager> systems;
     };
 
     class World : public Uncopiable {
@@ -33,10 +33,10 @@ namespace mustache {
         }
 
         [[nodiscard]] SystemManager& systems() noexcept {
-            if (!context_.systems) {
-                context_.systems = std::make_shared<SystemManager>(*this);
+            if (!systems_) {
+                systems_ = std::make_unique<SystemManager>(*this);
             }
-            return *context_.systems;
+            return *systems_;
         }
 
         [[nodiscard]] Dispatcher& dispatcher() noexcept {
@@ -73,6 +73,7 @@ namespace mustache {
     private:
         WorldId id_;
         WorldContext context_;
+        std::unique_ptr<SystemManager> systems_;
         EntityManager entities_;
         WorldVersion version_ = WorldVersion::make(0u);
     };

@@ -23,10 +23,13 @@ namespace mustache {
             return system_ptr;
         }
 
-        void update(World&);
+        void update();
         void init();
 
+        int32_t getGroupPriority(const std::string& group_name) const noexcept;
+        void setGroupPriority(const std::string& group_name, int32_t priority) noexcept;
     private:
+        void reorderSystems();
         struct Data;
         std::unique_ptr<Data> data_;
     };
