@@ -358,7 +358,7 @@ TEST(EntityManager, removeComponent) {
             uint32_t value = 999 + (++num_1);
         };
         mustache::World world{mustache::WorldId::make(0)};
-        auto &entities = world.entities();
+        auto& entities = world.entities();
 
         for (uint32_t i = 0; i < 100; ++i) {
             auto e = entities.create();

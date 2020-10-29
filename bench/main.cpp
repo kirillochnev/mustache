@@ -52,17 +52,17 @@ void destroy(std::byte*& ptr, const mustache::ComponentId& id) {
     ptr += sizeof(T);
 }
 
-//namespace {
+namespace {
     struct Position {
-        glm::vec3 value = glm::vec3(1,2, 3);
+        glm::vec3 value;
     };
 
     struct Velocity {
-        float value;//{1};
+        float value{1};
     };
 
     struct Rotation {
-        glm::quat orient;//{glm::vec3{randf(), randf(), randf()}};
+        glm::quat orient;
     };
 
     MUSTACHE_INLINE glm::vec3 forward(const glm::quat& q) {
@@ -72,7 +72,7 @@ void destroy(std::byte*& ptr, const mustache::ComponentId& id) {
                 -1.0f + 2.0f * (q.x * q.x + q.y * q.y),
         };
     }
-//}
+}
 
 void create1m() {
     enum : uint32_t {
@@ -106,7 +106,7 @@ void create1m() {
 void iterate500k() {
     enum : uint32_t {
         kNumObjects = 500000,
-        kNumIteration = 1000,
+        kNumIteration = 100,
     };
     mustache::World world{mustache::WorldId::make(0)};
     auto& entities = world.entities();
@@ -120,33 +120,35 @@ void iterate500k() {
     mustache::Benchmark benchmark;
 
     mustache::Logger{}.info("Task Begin!");
-    struct alignas(128) AlignedUint {
-        uint32_t value = 0;
-    };
-    std::vector<AlignedUint> count_arr;
-//
-    const auto count = [&count_arr]() {
-        uint32_t result = 0;
-        for (auto i : count_arr) {
-            result += i.value;
-        }
-        return result;
-    };
+//    struct alignas(128) AlignedUint {
+//        uint32_t value = 0;
+//    };
+//    std::vector<AlignedUint> count_arr;
+
+//    const auto count = [&count_arr]() {
+//        uint32_t result = 0;
+//        for (auto i : count_arr) {
+//            result += i.value;
+//        }
+//        return result;
+//    };
     for (uint32_t i = 0; i < kNumIteration; ++i) {
-        count_arr.clear();
-        count_arr.resize(world.dispatcher().threadCount() + 1);
-        benchmark.add([&entities, &count, &count_arr] {
-            entities.forEach([&count_arr](Position& pos, const Velocity& vel, const Rotation& rot,
-                    const mustache::JobInvocationIndex& invocation_index) {
+//        count_arr.clear();
+//        count_arr.resize(world.dispatcher().threadCount() + 1);
+        benchmark.add([&entities/*, &count_arr*/] {
+            entities.forEach([/*&count_arr*/](Position& pos, const Velocity& vel, const Rotation& rot/*,
+                    const mustache::JobInvocationIndex& invocation_index*/) {
                 pos.value += dt * vel.value * forward(rot.orient);
-                ++count_arr[invocation_index.thread_id.toInt()].value;
+//                ++count_arr[invocation_index.thread_id.toInt()].value;
             }, mustache::JobRunMode::kParallel);
-            if (count() != kNumObjects) {
-                throw std::runtime_error("Invalid num objects");
-            }
         });
+
+        /*if (count() != kNumObjects) {
+            throw std::runtime_error("Invalid num objects");
+        }*/
     }
     benchmark.show();
+
 }
 
 void createEmptyAndAssign() {
@@ -230,6 +232,7 @@ int main() {
 //    foo();
 //    create1m();
 //    createEmptyAndAssign();
+
     iterate500k();
 //    testGlobalIndex();
 

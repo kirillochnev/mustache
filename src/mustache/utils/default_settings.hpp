@@ -7,7 +7,7 @@ namespace mustache {
     enum class FunctionSafety : uint32_t {
          kUnsafe = 0,
          kSafe = 1,
-         kDefault = kSafe
+         kDefault = kUnsafe
     };
 
     constexpr bool isSafe(FunctionSafety safety) noexcept {

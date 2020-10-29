@@ -34,8 +34,8 @@ namespace mustache {
         }
 
         ArchetypeView& begin() { return *this; }
-        nullptr_t end() const noexcept { return nullptr; }
-        bool operator != (nullptr_t) const noexcept { return dist_to_end_ != 0u; }
+        std::nullptr_t end() const noexcept { return nullptr; }
+        bool operator != (std::nullptr_t) const noexcept { return dist_to_end_ != 0u; }
         const ArchetypeView& operator*() const noexcept { return *this; }
 
         ArchetypeView& operator++() noexcept {
@@ -104,9 +104,9 @@ namespace mustache {
             return (*filtered_archetypes)[archetype_index.toInt()].archetype;
         }
         const TaskView& operator*() const noexcept { return *this; }
-        bool operator != (nullptr_t) const noexcept {  return dist_to_end != 0u; }
+        bool operator != (std::nullptr_t) const noexcept {  return dist_to_end != 0u; }
         TaskView begin() const noexcept { return *this; }
-        nullptr_t end() const noexcept { return nullptr; }
+        std::nullptr_t end() const noexcept { return nullptr; }
 
         uint32_t current_size {0u};
         uint32_t dist_to_end {0u};

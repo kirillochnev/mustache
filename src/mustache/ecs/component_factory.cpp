@@ -9,7 +9,7 @@ namespace {
         TypeInfo info{};
         ComponentId id{ComponentId::make(-1)};
     };
-    std::map<std::string, Element> type_map;
+    std::map<size_t, Element> type_map;
     ComponentId next_component_id{ComponentId::make(0)};
     std::vector<TypeInfo> components_info;
 
@@ -26,7 +26,7 @@ namespace {
 }
 
 ComponentId ComponentFactory::componentId(const TypeInfo& info) {
-    const auto find_res = type_map.find(info.name);
+    const auto find_res = type_map.find(info.type_id_hash_code);
     if(find_res != type_map.end()) {
         if(components_info.size() <= find_res->second.id.toInt()) {
             components_info.resize(find_res->second.id.toInt() + 1);
@@ -34,7 +34,7 @@ ComponentId ComponentFactory::componentId(const TypeInfo& info) {
         components_info[find_res->second.id.toInt()] = find_res->second.info;
         return find_res->second.id;
     }
-    type_map[info.name] = {
+    type_map[info.type_id_hash_code] = {
             info,
             next_component_id
     };
