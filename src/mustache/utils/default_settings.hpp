@@ -16,10 +16,9 @@ namespace mustache {
 
 }
 #ifdef __clang__
-    // NOTE: msvs does not support source_location, so some workaround is needed
-    #define MUSTACHE_FILE "unknown"
-    #define MUSTACHE_FUNCTION "unknown"
-    #define MUSTACHE_LINE 0
+    #define MUSTACHE_FILE __builtin_FILE()
+    #define MUSTACHE_FUNCTION __builtin_FUNCTION()
+    #define MUSTACHE_LINE __builtin_LINE()
 
     #define MUSTACHE_INLINE inline
     #define MUSTACHE_RESTRICT_PTR
@@ -37,10 +36,9 @@ namespace mustache {
 
     #define MUSTACHE_COPY_NOEXCEPT(exp) noexcept(noexcept(exp))
 #elif _MSC_VER
-    // NOTE: msvs does not support source_location, so some workaround is needed
-    #define MUSTACHE_FILE "unknown"
-    #define MUSTACHE_FUNCTION "unknown"
-    #define MUSTACHE_LINE 0
+    #define MUSTACHE_FILE __builtin_FILE()
+    #define MUSTACHE_FUNCTION __builtin_FUNCTION()
+    #define MUSTACHE_LINE __builtin_LINE()
 
     #define MUSTACHE_INLINE inline
     #define MUSTACHE_RESTRICT_PTR
