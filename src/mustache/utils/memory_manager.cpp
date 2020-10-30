@@ -6,6 +6,10 @@
 #include <map>
 #include <iostream>
 
+#ifdef ALIGNED_ALLOC
+#include <malloc.h>
+#endif
+
 #if MEMORY_MANAGER_COLLECT_STATISTICS
 #define MEMORY_MANAGER_STATISTICS_ARG_DECL , const char* file, uint32_t line
 namespace {
@@ -19,10 +23,17 @@ namespace {
 
 void* mustache::MemoryManager::allocate(size_t size, size_t align MEMORY_MANAGER_STATISTICS_ARG_DECL) noexcept {
 #ifdef _MSC_BUILD
-    void* ptr = (align == 0) ? malloc(size) : _aligned_malloc(size, align);
+    #define ALIGNED_ALLOC(size, align) _aligned_malloc(size, align)
+#elif defined(ANDROID)
+    #define ALIGNED_ALLOC(size, align) memalign(align, size)
 #else
-    void* ptr = (align == 0) ? malloc(size) : aligned_alloc(align, size);
+    #define ALIGNED_ALLOC(size, align) aligned_alloc(align, size)
 #endif
+
+    void* ptr = (align == 0) ? malloc(size) : ALIGNED_ALLOC(size, align);
+    
+#undef ALIGNED_ALLOC
+
 #if MEMORY_MANAGER_COLLECT_STATISTICS
     total_size += size;
     const auto location = file + std::string(":") + std::to_string(line);
