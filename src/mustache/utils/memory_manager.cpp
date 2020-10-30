@@ -21,7 +21,7 @@ void* mustache::MemoryManager::allocate(size_t size, size_t align MEMORY_MANAGER
 #ifdef _MSC_BUILD
     void* ptr = (align == 0) ? malloc(size) : _aligned_malloc(size, align);
 #else
-    void* ptr = (align == 0) ? malloc(size) : std::aligned_alloc(align, size);
+    void* ptr = (align == 0) ? malloc(size) : aligned_alloc(align, size);
 #endif
 #if MEMORY_MANAGER_COLLECT_STATISTICS
     total_size += size;

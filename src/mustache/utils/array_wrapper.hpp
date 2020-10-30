@@ -21,19 +21,11 @@ namespace mustache {
 
         }
 
-        decltype(auto) data()
-#ifndef _MSC_BUILD
-            noexcept (noexcept(_ArrayType::data))
-#endif
-        {
+        decltype(auto) data() MUSTACHE_COPY_NOEXCEPT(_ArrayType::data) {
             return array_.data();
         }
 
-        decltype(auto) data() const
-#ifndef _MSC_BUILD
-            noexcept (noexcept(_ArrayType::data))
-#endif
-        {
+        decltype(auto) data() const MUSTACHE_COPY_NOEXCEPT(_ArrayType::data) {
             return array_.data();
         }
         auto size() const noexcept {
@@ -117,19 +109,19 @@ namespace mustache {
             }
             return result;
         }
-        decltype(auto) back() noexcept (noexcept(array_.back())) {
+        decltype(auto) back() MUSTACHE_COPY_NOEXCEPT(array_.back()) {
             return array_.back();
         }
-        decltype(auto) front() noexcept (noexcept(array_.front())) {
+        decltype(auto) front() MUSTACHE_COPY_NOEXCEPT(array_.front()) {
             return array_.front();
         }
-        decltype(auto) back() const noexcept (noexcept(array_.back())) {
+        decltype(auto) back() const MUSTACHE_COPY_NOEXCEPT(array_.back()) {
             return array_.back();
         }
-        decltype(auto) front() const noexcept (noexcept(array_.front())) {
+        decltype(auto) front() const MUSTACHE_COPY_NOEXCEPT(array_.front()) {
             return array_.front();
         }
-        decltype(auto) clear() noexcept (noexcept(array_.clear())){
+        decltype(auto) clear() MUSTACHE_COPY_NOEXCEPT(array_.clear()){
             array_.clear();
         }
 

@@ -31,7 +31,7 @@ namespace mustache {
         [[nodiscard]] MUSTACHE_INLINE bool isEntityValid(Entity entity) const noexcept;
 
         template<typename _F>
-        MUSTACHE_INLINE void forEachArchetype(_F&& func) noexcept (noexcept(func));
+        MUSTACHE_INLINE void forEachArchetype(_F&& func) MUSTACHE_COPY_NOEXCEPT (func);
 
         [[nodiscard]] MUSTACHE_INLINE Entity create(Archetype& archetype);
 
@@ -146,7 +146,7 @@ namespace mustache {
     }
 
     template<typename _F>
-    void EntityManager::forEachArchetype(_F&& func) noexcept (noexcept(func)) {
+    void EntityManager::forEachArchetype(_F&& func) MUSTACHE_COPY_NOEXCEPT(func) {
         for (auto& arh : archetypes_) {
             func(*arh);
         }

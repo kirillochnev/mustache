@@ -2,6 +2,7 @@
 
 #include <string>
 #include <functional>
+#include <stdexcept>
 
 #ifdef _MSC_BUILD
 #define MUSTACHE_FUNCTION_SIGNATURE __FUNCSIG__
@@ -30,7 +31,7 @@ namespace mustache {
         size_t size{0};
         size_t align{0};
         std::string name;
-
+        size_t type_id_hash_code;
         struct FunctionSet {
             Constructor create;
             CopyFunction copy;
@@ -47,6 +48,7 @@ namespace mustache {
                 sizeof(T),
                 alignof(T),
                 type_name<T>(),
+                typeid(T).hash_code(),
                 TypeInfo::FunctionSet {
                         std::is_trivially_default_constructible<T>::value ? TypeInfo::Constructor{} : [](void *ptr) {
                             new(ptr) T;
