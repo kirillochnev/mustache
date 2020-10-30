@@ -1,6 +1,7 @@
 #include "benchmark.hpp"
 #include <algorithm>
 #include <cmath>
+#include <mustache/utils/logger.hpp>
 
 using namespace mustache;
 
@@ -24,9 +25,10 @@ void Benchmark::show() {
         variance += (avr - x) * (avr - x) / times_.size();
     }
 
-    std::cout<<"Avr: " <<  avr << "ms, med: " << med << "ms, min: "
-             << times_.front() << "ms, max: "<< times_.back()<<"ms, variance: " << variance
-             << ", sigma: " << sqrt(variance) << std::endl;
+    Logger{}.hideContext().info("Avr: %fms, med: %fms, min: %fms,"
+        " max: %fms, variance: %fms, sigma: %fms\n",
+        avr, med, times_.front(), times_.back(), variance, sqrt(variance));
+
 }
 
 void Benchmark::reset() {
