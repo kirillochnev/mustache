@@ -13,7 +13,7 @@ namespace {
 
 
 #ifdef ANDROID
-void LogWriter::onMessage(const Context&, LogLevel lvl, std::string str, ...) {
+void LogWriter::onMessage(const Context& ctx, LogLevel lvl, std::string str, ...) {
 
     const auto get_lvl = [lvl] {
         switch (lvl) {
@@ -29,6 +29,10 @@ void LogWriter::onMessage(const Context&, LogLevel lvl, std::string str, ...) {
         return ANDROID_LOG_ERROR;
     };
 
+    std::string source_location = "";
+    if (ctx.show_context_) {
+        source_location = " | at: " + std::string (ctx.file) + ":" + std::to_string(ctx.line);
+    }
     va_list args;
     va_start (args, str);
 
@@ -44,7 +48,7 @@ void LogWriter::onMessage(const Context&, LogLevel lvl, std::string str, ...) {
 
 #pragma GCC diagnostic warning "-Wformat-nonliteral"
 
-    __android_log_print(get_lvl(), "Mustache", "%s\n", buffer.c_str());
+    __android_log_print(get_lvl(), "Mustache", "%s\n", (source_location + buffer).c_str());
 }
 
 #else
