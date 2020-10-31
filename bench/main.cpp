@@ -210,8 +210,9 @@ void showComponentInfo() {
             << "\t\t\t| component is " << (is_component_required ? "" : "NOT ") << "required" <<std::endl;
 }
 
-void testGlobalIndex();
+void bench_events();
 void POC();
+
 int main() {
 //    showComponentInfo<Component0>();
 //    showComponentInfo<Component0*>();
@@ -234,7 +235,7 @@ int main() {
 //    createEmptyAndAssign();
 
     iterate500k();
-//    testGlobalIndex();
+//    bench_events();
 
 //    POC();
     return 0;

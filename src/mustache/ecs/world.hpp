@@ -3,6 +3,7 @@
 #include <mustache/utils/index_like.hpp>
 #include <mustache/ecs/entity_manager.hpp>
 #include <mustache/ecs/system_manager.hpp>
+#include <mustache/ecs/event_manager.hpp>
 #include <mustache/utils/memory_manager.hpp>
 #include <mustache/utils/dispatch.hpp>
 
@@ -14,6 +15,7 @@ namespace mustache {
     struct WorldContext {
         std::shared_ptr<MemoryManager> memory_manager;
         std::shared_ptr<Dispatcher> dispatcher;
+        std::shared_ptr<EventManager> events;
     };
 
     class World : public Uncopiable {
@@ -53,10 +55,13 @@ namespace mustache {
             return *context_.memory_manager;
         }
 
-        /*
+
         [[nodiscard]] EventManager& events() noexcept {
-            return events_;
-        }*/
+            if (!context_.events) {
+                context_.events = std::make_shared<EventManager>(memoryManager());
+            }
+            return *context_.events;
+        }
 
         void init();
         void update();

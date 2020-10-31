@@ -21,6 +21,7 @@ add_executable(${PROJECT_NAME}
         component_mask_test.cpp
         dispatcher.cpp
         system.cpp
+        event_manager.cpp
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE mustache)
