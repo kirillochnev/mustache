@@ -7,7 +7,7 @@
 #include <memory>
 
 namespace mustache {
-    struct EventId : public IndexLike<u_int32_t, EventId>{};
+    struct EventId : public IndexLike<uint32_t, EventId>{};
 
     class EventManager;
     template <typename T>
