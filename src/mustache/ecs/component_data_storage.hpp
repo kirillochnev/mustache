@@ -153,35 +153,23 @@ namespace mustache {
             };
             const auto global_index = globalIndex();
             const auto storage_size = storage_->size();
-            const auto elements_in_chunk = diff(item_index_.toInt(), storage_->chunkCapacity().toInt());
+            const auto index_in_chunk = (global_index_ % storage_->chunkCapacity());
+            const auto elements_in_chunk = storage_->chunkCapacity().toInt() - index_in_chunk.toInt();
             const auto elements_in_arch = diff(global_index.toInt(), storage_size);
             return std::min(elements_in_arch, elements_in_chunk);
         }
 
         [[nodiscard]] bool isValid() const noexcept {
-            return storage_ && storage_->chunks_.has(chunk_index_) &&
-                   storage_->chunkCapacity().isIndexValid(item_index_) &&
-                    globalIndex() <= storage_->lastItemIndex();
+            return globalIndex() <= storage_->lastItemIndex();
         }
 
         template<FunctionSafety _Safety = FunctionSafety::kSafe>
         void* getData(ComponentIndex component_index) const noexcept {
-            if constexpr (isSafe(_Safety)) {
-                if (component_index.isNull() || !isValid()) {
-                    return nullptr;
-                }
-            }
-            const auto& info = storage_->component_getter_info_[component_index];
-            const auto offset = info.offset.add(info.size * item_index_.toInt());
-            auto chunk = storage_->chunks_[chunk_index_];
-            return dataPointerWithOffset(chunk, offset);
+            return storage_->getData<_Safety>(component_index, global_index_);
         }
 
         ElementView& operator+=(uint32_t count) noexcept {
-            const auto new_index = item_index_.toInt() + count;
             global_index_ = ComponentStorageIndex::make(global_index_.toInt() + count);
-            chunk_index_ = ChunkIndex::make(chunk_index_.toInt() + new_index / storage_->chunkCapacity().toInt());
-            item_index_ = ChunkItemIndex::make(new_index % storage_->chunkCapacity().toInt());
             return *this;
         }
 
@@ -199,19 +187,15 @@ namespace mustache {
 
         friend ComponentDataStorage;
         const ComponentDataStorage* storage_;
-        ChunkIndex chunk_index_;
-        ChunkItemIndex item_index_;
         ComponentStorageIndex global_index_; // TODO: rename?
-        ElementView(const ComponentDataStorage* storage, ChunkIndex chunk_index, ChunkItemIndex item_index):
+        ElementView(const ComponentDataStorage* storage, ComponentStorageIndex index):
                 storage_{storage},
-                chunk_index_{chunk_index},
-                item_index_{item_index},
-                global_index_{globalIndex(storage, chunk_index, item_index)} {
+                global_index_{index} {
 
         }
     };
 
     ComponentDataStorage::ElementView ComponentDataStorage::getElementView(ComponentStorageIndex index) const noexcept {
-        return ElementView{this, index / chunkCapacity(), index % chunkCapacity()};
+        return ElementView{this, index };
     }
 }
