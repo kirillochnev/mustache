@@ -4,6 +4,7 @@
 #include <mustache/utils/default_settings.hpp>
 #include <cstdint>
 #include <cstddef>
+#include <iostream>
 
 namespace mustache {
     struct EntityId : public IndexLike<uint32_t, EntityId>{};
@@ -82,11 +83,11 @@ namespace mustache {
         }
 
         [[nodiscard]] static constexpr ComponentOffset makeAligned(ComponentOffset offset, uint32_t align) noexcept {
-            return ComponentOffset::make((offset.toInt() - 1u + align) & -align);
+            return ComponentOffset::make((offset.toInt() - 1u + align) / align * align);
         }
 
         [[nodiscard]] constexpr ComponentOffset alignAs(uint32_t align) const noexcept {
-            return ComponentOffset::make((toInt() - 1u + align) & -align);
+            return ComponentOffset::make((toInt() - 1u + align) / align * align);
         }
     };
 }
