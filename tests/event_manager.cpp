@@ -6,7 +6,7 @@ TEST(EventManager, test) {
     mustache::EventManager event_manager {memory_manager};
     std::vector<std::uint32_t> rand_value;
     for (uint32_t i = 0; i < 10000; ++i) {
-        rand_value.push_back(rand());
+        rand_value.push_back(static_cast<uint32_t>(rand()));
     }
     uint32_t position = 0u;
     auto sub = event_manager.subscribe<uint32_t>([&position, &rand_value](uint32_t value){

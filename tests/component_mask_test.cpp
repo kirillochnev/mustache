@@ -10,7 +10,7 @@ TEST(ComponentMask, test1) {
         ComponentIndexMask mask;
         std::set<ComponentIndex> indexes_set;
         for (uint32_t j = 0; j < 10; ++j) {
-            ComponentIndex index = ComponentIndex::make(rand() % ComponentIndexMask::maxElementsCount());
+            ComponentIndex index = ComponentIndex::make(static_cast<uint32_t>(rand()) % ComponentIndexMask::maxElementsCount());
             indexes_set.insert(index);
             mask.set(index, true);
         }
@@ -34,7 +34,7 @@ TEST(ComponentMask, test2) {
         ComponentIndexMask mask;
         std::set<ComponentIndex> indexes_set;
         for (uint32_t j = 0; j < 10; ++j) {
-            ComponentIndex index = ComponentIndex::make(rand() % ComponentIndexMask::maxElementsCount());
+            ComponentIndex index = ComponentIndex::make(static_cast<uint32_t>(rand()) % ComponentIndexMask::maxElementsCount());
             indexes_set.insert(index);
             mask.set(index, true);
         }

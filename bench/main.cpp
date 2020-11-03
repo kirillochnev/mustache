@@ -115,7 +115,7 @@ void iterate500k() {
         (void)entities.create(archetype);
     }
 
-    constexpr float dt = 1.0f / kNumIteration;
+    constexpr float dt = 1.0f / static_cast<float>(kNumIteration);
 
     mustache::Benchmark benchmark;
 
@@ -179,13 +179,13 @@ void createEmptyAndAssign() {
 
 void testComponent() {
     struct TestComponent_0 {
-        uint32_t rand_value = rand();
+        uint32_t rand_value = static_cast<uint32_t>(rand());
         TestComponent_0(){
             std::cout << "TestComponent_0: " << rand_value << std::endl;
         }
     };
     struct TestComponent_1 {
-        uint32_t rand_value = rand();
+        uint32_t rand_value = static_cast<uint32_t>(rand());
         TestComponent_1(){
             std::cout << "TestComponent_1: " << rand_value << std::endl;
         }

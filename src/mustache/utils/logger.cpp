@@ -58,10 +58,13 @@ void LogWriter::onMessage(const Context& ctx, LogLevel lvl, std::string str, ...
     }
     va_list args;
     va_start (args, str);
-
+#ifndef _MSC_VER
 #pragma GCC diagnostic ignored "-Wformat-nonliteral"
+#endif
     vprintf(str.c_str(), args);
+#ifndef _MSC_VER
 #pragma GCC diagnostic warning "-Wformat-nonliteral"
+#endif
     va_end (args);
     if(ctx.show_context_) {
         printf(" | at: %s:%d\n", ctx.file, ctx.line);

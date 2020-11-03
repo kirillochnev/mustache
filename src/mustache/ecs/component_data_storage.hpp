@@ -66,7 +66,7 @@ namespace mustache {
     };
 
     uint32_t ComponentDataStorage::capacity() const noexcept {
-        return chunk_capacity_.toInt() * chunks_.size();
+        return static_cast<uint32_t>(chunk_capacity_.toInt() * chunks_.size());
     }
 
     uint32_t ComponentDataStorage::size() const noexcept {
@@ -121,7 +121,7 @@ namespace mustache {
     }
 
     uint32_t ComponentDataStorage::componentsCount() const noexcept {
-        return component_getter_info_.size();
+        return static_cast<uint32_t>(component_getter_info_.size());
     }
 
     ChunkCapacity ComponentDataStorage::chunkCapacity() const noexcept {

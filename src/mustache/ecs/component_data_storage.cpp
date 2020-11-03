@@ -20,11 +20,11 @@ ComponentDataStorage::ComponentDataStorage(const ComponentIdMask& mask, MemoryMa
     mask.forEachItem([this, &offset, &mask](ComponentId id) {
         const auto& info = ComponentFactory::componentInfo(id);
         if (offset.toInt() == 0) {
-            chunk_align_ = info.align;
+            chunk_align_ = static_cast<uint32_t>(info.align);
         }
         ComponentDataGetter getter;
-        getter.offset = offset.alignAs(info.align);
-        getter.size = info.size;
+        getter.offset = offset.alignAs(static_cast<uint32_t>(info.align));
+        getter.size = static_cast<uint32_t>(info.size);
         component_getter_info_.push_back(getter);
         offset = getter.offset.add(chunk_capacity_.toInt() * info.size);
     });

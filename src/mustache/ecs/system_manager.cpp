@@ -181,8 +181,8 @@ void mustache::SystemManager::removeSystem(const std::string& system_name) noexc
         return;
     }
 
-    std::remove(data_->ordered_systems.begin(), data_->ordered_systems.end(), find_res->second);
-    std::remove(data_->systems_info.begin(), data_->systems_info.end(), find_res->second);
+    (void ) std::remove(data_->ordered_systems.begin(), data_->ordered_systems.end(), find_res->second);
+    (void ) std::remove(data_->systems_info.begin(), data_->systems_info.end(), find_res->second);
     data_->system_by_name.erase(find_res);
 
     reorderSystems();
