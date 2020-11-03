@@ -13,8 +13,8 @@ NewComponentDataStorage::NewComponentDataStorage(const ComponentIdMask& mask, Me
     mask.forEachItem([&index, this](ComponentId id) {
         const auto &info = ComponentFactory::componentInfo(id);
         auto &component = components_.emplace_back(*memory_manager_);
-        component.component_size = info.size;
-        component.component_alignment = info.align;
+        component.component_size = static_cast<uint32_t>(info.size);
+        component.component_alignment = static_cast<uint32_t>(info.align);
         component.memory_manager = memory_manager_;
         ++index;
     });

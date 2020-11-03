@@ -76,7 +76,7 @@ namespace mustache {
         }
 
         [[nodiscard]] uint32_t chunkCount() const noexcept {
-            return entities_.size() / chunk_size_;
+            return static_cast<uint32_t>(entities_.size() / chunk_size_);
         }
 
         [[nodiscard]] ChunkCapacity chunkCapacity() const noexcept {

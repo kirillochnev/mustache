@@ -19,10 +19,10 @@ void Benchmark::show() {
     if(times_.size() % 2 == 0) {
         med = (med + times_[times_.size() / 2 - 1]) * 0.5;
     }
-    const auto avr = sum / times_.size();
+    const auto avr = sum / static_cast<double>(times_.size());
     double variance = 0.0;
     for (auto x : times_) {
-        variance += (avr - x) * (avr - x) / times_.size();
+        variance += (avr - x) * (avr - x) / static_cast<double>(times_.size());
     }
 
     Logger{}.hideContext().info("Avr: %fms, med: %fms, min: %fms,"

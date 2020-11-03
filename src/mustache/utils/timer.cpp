@@ -4,7 +4,8 @@ using namespace mustache;
 template<typename T>
 static double GetSeconds(const T& pDur){
     constexpr double Microseconds2SecondConvertK = 0.000001;
-    return std::chrono::duration_cast<std::chrono::microseconds>(pDur).count()*Microseconds2SecondConvertK;
+    const auto microseconds = std::chrono::duration_cast<std::chrono::microseconds>(pDur).count();
+    return static_cast<double>(microseconds) * Microseconds2SecondConvertK;
 }
 
 
