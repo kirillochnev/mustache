@@ -14,23 +14,24 @@ ComponentDataStorage::ComponentDataStorage(const ComponentIdMask& mask, MemoryMa
     component_getter_info_{memory_manager},
     chunk_capacity_{kChunkCapacity},
     chunks_{memory_manager} {
-    component_getter_info_.reserve(mask.componentsCount());
+    if (!mask.isEmpty()) {
+        component_getter_info_.reserve(mask.componentsCount());
 
-    auto offset = ComponentOffset::make(0u);
-    mask.forEachItem([this, &offset, &mask](ComponentId id) {
-        const auto& info = ComponentFactory::componentInfo(id);
-        if (offset.toInt() == 0) {
-            chunk_align_ = static_cast<uint32_t>(info.align);
-        }
-        ComponentDataGetter getter;
-        getter.offset = offset.alignAs(static_cast<uint32_t>(info.align));
-        getter.size = static_cast<uint32_t>(info.size);
-        component_getter_info_.push_back(getter);
-        offset = getter.offset.add(chunk_capacity_.toInt() * info.size);
-    });
+        auto offset = ComponentOffset::make(0u);
+        mask.forEachItem([this, &offset, &mask](ComponentId id) {
+            const auto& info = ComponentFactory::componentInfo(id);
+            if (offset.toInt() == 0) {
+                chunk_align_ = static_cast<uint32_t>(info.align);
+            }
+            ComponentDataGetter getter;
+            getter.offset = offset.alignAs(static_cast<uint32_t>(info.align));
+            getter.size = static_cast<uint32_t>(info.size);
+            component_getter_info_.push_back(getter);
+            offset = getter.offset.add(chunk_capacity_.toInt() * info.size);
+        });
 
-    chunk_size_ = offset.alignAs(chunk_align_).toInt();
-
+        chunk_size_ = offset.alignAs(chunk_align_).toInt();
+    }
     Logger{}.info("New ComponentDataStorage has been created, components: %s | chunk capacity: %d",
                    mask.toString().c_str(), chunkCapacity().toInt());
 }
