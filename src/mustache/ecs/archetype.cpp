@@ -18,7 +18,7 @@ Archetype::Archetype(World& world, ArchetypeIndex id, const ComponentIdMask& mas
 }
 
 Archetype::~Archetype() {
-    if (!data_storage_.isEmpty()) {
+    if (!isEmpty()) {
         Logger{}.error("Destroying non-empty archetype");
     }
     data_storage_.clear(true);
@@ -28,18 +28,13 @@ void Archetype::callDestructor(const ElementView& view) {
     for (const auto &info : operation_helper_.destroy) {
         info.destructor(view.getData<FunctionSafety::kUnsafe>(info.component_index));
     }
-    data_storage_.decrSize();
+    popBack();
 }
 
 void Archetype::externalMove(Entity entity, Archetype& prev_archetype, ArchetypeEntityIndex prev_index,
         bool initialize_missing_components) {
 
-
-    const auto index = data_storage_.pushBack();
-    if (entities_.size() <= index.toInt()) {
-        entities_.resize(index.next().toInt());
-    }
-    entities_[index.toArchetypeIndex()] = entity;
+    const auto index = pushBack(entity);
 
     ComponentIndex component_index = ComponentIndex::make(0);
     const auto source_view = prev_archetype.getElementView(prev_index);
@@ -63,11 +58,7 @@ void Archetype::externalMove(Entity entity, Archetype& prev_archetype, Archetype
 }
 
 ArchetypeEntityIndex Archetype::insert(Entity entity, bool call_constructor) {
-    const auto index = data_storage_.pushBack();
-    if (entities_.size() <= index.toInt()) {
-        entities_.resize(index.next().toInt());
-    }
-    entities_[index.toArchetypeIndex()] = entity;
+    const auto index = pushBack(entity);
 
     if (call_constructor) {
         const auto view = getElementView(index.toArchetypeIndex());
@@ -116,7 +107,7 @@ void Archetype::remove(Entity entity_to_destroy, ArchetypeEntityIndex entity_ind
         if (!operation_helper_.destroy.empty()) {
             callDestructor(getElementView(entity_index));
         } else {
-            data_storage_.decrSize();
+            popBack();
         }
         updateAllVersions(entity_index, worldVersion());
         world_.entities().updateLocation(entity_to_destroy, ArchetypeIndex::null(), ArchetypeEntityIndex::null());
@@ -130,7 +121,7 @@ WorldVersion Archetype::worldVersion() const noexcept {
 }
 
 void Archetype::clear() {
-    if (data_storage_.isEmpty()) {
+    if (isEmpty()) {
         return;
     }
 
@@ -141,5 +132,6 @@ void Archetype::clear() {
         }
     }
 
+    entities_.clear();
     data_storage_.clear(false);
 }

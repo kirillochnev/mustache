@@ -33,7 +33,7 @@ Archetype& EntityManager::getArchetype(const ComponentIdMask& mask) {
 }
 
 Entity EntityManager::create() {
-    const auto get_entity = [this]{
+    const auto get_entity = [this] {
         if(!empty_slots_) {
             const auto id = EntityId::make(entities_.size());
             const auto version = EntityVersion::make(0);

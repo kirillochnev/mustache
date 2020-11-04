@@ -66,11 +66,13 @@ namespace mustache {
         [[nodiscard]] EntityGroup createGroup(size_t count);
 
         [[nodiscard]] uint32_t size() const noexcept {
-            return data_storage_.size();
+            return static_cast<uint32_t>(entities_.size());
         }
+
         [[nodiscard]] uint32_t capacity() const noexcept {
             return data_storage_.capacity();
         }
+
         [[nodiscard]] ArchetypeIndex id() const noexcept {
             return id_;
         }
@@ -213,19 +215,21 @@ namespace mustache {
         // NOTE: can resize versions_
         template<FunctionSafety _Safety = FunctionSafety::kDefault>
         void updateAllVersions(ArchetypeEntityIndex index, WorldVersion world_version) noexcept {
-            if constexpr (isSafe(_Safety)) {
-                if (!entities_.has(index) || !index.isValid() || !world_version.isValid()) {
-                    return;
+            if (!componentMask().isEmpty()) {
+                if constexpr (isSafe(_Safety)) {
+                    if (!entities_.has(index) || !index.isValid() || !world_version.isValid()) {
+                        return;
+                    }
                 }
-            }
-            const auto first_index = components_count_ * index.toInt() / chunk_size_;
-            const auto last_index = first_index + components_count_;
+                const auto first_index = components_count_ * index.toInt() / chunk_size_;
+                const auto last_index = first_index + components_count_;
 
-            if (versions_.size() <= last_index) {
-                versions_.resize(last_index + 1);
-            }
-            for (uint32_t i = first_index; i < last_index; ++i) {
-                versions_[i] = world_version;
+                if (versions_.size() <= last_index) {
+                    versions_.resize(last_index + 1);
+                }
+                for (uint32_t i = first_index; i < last_index; ++i) {
+                    versions_[i] = world_version;
+                }
             }
         }
 
@@ -235,7 +239,7 @@ namespace mustache {
 
         template<typename _F>
         void forEachEntity(_F&& callback) {
-            if (data_storage_.isEmpty()) {
+            if (isEmpty()) {
                 return;
             }
             auto view = getElementView(ArchetypeEntityIndex::make(0));
@@ -243,6 +247,29 @@ namespace mustache {
                 callback(*view.getEntity<FunctionSafety::kUnsafe>());
                 ++view;
             }
+        }
+
+
+        [[nodiscard]] ComponentStorageIndex pushBack(Entity entity) {
+            const auto index = ComponentStorageIndex::make(entities_.size());
+            entities_.push_back(entity);
+            data_storage_.pushBack();
+            return index;
+        }
+
+        void popBack() {
+            entities_.pop_back();
+            data_storage_.decrSize();
+        }
+
+        /// Archetype size == 0
+        [[nodiscard]] bool isEmpty() const noexcept {
+            return entities_.empty();
+        }
+
+        /// Archetype has not components
+        [[nodiscard]] bool isNull() const noexcept {
+            return components_count_ == 0u;
         }
 
         void clear();
