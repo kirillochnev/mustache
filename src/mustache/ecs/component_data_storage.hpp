@@ -78,7 +78,7 @@ namespace mustache {
     }
 
     void ComponentDataStorage::reserve(size_t new_capacity) {
-        while (capacity() < new_capacity) {
+        while (chunk_size_ > 0u && capacity() < new_capacity) {
             allocateChunk();
         }
     }

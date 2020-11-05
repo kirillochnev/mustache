@@ -266,10 +266,6 @@ namespace mustache {
             }
         }
         mask.set(component_id, false);
-        if (mask.isEmpty()) {
-            prev_archetype.remove(entity, location.index);
-            return;
-        }
         auto& archetype = getArchetype(mask);
         const auto prev_index = location.index;
 
@@ -281,16 +277,7 @@ namespace mustache {
         static const auto component_id = ComponentFactory::registerComponent<T>();
         const auto& location = locations_[e.id()];
         constexpr bool use_custom_constructor = sizeof...(_ARGS) > 0;
-        if (location.archetype.isNull()) {
-            static const ComponentIdMask mask{component_id};
-            auto& arch = getArchetype(mask);
-            arch.insert(e, !use_custom_constructor);
-            auto component_ptr = arch.getComponent<FunctionSafety::kUnsafe>(component_id, location.index);
-            if constexpr (use_custom_constructor) {
-                *new(component_ptr) T{std::forward<_ARGS>(args)...};
-            }
-            return *reinterpret_cast<T*>(component_ptr);
-        }
+
         auto& prev_arch = *archetypes_[location.archetype];
         ComponentIdMask mask = prev_arch.mask_;
         mask.add(component_id);

@@ -70,6 +70,29 @@ namespace {
     };
 }
 
+TEST(Job, iterate_empty) {
+    mustache::World world;
+    for (uint32_t i = 0; i < kNumObjects; ++i) {
+        (void ) world.entities().create();
+    }
+    uint32_t count = 0;
+    world.entities().forEach([&count] {
+        ++count;
+    }, mustache::JobRunMode::kCurrentThread);
+    ASSERT_EQ(count, kNumObjects);
+
+    for (uint32_t i = 0; i < kNumObjects; ++i) {
+        (void ) world.entities().create<Position>();
+        (void ) world.entities().create<Velocity>();
+    }
+
+    count = 0u;
+    world.entities().forEach([&count] {
+        ++count;
+    }, mustache::JobRunMode::kCurrentThread);
+    ASSERT_EQ(count, 3u * kNumObjects);
+}
+
 TEST(Job, iterate_singlethread) {
     static_data.reset();
 
