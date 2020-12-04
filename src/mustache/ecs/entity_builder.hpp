@@ -63,6 +63,4 @@ namespace mustache {
             }
         }
     };
-
-
 }
