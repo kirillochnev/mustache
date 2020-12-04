@@ -24,6 +24,7 @@ namespace mustache {
             void addBlock(const EntityBlock& block) noexcept;
             ArrayWrapper<EntityBlock, BlockIndex, false> blocks; // TODO: use memory manager
         };
+
         void apply(World& world, const WorldFilterParam& check, const WorldFilterParam& set);
         void filterArchetype(Archetype& archetype, const ArchetypeFilterParam& check, const ArchetypeFilterParam& set);
         std::vector<ArchetypeFilterResult> filtered_archetypes;

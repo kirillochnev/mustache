@@ -22,7 +22,7 @@ void WorldFilterResult::filterArchetype(Archetype& archetype, const ArchetypeFil
     EntityBlock block{ArchetypeEntityIndex::make(0), ArchetypeEntityIndex::make(0)};
     const auto chunk_size = archetype.chunkCapacity().toInt();
     for (auto chunk_index = ChunkIndex::make(0); chunk_index <= last_index; ++chunk_index) {
-        const bool is_match = archetype.updateComponentVersions<FunctionSafety::kUnsafe>(check, set, chunk_index);
+        const bool is_match = archetype.updateChunkComponentVersions<FunctionSafety::kUnsafe>(check, set, chunk_index);
         if (is_match) {
             if (!is_prev_match) {
                 block.begin = ArchetypeEntityIndex::make(chunk_index.toInt() * chunk_size);
@@ -64,7 +64,9 @@ void WorldFilterResult::apply(World& world, const WorldFilterParam& check, const
             ArchetypeFilterParam archetype_set;
             archetype_set.version = set.version;
             archetype_set.components = arch.makeComponentMask(set.mask).items();
-            filterArchetype(arch, archetype_check, archetype_set);
+            if (arch.updateGlobalComponentVersion(archetype_check, archetype_set)) {
+                filterArchetype(arch, archetype_check, archetype_set);
+            }
         }
     }
 }
