@@ -23,6 +23,7 @@ namespace mustache {
 
     class Archetype;
 
+    // NOTE: element view does not update component versions
     struct ElementView : public ArchetypeComponentDataStorage::ElementView {
         using Super = ArchetypeComponentDataStorage::ElementView;
         using Super::Super;
@@ -126,7 +127,8 @@ namespace mustache {
             auto res = data_storage_.getData<_Safety>(component_index, ComponentStorageIndex::fromArchetypeIndex(index));
             if (res != nullptr) {
                 const auto chunk = index.toInt() / chunk_size_;
-                auto versions = versions_.data() + components_count_ * chunk;
+                auto versions = chunk_versions_.data() + components_count_ * chunk;
+                global_versions_[component_index] = version;
                 versions[component_index.toInt()] = version;
             }
 
@@ -144,11 +146,11 @@ namespace mustache {
         [[nodiscard]] WorldVersion getComponentVersion(ChunkIndex index, ComponentIndex component_index) const noexcept {
             if constexpr (isSafe(_Safety)) {
                 if (components_count_ <= component_index.toInt() ||
-                    versions_.size() / components_count_ <= index.toInt()) {
+                    chunk_versions_.size() / components_count_ <= index.toInt()) {
                     return WorldVersion::null();
                 }
             }
-            return versions_[versionIndex(index, component_index)];
+            return chunk_versions_[versionIndex(index, component_index)];
         }
 
         template<FunctionSafety _Safety = FunctionSafety::kDefault>
@@ -169,16 +171,43 @@ namespace mustache {
         }
 
         template<FunctionSafety _Safety = FunctionSafety::kDefault>
-        bool updateComponentVersions(const ArchetypeFilterParam& check,
-                const ArchetypeFilterParam& set, ChunkIndex chunk) noexcept {
+        bool updateGlobalComponentVersion(const ArchetypeFilterParam& check, const ArchetypeFilterParam& set) noexcept {
+            bool need_update = check.version.isNull() || check.components.empty();
+            for (auto index : check.components) {
+                if constexpr (isSafe(_Safety)) {
+                    if (!global_versions_.has(index)) {
+                        continue;
+                    }
+                }
+                if (global_versions_[index] > check.version) {
+                    need_update = true;
+                    break;
+                }
+            }
+            if (need_update) {
+                for (auto index : set.components) {
+                    if constexpr (isSafe(_Safety)) {
+                        if (!global_versions_.has(index)) {
+                            continue;
+                        }
+                    }
+                    global_versions_[index] = set.version;
+                }
+            }
+            return need_update;
+        }
+
+        template<FunctionSafety _Safety = FunctionSafety::kDefault>
+        bool updateChunkComponentVersions(const ArchetypeFilterParam& check,
+                                          const ArchetypeFilterParam& set, ChunkIndex chunk) noexcept {
             const auto first_index = components_count_ * chunk.toInt();
             if constexpr (isSafe(_Safety)) {
                 const auto last_index = first_index + components_count_;
-                if (!chunk.isValid() || !set.version.isValid() || versions_.size() <= last_index) {
+                if (!chunk.isValid() || !set.version.isValid() || chunk_versions_.size() <= last_index) {
                     return false;
                 }
             }
-            auto versions = versions_.data() + first_index;
+            auto versions = chunk_versions_.data() + first_index;
             bool result = check.version.isNull() || check.components.empty();
             if (!result) {
                 for (auto component_index : check.components) {
@@ -212,7 +241,7 @@ namespace mustache {
         friend ElementView;
         friend EntityManager;
 
-        // NOTE: can resize versions_
+        // NOTE: can resize chunk_versions_
         template<FunctionSafety _Safety = FunctionSafety::kDefault>
         void updateAllVersions(ArchetypeEntityIndex index, WorldVersion world_version) noexcept {
             if (!componentMask().isEmpty()) {
@@ -224,11 +253,12 @@ namespace mustache {
                 const auto first_index = components_count_ * index.toInt() / chunk_size_;
                 const auto last_index = first_index + components_count_;
 
-                if (versions_.size() <= last_index) {
-                    versions_.resize(last_index + 1);
+                if (chunk_versions_.size() <= last_index) {
+                    chunk_versions_.resize(last_index + 1);
                 }
-                for (uint32_t i = first_index; i < last_index; ++i) {
-                    versions_[i] = world_version;
+                for (uint32_t component_i = 0; component_i < components_count_; ++component_i) {
+                    chunk_versions_[component_i + first_index] = world_version;
+                    global_versions_[ComponentIndex::make(component_i)] = world_version;
                 }
             }
         }
@@ -294,7 +324,9 @@ namespace mustache {
         ArrayWrapper<Entity, ArchetypeEntityIndex, true> entities_;
         const uint32_t components_count_;
         const uint32_t chunk_size_ = 1024u;
-        std::vector<WorldVersion, Allocator<WorldVersion> > versions_; // TODO: change the way data stored and make in ArrayWrapper
+        // TODO: change the way data stored and make in ArrayWrapper
+        std::vector<WorldVersion, Allocator<WorldVersion> > chunk_versions_; // per chunk component version
+        mustache::ArrayWrapper<WorldVersion, ComponentIndex, true> global_versions_; // global component version
 
         const ArchetypeIndex id_;
     };
