@@ -56,8 +56,6 @@ add_library(${PROJECT_NAME} STATIC
         mustache/ecs/new_component_data_storage.hpp
         mustache/ecs/event_manager.cpp
         mustache/ecs/event_manager.hpp
-        mustache/ecs/entity_builder.cpp
-        mustache/ecs/entity_builder.hpp
 )
 
 target_include_directories(${PROJECT_NAME}

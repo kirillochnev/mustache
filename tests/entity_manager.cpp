@@ -586,32 +586,3 @@ TEST(EntityManager, remove_not_last) {
         }
     }
 }
-TEST(EntityManager, component_builder) {
-    struct Component0 {
-        Component0(uint32_t v = 0):
-            value {v} {
-
-        }
-        uint32_t value;
-    };
-    struct Component1 {
-        Component1(uint32_t v = 0):
-        value {v} {
-
-        }
-        uint32_t value;
-    };
-    struct Component2 {
-        Component2(uint32_t v = 0):
-        value {v} {
-
-        }
-        uint32_t value;
-    };
-    mustache::World world;
-    auto& entities = world.entities();
-    const auto entity = entities.begin().assign<Component0>(0u).assign<Component1>(1u).assign<Component2>(2u).end();
-    ASSERT_EQ(entities.getComponent<Component0>(entity)->value, 0);
-    ASSERT_EQ(entities.getComponent<Component1>(entity)->value, 1);
-    ASSERT_EQ(entities.getComponent<Component2>(entity)->value, 2);
-}
