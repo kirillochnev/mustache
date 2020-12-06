@@ -109,7 +109,7 @@ namespace mustache {
         template<typename Component, typename TupleType, size_t... _I>
         void initComponent(Archetype& archetype, ArchetypeEntityIndex entity_index,
                            TupleType& tuple, std::index_sequence<_I...>&&) {
-            auto ptr = archetype.template getComponent(ComponentFactory::registerComponent<Component>(), entity_index);
+            auto ptr = archetype.getComponent(ComponentFactory::registerComponent<Component>(), entity_index);
             new(ptr) Component {std::get<_I>(tuple)...};
         }
 
