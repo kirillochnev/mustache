@@ -1,9 +1,11 @@
 #pragma once
 
 #include <mustache/utils/index_like.hpp>
+#include <mustache/ecs/world_storage.hpp>
 #include <mustache/ecs/entity_manager.hpp>
 #include <mustache/ecs/system_manager.hpp>
 #include <mustache/ecs/event_manager.hpp>
+
 #include <mustache/utils/memory_manager.hpp>
 #include <mustache/utils/dispatch.hpp>
 
@@ -75,11 +77,16 @@ namespace mustache {
             return version_;
         }
 
+        [[nodiscard]] WorldStorage& storage() noexcept {
+            return world_storage_;
+        }
+
     private:
         WorldId id_;
         WorldContext context_;
         std::unique_ptr<SystemManager> systems_;
         EntityManager entities_;
+        WorldStorage world_storage_;
         WorldVersion version_ = WorldVersion::make(0u);
     };
 }
