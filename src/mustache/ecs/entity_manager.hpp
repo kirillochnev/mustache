@@ -8,6 +8,7 @@
 #include <mustache/ecs/base_job.hpp>
 #include <mustache/ecs/archetype.hpp>
 #include <mustache/ecs/component_mask.hpp>
+#include <mustache/ecs/entity_builder.hpp>
 #include <mustache/ecs/component_factory.hpp>
 
 #include <memory>
@@ -18,6 +19,9 @@ namespace mustache {
 
     class World;
     class ComponentFactory;
+
+    template<typename TupleType>
+    class EntityBuilder;
 
     class EntityManager : public Uncopiable {
     public:
@@ -91,7 +95,31 @@ namespace mustache {
             constexpr auto args_count = utils::function_traits<_F>::arity;
             forEach(std::forward<_F>(function), mode, std::make_index_sequence<args_count>());
         }
+
+        EntityBuilder<void> begin() noexcept {
+            return EntityBuilder<void>{this};
+        }
+
+        template<typename TupleType>
+        Entity create(EntityBuilder<TupleType>& args_pack);
+
     private:
+        template<typename Component, typename TupleType, size_t... _I>
+        void initComponent(Archetype& archetype, ArchetypeEntityIndex entity_index,
+                           TupleType& tuple, std::index_sequence<_I...>&&) {
+            if constexpr (std::tuple_size<TupleType>::value > 0 ||
+                          !std::is_trivially_default_constructible<Component>::value) {
+                auto ptr = archetype.getComponent(ComponentFactory::registerComponent<Component>(), entity_index);
+                new(ptr) Component{std::get<_I>(tuple)...};
+            }
+        }
+
+        template<class Arg>
+        bool initComponent(Archetype& archetype, ArchetypeEntityIndex entity_index, Arg&& arg);
+
+        template<typename TupleType, size_t... _I>
+        void initComponents(Entity entity, TupleType& tuple, std::index_sequence<_I...>&&);
+
         [[nodiscard]] WorldVersion worldVersion() const noexcept {
             return world_version_;
         }
@@ -134,7 +162,6 @@ namespace mustache {
         // NOTE: must be the last field(for correct default destructor).
         ArrayWrapper<std::shared_ptr<Archetype>, ArchetypeIndex, true> archetypes_;
     };
-
 
     bool EntityManager::isEntityValid(Entity entity) const noexcept {
         const auto id = entity.id();  // it is ok to get id for no-valid entity, null id will be returned
@@ -305,5 +332,50 @@ namespace mustache {
         }
         const auto& archetype = *archetypes_[location.archetype];
         return archetype.hasComponent<T>();
+    }
+
+    template<typename TupleType>
+    Entity EntityBuilder<TupleType>::end() {
+        return entity_manager_->create(*this);
+    }
+
+    Entity EntityBuilder<void>::end() {
+        return entity_manager_->create();
+    }
+
+    template<typename Component, typename... ARGS>
+    auto EntityBuilder<void>::assign(ARGS&&... args) {
+        using TypleType = decltype(std::forward_as_tuple(args...));
+        using ComponentArgType = ComponentArg<Component, TypleType >;
+        ComponentArgType arg {
+                std::forward_as_tuple(args...)
+        };
+        return EntityBuilder <std::tuple<ComponentArgType> >(entity_manager_, std::move(arg));
+    }
+
+    template<typename TupleType, size_t... _I>
+    void EntityManager::initComponents(Entity entity, TupleType& tuple, std::index_sequence<_I...>&&) {
+        const auto mask = ComponentFactory::makeMask<typename std::tuple_element<_I, TupleType>::type::Component...>();
+        Archetype& archetype = getArchetype(mask);
+        const auto index = archetype.insert(entity, false);
+        auto unused_init_list = {initComponent(archetype, index, std::get<_I>(tuple))...};
+        (void ) unused_init_list;
+    }
+
+    template<class Arg>
+    bool EntityManager::initComponent(Archetype& archetype, ArchetypeEntityIndex entity_index, Arg&& arg) {
+        using ArgType = typename std::remove_reference<Arg>::type;
+        using Component = typename ArgType::Component;
+        constexpr size_t num_args = ArgType::num_args;
+        initComponent<Component>(archetype, entity_index, arg.args, std::make_index_sequence<num_args>());
+        return true;
+    }
+
+    template<typename TupleType>
+    Entity EntityManager::create(EntityBuilder<TupleType>& args_pack) {
+        Entity entity = create();
+        constexpr size_t num_components = std::tuple_size<TupleType>();
+        initComponents<TupleType>(entity, args_pack.getArgs(), std::make_index_sequence<num_components>());
+        return entity;
     }
 }

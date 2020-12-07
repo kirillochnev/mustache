@@ -73,7 +73,6 @@ namespace {
         };
     }
 }
-
 void create1m() {
     enum : uint32_t {
         kNumObjects = 1000000,
@@ -81,20 +80,31 @@ void create1m() {
     };
 
     mustache::World world{mustache::WorldId::make(0)};
-    mustache::ComponentFactory::registerComponent<Rotation>();
-    mustache::ComponentFactory::registerComponent<Position>();
-    mustache::ComponentFactory::registerComponent<Velocity>();
-    mustache::ComponentIdMask mask;
-    mask.add(mustache::ComponentId::make(0));
-    mask.add(mustache::ComponentId::make(1));
-    mask.add(mustache::ComponentId::make(2));
     auto& entities = world.entities();
-    auto& archetype = entities.getArchetype(mask);
     mustache::Benchmark benchmark;
     for(uint32_t i = 0; i < kNumIteration; ++i) {
         benchmark.add([&] {
             for (uint32_t j = 0; j < kNumObjects; ++j) {
-                (void)entities.create(archetype);
+                (void)entities.create<Rotation, Position, Velocity>();
+            }
+        });
+        entities.clear();
+    }
+    benchmark.show();
+}
+void create1mBuilder() {
+    enum : uint32_t {
+        kNumObjects = 1000000,
+        kNumIteration = 100,
+    };
+
+    mustache::World world{mustache::WorldId::make(0)};
+    auto& entities = world.entities();
+    mustache::Benchmark benchmark;
+    for(uint32_t i = 0; i < kNumIteration; ++i) {
+        benchmark.add([&] {
+            for (uint32_t j = 0; j < kNumObjects; ++j) {
+                entities.begin().assign<Rotation>().assign<Position>().assign<Velocity>().end();
             }
         });
         entities.clear();
@@ -232,9 +242,10 @@ int main() {
 
 //    foo();
 //    create1m();
+    create1mBuilder();
 //    createEmptyAndAssign();
 
-    iterate500k();
+//    iterate500k();
 //    bench_events();
 
 //    POC();
