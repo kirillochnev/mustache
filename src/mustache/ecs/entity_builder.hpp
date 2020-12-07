@@ -9,15 +9,6 @@ namespace mustache {
 
     class EntityManager;
 
-    struct EntityBuilder {
-        EntityManager* entity_manager;
-
-        template<typename Component, typename... ARGS>
-        MUSTACHE_INLINE auto assign(ARGS&&... args);
-
-        MUSTACHE_INLINE Entity end();
-    };
-
     template<typename _C, typename Args>
     struct ComponentArg {
         ComponentArg(Args&& args_):
@@ -30,15 +21,33 @@ namespace mustache {
     };
 
     template<typename TupleType>
-    struct ArgsPack {
-        ArgsPack(EntityManager* manager, TupleType&& args):
-                tuple {std::move(args)},
-                entity_manager {manager} {
+    class EntityBuilder;
+
+    template<>
+    class EntityBuilder<void> {
+    public:
+        template<typename Component, typename... ARGS>
+        MUSTACHE_INLINE auto assign(ARGS&&... args);
+
+        MUSTACHE_INLINE Entity end();
+
+    private:
+        friend EntityManager;
+        explicit EntityBuilder(EntityManager* manager):
+                entity_manager_{manager} {
 
         }
+        EntityManager* entity_manager_;
+    };
 
-        TupleType tuple;
-        EntityManager* entity_manager;
+    template<typename TupleType>
+    class EntityBuilder {
+    public:
+        EntityBuilder(EntityManager* manager, TupleType&& args):
+                args_ {std::move(args)},
+                entity_manager_ {manager} {
+
+        }
 
         template<typename Component, typename... ARGS>
         auto assign(ARGS&&... args) {
@@ -46,19 +55,26 @@ namespace mustache {
             ComponentArgType arg {
                     std::forward_as_tuple(args...)
             };
-            using NewTupleType = decltype(std::tuple_cat(tuple, std::make_tuple(std::move(arg))));
-            return ArgsPack<NewTupleType> (entity_manager, std::tuple_cat(tuple, std::make_tuple(std::move(arg))));
+            using NewTupleType = decltype(std::tuple_cat(args_, std::make_tuple(std::move(arg))));
+            return EntityBuilder<NewTupleType> (entity_manager_, std::tuple_cat(args_, std::make_tuple(std::move(arg))));
         }
 
         MUSTACHE_INLINE Entity end();
 
+        TupleType& getArgs() noexcept {
+            return args_;
+        }
     private:
+        TupleType args_;
+        EntityManager* entity_manager_;
+
+
         static constexpr size_t kTupleSize = std::tuple_size<TupleType>::value;
 
         template<size_t _I>
         void initComponents (Entity entity) const noexcept {
             if constexpr (_I < kTupleSize) {
-                std::get<_I>(tuple).initComponent(entity);
+                std::get<_I>(args_).initComponent(entity);
                 initComponents<_I + 1>(entity);
             }
         }

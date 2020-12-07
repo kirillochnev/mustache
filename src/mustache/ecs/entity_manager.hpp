@@ -21,7 +21,7 @@ namespace mustache {
     class ComponentFactory;
 
     template<typename TupleType>
-    struct ArgsPack;
+    class EntityBuilder;
 
     class EntityManager : public Uncopiable {
     public:
@@ -96,14 +96,12 @@ namespace mustache {
             forEach(std::forward<_F>(function), mode, std::make_index_sequence<args_count>());
         }
 
-        EntityBuilder begin() noexcept {
-            EntityBuilder builder;
-            builder.entity_manager = this;
-            return builder;
+        EntityBuilder<void> begin() noexcept {
+            return EntityBuilder<void>{this};
         }
 
         template<typename TupleType>
-        Entity create(ArgsPack<TupleType>& args_pack);
+        Entity create(EntityBuilder<TupleType>& args_pack);
 
     private:
         template<typename Component, typename TupleType, size_t... _I>
@@ -337,22 +335,22 @@ namespace mustache {
     }
 
     template<typename TupleType>
-    Entity ArgsPack<TupleType>::end() {
-        return entity_manager->create(*this);
+    Entity EntityBuilder<TupleType>::end() {
+        return entity_manager_->create(*this);
     }
 
-    Entity EntityBuilder::end() {
-        return entity_manager->create();
+    Entity EntityBuilder<void>::end() {
+        return entity_manager_->create();
     }
 
     template<typename Component, typename... ARGS>
-    auto EntityBuilder::assign(ARGS&&... args) {
+    auto EntityBuilder<void>::assign(ARGS&&... args) {
         using TypleType = decltype(std::forward_as_tuple(args...));
         using ComponentArgType = ComponentArg<Component, TypleType >;
         ComponentArgType arg {
                 std::forward_as_tuple(args...)
         };
-        return ArgsPack <std::tuple<ComponentArgType> >(entity_manager, std::move(arg));
+        return EntityBuilder <std::tuple<ComponentArgType> >(entity_manager_, std::move(arg));
     }
 
     template<typename TupleType, size_t... _I>
@@ -374,10 +372,10 @@ namespace mustache {
     }
 
     template<typename TupleType>
-    Entity EntityManager::create(ArgsPack<TupleType>& args_pack) {
+    Entity EntityManager::create(EntityBuilder<TupleType>& args_pack) {
         Entity entity = create();
         constexpr size_t num_components = std::tuple_size<TupleType>();
-        initComponents<TupleType>(entity, args_pack.tuple, std::make_index_sequence<num_components>());
+        initComponents<TupleType>(entity, args_pack.getArgs(), std::make_index_sequence<num_components>());
         return entity;
     }
 }
