@@ -21,6 +21,7 @@ add_library(${PROJECT_NAME} STATIC
         mustache/utils/dispatch.hpp
         mustache/utils/index_like.hpp
         mustache/utils/array_wrapper.hpp
+        mustache/utils/crc32.hpp
 
         mustache/ecs/entity.cpp
         mustache/ecs/entity.hpp
@@ -58,6 +59,8 @@ add_library(${PROJECT_NAME} STATIC
         mustache/ecs/event_manager.hpp
         mustache/ecs/entity_builder.cpp
         mustache/ecs/entity_builder.hpp
+        mustache/ecs/world_storage.cpp
+        mustache/ecs/world_storage.hpp
 )
 
 target_include_directories(${PROJECT_NAME}

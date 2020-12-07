@@ -220,6 +220,27 @@ void showComponentInfo() {
             << "\t\t\t| component is " << (is_component_required ? "" : "NOT ") << "required" <<std::endl;
 }
 
+
+void storeLoad() {
+    using namespace mustache;
+    World world;
+    auto& storage = world.storage();
+    Benchmark benchmark;
+    bool flag = true;
+    benchmark.add([&storage, &flag]{
+        const uint32_t rand_value = static_cast<uint32_t >(rand());
+        const auto tag = ObjectTag::fromStr(std::string("tag") + std::to_string(rand_value));
+        storage.store<uint32_t>(tag, rand_value);
+        for (uint32_t i = 0; i < 1000000; ++i) {
+            if (*storage.load<uint32_t>(tag) != rand_value) {
+                flag = false;
+            }
+        }}, 100);
+    benchmark.show();
+    if (!flag) {
+        throw std::runtime_error("Invalid data");
+    }
+}
 void bench_events();
 void POC();
 
@@ -242,12 +263,13 @@ int main() {
 
 //    foo();
 //    create1m();
-    create1mBuilder();
+//    create1mBuilder();
 //    createEmptyAndAssign();
 
 //    iterate500k();
 //    bench_events();
 
 //    POC();
+    storeLoad();
     return 0;
 }

@@ -22,6 +22,7 @@ add_executable(${PROJECT_NAME}
         dispatcher.cpp
         system.cpp
         event_manager.cpp
+        world_storage.cpp
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE mustache)

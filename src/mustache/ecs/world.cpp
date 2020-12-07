@@ -10,7 +10,8 @@ namespace {
 World::World(const WorldContext& context, WorldId id):
     id_{id},
     context_{context},
-    entities_{*this} {
+    entities_{*this},
+    world_storage_{*context.memory_manager} {
 
 }
 
@@ -38,4 +39,3 @@ WorldId World::nextWorldId() noexcept {
     ++next_id;
     return result;
 }
-
