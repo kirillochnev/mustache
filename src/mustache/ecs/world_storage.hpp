@@ -6,8 +6,8 @@
 #include <mustache/utils/type_info.hpp>
 #include <mustache/utils/array_wrapper.hpp>
 
-#include <map>
 #include <memory>
+#include <unordered_map>
 
 namespace mustache {
 
@@ -30,9 +30,9 @@ namespace mustache {
         }
 
         struct Hash {
-                size_t operator()(const ObjectTag& tag) const noexcept {
-                    return tag.toInt<size_t >();
-                }
+            size_t operator()(const ObjectTag& tag) const noexcept {
+                return tag.toInt<size_t >();
+            }
         };
     };
 
