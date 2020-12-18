@@ -21,7 +21,7 @@ namespace mustache {
         using Info = JobInfo<T>;
 
         PerEntityJob() {
-            filter_result_.mask_ = Info::componentMask();
+            filter_result_.mask = Info::componentMask();
         }
 
         ComponentIdMask checkMask() const noexcept override {

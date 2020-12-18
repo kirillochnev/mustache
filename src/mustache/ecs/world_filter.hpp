@@ -31,8 +31,10 @@ namespace mustache {
             ArrayWrapper<EntityBlock, BlockIndex, false> blocks; // TODO: use memory manager
         };
 
+        void clear() noexcept;
+
         std::vector<ArchetypeFilterResult> filtered_archetypes;
-        ComponentIdMask mask_;
+        ComponentIdMask mask;
         uint32_t total_entity_count{0u};
     };
 }

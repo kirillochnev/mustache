@@ -47,11 +47,9 @@ namespace {
     bool apply(World& world, const WorldFilterParam& check, const WorldFilterParam& set,
                WorldFilterResult& result, BaseJob& job) {
 
-        auto& filtered_archetypes = result.filtered_archetypes;
-        auto& mask = result.mask_;
         auto& entities = world.entities();
         const auto num_archetypes = entities.getArchetypesCount();
-        filtered_archetypes.reserve(num_archetypes);
+        result.filtered_archetypes.reserve(num_archetypes);
 
 
         ArchetypeFilterParam archetype_check;
@@ -61,7 +59,7 @@ namespace {
 
             const bool is_archetype_match =
                     arch.size() > 0u &&
-                    arch.isMatch(mask) &&
+                    arch.isMatch(result.mask) &&
                     job.extraArchetypeFilterCheck(arch);
 
             if (is_archetype_match) {
@@ -99,8 +97,7 @@ void BaseJob::run(World& world, JobRunMode mode) {
 }
 
 uint32_t BaseJob::applyFilter(World& world) noexcept {
-    filter_result_.total_entity_count = 0u;
-    filter_result_.filtered_archetypes.clear();
+    filter_result_.clear();
 
     const auto cur_world_version = world.version();
     const WorldFilterParam check {

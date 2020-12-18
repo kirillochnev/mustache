@@ -10,3 +10,8 @@ void WorldFilterResult::ArchetypeFilterResult::addBlock(const EntityBlock& block
         blocks.push_back(block);
     }
 }
+
+void WorldFilterResult::clear() noexcept {
+    total_entity_count = 0u;
+    filtered_archetypes.clear();
+}
