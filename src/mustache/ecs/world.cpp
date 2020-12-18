@@ -19,6 +19,14 @@ World::~World() {
     used_world_ids.erase(id_);
 }
 
+void World::init() {
+    version_ = WorldVersion::make(0);
+
+    if (systems_) {
+        systems_->init();
+    }
+}
+
 void World::update() {
     ++version_;
 

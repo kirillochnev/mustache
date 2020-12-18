@@ -87,8 +87,14 @@ namespace mustache {
             return archetype->getComponentVersion<_Safety>(location.index, component_id);
         }
 
+        template<typename _F, typename... ARGS>
+        MUSTACHE_INLINE void forEachWithArgsTypes(_F&& function, JobRunMode mode);
+
         template<typename _F, size_t... _I>
-        MUSTACHE_INLINE void forEach(_F&& function, JobRunMode mode, std::index_sequence<_I...>&&);
+        MUSTACHE_INLINE void forEach(_F&& function, JobRunMode mode, std::index_sequence<_I...>&&) {
+            using Info = utils::function_traits<_F>;
+            forEachWithArgsTypes<_F, typename Info::template arg<_I>::type...>(std::forward<_F>(function), mode);
+        }
 
         template<typename _F>
         MUSTACHE_INLINE void forEach(_F&& function, JobRunMode mode = JobRunMode::kDefault) {
