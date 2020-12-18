@@ -615,3 +615,104 @@ TEST(EntityManager, component_builder) {
     ASSERT_EQ(entities.getComponent<Component1>(entity)->value, 1);
     ASSERT_EQ(entities.getComponent<Component2>(entity)->value, 2);
 }
+
+TEST(EntityManager, dependency) {
+    struct MainComponent {
+        uint32_t value = 0xABADBABE;
+    };
+
+    struct DependentComponent {
+        uint32_t value = 0xB00B5;
+    };
+
+    struct Component0 {
+        uint32_t value = 0xDEADBEEF;
+    };
+
+    mustache::World world;
+    auto& entities = world.entities();
+
+    entities.addDependency<MainComponent, DependentComponent>();
+
+    for (uint32_t i = 0; i < 1000; ++i) {
+        auto e = entities.create<DependentComponent>();
+        ASSERT_TRUE(entities.hasComponent<DependentComponent>(e));
+        ASSERT_EQ(entities.getComponent<DependentComponent>(e)->value, 0xB00B5);
+        ASSERT_FALSE(entities.hasComponent<MainComponent>(e));
+        ASSERT_FALSE(entities.hasComponent<Component0>(e));
+
+        entities.getComponent<DependentComponent>(e)->value = 777;
+
+        entities.assign<MainComponent>(e);
+        ASSERT_TRUE(entities.hasComponent<DependentComponent>(e));
+        ASSERT_EQ(entities.getComponent<DependentComponent>(e)->value, 777);
+        ASSERT_TRUE(entities.hasComponent<MainComponent>(e));
+        ASSERT_EQ(entities.getComponent<MainComponent>(e)->value, 0xABADBABE);
+        ASSERT_FALSE(entities.hasComponent<Component0>(e));
+
+        entities.assign<Component0>(e);
+        ASSERT_TRUE(entities.hasComponent<DependentComponent>(e));
+        ASSERT_EQ(entities.getComponent<DependentComponent>(e)->value, 777);
+        ASSERT_TRUE(entities.hasComponent<MainComponent>(e));
+        ASSERT_EQ(entities.getComponent<MainComponent>(e)->value, 0xABADBABE);
+        ASSERT_TRUE(entities.hasComponent<Component0>(e));
+        ASSERT_EQ(entities.getComponent<Component0>(e)->value, 0xDEADBEEF);
+    }
+
+
+    for (uint32_t i = 0; i < 1000; ++i) {
+        auto e = entities.create<MainComponent>();
+        ASSERT_TRUE(entities.hasComponent<DependentComponent>(e));
+        ASSERT_EQ(entities.getComponent<DependentComponent>(e)->value, 0xB00B5);
+        ASSERT_TRUE(entities.hasComponent<MainComponent>(e));
+        ASSERT_EQ(entities.getComponent<MainComponent>(e)->value, 0xABADBABE);
+        ASSERT_FALSE(entities.hasComponent<Component0>(e));
+
+        entities.assign<Component0>(e);
+        ASSERT_TRUE(entities.hasComponent<DependentComponent>(e));
+        ASSERT_EQ(entities.getComponent<DependentComponent>(e)->value, 0xB00B5);
+        ASSERT_TRUE(entities.hasComponent<MainComponent>(e));
+        ASSERT_EQ(entities.getComponent<MainComponent>(e)->value, 0xABADBABE);
+        ASSERT_TRUE(entities.hasComponent<Component0>(e));
+        ASSERT_EQ(entities.getComponent<Component0>(e)->value, 0xDEADBEEF);
+    }
+
+    for (uint32_t i = 0; i < 1000; ++i) {
+        auto e = entities.create<Component0>();
+        ASSERT_TRUE(entities.hasComponent<Component0>(e));
+        ASSERT_EQ(entities.getComponent<Component0>(e)->value, 0xDEADBEEF);
+
+        ASSERT_FALSE(entities.hasComponent<MainComponent>(e));
+        ASSERT_FALSE(entities.hasComponent<DependentComponent>(e));
+
+        entities.assign<MainComponent>(e, MainComponent{123});
+        ASSERT_TRUE(entities.hasComponent<MainComponent>(e));
+        ASSERT_EQ(entities.getComponent<MainComponent>(e)->value, 123);
+        ASSERT_TRUE(entities.hasComponent<DependentComponent>(e));
+        ASSERT_EQ(entities.getComponent<DependentComponent>(e)->value, 0xB00B5);
+
+        ASSERT_TRUE(entities.hasComponent<Component0>(e));
+        ASSERT_EQ(entities.getComponent<Component0>(e)->value, 0xDEADBEEF);
+    }
+
+    for (uint32_t i = 0; i < 1000; ++i) {
+        auto e = entities.create<Component0, MainComponent>();
+        ASSERT_TRUE(entities.hasComponent<Component0>(e));
+        ASSERT_EQ(entities.getComponent<Component0>(e)->value, 0xDEADBEEF);
+        ASSERT_TRUE(entities.hasComponent<MainComponent>(e));
+        ASSERT_EQ(entities.getComponent<MainComponent>(e)->value, 0xABADBABE);
+        ASSERT_TRUE(entities.hasComponent<DependentComponent>(e));
+        ASSERT_EQ(entities.getComponent<DependentComponent>(e)->value, 0xB00B5);
+    }
+
+    for (uint32_t i = 0; i < 1000; ++i) {
+        auto e = entities.begin().assign<Component0>(Component0{123}).assign<MainComponent>(MainComponent{777}).end();
+        ASSERT_TRUE(entities.hasComponent<Component0>(e));
+        ASSERT_EQ(entities.getComponent<Component0>(e)->value, 123);
+        ASSERT_TRUE(entities.hasComponent<MainComponent>(e));
+        ASSERT_EQ(entities.getComponent<MainComponent>(e)->value, 777);
+        ASSERT_TRUE(entities.hasComponent<DependentComponent>(e));
+        ASSERT_EQ(entities.getComponent<DependentComponent>(e)->value, 0xB00B5);
+    }
+
+}

@@ -305,9 +305,10 @@ namespace mustache {
         void clear();
 
         /// Entity must belong to default(empty) archetype
-        ArchetypeEntityIndex insert(Entity entity, bool call_constructor = true);
+        ArchetypeEntityIndex insert(Entity entity, const ComponentIdMask& skip_constructor = {});
 
-        void externalMove(Entity entity, Archetype& prev, ArchetypeEntityIndex prev_index, bool init_missing = true);
+        void externalMove(Entity entity, Archetype& prev, ArchetypeEntityIndex prev_index,
+                          const ComponentIdMask& skip_constructor);
         void internalMove(ArchetypeEntityIndex from, ArchetypeEntityIndex to);
         /**
          * removes entity from archetype, calls destructor for each trivially destructible component

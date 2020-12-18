@@ -15,7 +15,8 @@ EntityManager::EntityManager(World& world):
 }
 
 Archetype& EntityManager::getArchetype(const ComponentIdMask& mask) {
-    auto& result = mask_to_arch_[mask];
+    const ComponentIdMask arch_mask = mask.merge(getExtraComponents(mask));
+    auto& result = mask_to_arch_[arch_mask];
     if(result) {
         return *result;
     }
@@ -23,7 +24,7 @@ Archetype& EntityManager::getArchetype(const ComponentIdMask& mask) {
         clearArchetype(*archetype);
         delete archetype;
     };
-    result = new Archetype(world_, archetypes_.back_index().next(), mask);
+    result = new Archetype(world_, archetypes_.back_index().next(), arch_mask);
     archetypes_.emplace_back(result, deleter);
     return *result;
 }
@@ -52,7 +53,7 @@ Entity EntityManager::create() {
         return entity;
     };
     auto entity = get_entity();
-    getArchetype<>().insert(entity, false);
+    getArchetype<>().insert(entity);
     return entity;
 }
 
@@ -85,3 +86,22 @@ void EntityManager::clearArchetype(Archetype& archetype) {
     });
     archetype.clear();
 }
+
+void EntityManager::addDependency(ComponentId component, const ComponentIdMask& extra) noexcept {
+    auto& dependency = dependencies_[component];
+    dependency = dependency.merge(extra.merge(getExtraComponents(extra)));
+}
+
+ComponentIdMask EntityManager::getExtraComponents(const ComponentIdMask& mask) const noexcept {
+    ComponentIdMask result;
+    if (!dependencies_.empty()) {
+        mask.forEachItem([&result, this](ComponentId id) {
+            const auto find_res = dependencies_.find(id);
+            if (find_res != dependencies_.end()) {
+                result = result.merge(find_res->second);
+            }
+        });
+    }
+    return result;
+}
+

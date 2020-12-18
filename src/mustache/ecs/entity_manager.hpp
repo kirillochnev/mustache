@@ -65,7 +65,7 @@ namespace mustache {
         MUSTACHE_INLINE T* getComponent(Entity entity) const noexcept;
 
         template<typename T, FunctionSafety _Safety = FunctionSafety::kSafe>
-        MUSTACHE_INLINE void removeComponent(Entity entity);
+        MUSTACHE_INLINE bool removeComponent(Entity entity);
 
         template<typename T, typename... _ARGS>
         MUSTACHE_INLINE T& assign(Entity e, _ARGS&&... args) ;
@@ -109,6 +109,16 @@ namespace mustache {
         template<typename TupleType>
         Entity create(EntityBuilder<TupleType>& args_pack);
 
+        ComponentIdMask getExtraComponents(const ComponentIdMask&) const noexcept;
+
+        void addDependency(ComponentId master, const ComponentIdMask& dependent_mask) noexcept;
+
+        template<typename _Master, typename... DEPENDENT>
+        void addDependency() noexcept {
+            const auto component_id = ComponentFactory::registerComponent<_Master>();
+            const auto depend_on_mask = ComponentFactory::makeMask<DEPENDENT...>();
+            addDependency(component_id, depend_on_mask);
+        }
     private:
         template<typename Component, typename TupleType, size_t... _I>
         void initComponent(Archetype& archetype, ArchetypeEntityIndex entity_index,
@@ -136,7 +146,7 @@ namespace mustache {
                 if (!locations_.has(e.id())) {
                     locations_.resize(e.id().next().toInt());
                 }
-                auto &location = locations_[e.id()];
+                auto& location = locations_[e.id()];
                 location.archetype = archetype;
                 location.index = index;
             }
@@ -156,6 +166,7 @@ namespace mustache {
 
         World& world_;
         std::map<ComponentIdMask , Archetype* > mask_to_arch_;
+        std::map<ComponentId, ComponentIdMask > dependencies_;
         EntityId next_slot_ = EntityId::make(0);
 
         uint32_t empty_slots_{0};
@@ -278,31 +289,36 @@ namespace mustache {
     }
 
     template<typename T, FunctionSafety _Safety>
-    void EntityManager::removeComponent(Entity entity) {
+    bool EntityManager::removeComponent(Entity entity) {
         static const auto component_id = ComponentFactory::registerComponent<T>();
         if constexpr (isSafe(_Safety)) {
             if (!isEntityValid(entity)) {
-                return;
+                return false;
             }
         }
         const auto& location = locations_[entity.id()];
         if constexpr (isSafe(_Safety)) {
             if (location.archetype.isNull()) {
-                return;
+                return false;
             }
         }
         auto& prev_archetype = *archetypes_[location.archetype];
         auto mask = prev_archetype.mask_;
         if constexpr (isSafe(_Safety)) {
             if (!mask.has(component_id)) {
-                return;
+                return false;
             }
         }
         mask.set(component_id, false);
         auto& archetype = getArchetype(mask);
+        if (&archetype == &prev_archetype) {
+            return false;
+        }
         const auto prev_index = location.index;
 
-        archetype.externalMove(entity, prev_archetype, prev_index, false);
+        archetype.externalMove(entity, prev_archetype, prev_index, ComponentIdMask{});
+
+        return true;
     }
 
     template<typename T, typename... _ARGS>
@@ -316,7 +332,8 @@ namespace mustache {
         mask.add(component_id);
         auto& arch = getArchetype(mask);
         const auto prev_index = location.index;
-        arch.externalMove(e, prev_arch, prev_index, !use_custom_constructor);
+        const auto skip_init_mask = use_custom_constructor ? ComponentIdMask{component_id} : ComponentIdMask{};
+        arch.externalMove(e, prev_arch, prev_index, skip_init_mask);
         auto component_ptr = arch.getComponent<FunctionSafety::kUnsafe>(component_id, location.index);
         if constexpr (use_custom_constructor) {
             *new(component_ptr) T{std::forward<_ARGS>(args)...};
@@ -363,7 +380,7 @@ namespace mustache {
     void EntityManager::initComponents(Entity entity, TupleType& tuple, std::index_sequence<_I...>&&) {
         const auto mask = ComponentFactory::makeMask<typename std::tuple_element<_I, TupleType>::type::Component...>();
         Archetype& archetype = getArchetype(mask);
-        const auto index = archetype.insert(entity, false);
+        const auto index = archetype.insert(entity, mask);
         auto unused_init_list = {initComponent(archetype, index, std::get<_I>(tuple))...};
         (void ) unused_init_list;
     }

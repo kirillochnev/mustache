@@ -50,6 +50,7 @@ namespace mustache {
 
         // NOTE: can be removed?
         ArrayWrapper<ComponentIndex, ComponentId, true> component_id_to_component_index;
+        ArrayWrapper<ComponentId, ComponentIndex, true> component_index_to_component_id;
 
         std::vector<InsertInfo, Allocator<InsertInfo> > insert; // only non null init functions
         std::vector<DestroyInfo, Allocator<DestroyInfo> > destroy; // only non null destroy functions
