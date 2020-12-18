@@ -106,7 +106,7 @@ namespace mustache {
                                                       info.first_entity, info.current_size}) {
                     if constexpr (Info::FunctionInfo::Position::entity >= 0) {
                         forEachArrayGenerated(ComponentArraySize::make(array.arraySize()), invocation_index,
-                                              array.getEntity<FunctionSafety::kUnsafe>(),
+                                              RequiredComponent<Entity>(array.getEntity<FunctionSafety::kUnsafe>()),
                                               getComponentHandler<_I>(array, component_indexes[_I])...);
                     } else {
                         forEachArrayGenerated(ComponentArraySize::make(array.arraySize()), invocation_index,
@@ -118,8 +118,8 @@ namespace mustache {
 
     };
 
-    template<typename _F, size_t... _I>
-    void EntityManager::forEach(_F&& function, JobRunMode mode, std::index_sequence<_I...>&&) {
+    template<typename _F, typename... ARGS>
+    void EntityManager::forEachWithArgsTypes(_F&& function, JobRunMode mode) {
         using Info = utils::function_traits<_F>;
         struct TmpJob : public PerEntityJob<TmpJob> {
             TmpJob(_F&& f):
@@ -127,8 +127,8 @@ namespace mustache {
 
             }
             _F&& func;
-            void operator() (typename Info::template arg<_I>::type&&... args) {
-                func(std::forward<typename Info::template arg<_I>::type>(args)...);
+            void operator() (ARGS... args) {
+                func(std::forward<ARGS>(args)...);
             }
         };
         TmpJob job{std::forward<_F>(function)};

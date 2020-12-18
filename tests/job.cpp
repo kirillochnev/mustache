@@ -91,6 +91,12 @@ TEST(Job, iterate_empty) {
         ++count;
     }, mustache::JobRunMode::kCurrentThread);
     ASSERT_EQ(count, 3u * kNumObjects);
+
+    count = 0u;
+    world.entities().forEach([&count](mustache::Entity) {
+        ++count;
+    }, mustache::JobRunMode::kCurrentThread);
+    ASSERT_EQ(count, 3u * kNumObjects);
 }
 
 TEST(Job, iterate_singlethread) {
