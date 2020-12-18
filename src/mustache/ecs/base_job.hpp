@@ -1,8 +1,10 @@
 #pragma once
 
+#include <mustache/ecs/world_filter.hpp>
 #include <mustache/ecs/component_mask.hpp>
 
 namespace mustache {
+    class Archetype;
     class World;
     class Dispatcher;
 
@@ -23,7 +25,19 @@ namespace mustache {
         virtual void runCurrentThread(World&) = 0;
         virtual ComponentIdMask checkMask() const noexcept = 0;
         virtual ComponentIdMask updateMask() const noexcept = 0;
-        virtual uint32_t applyFilter(World&) noexcept = 0;
+
+        [[nodiscard]] virtual bool extraArchetypeFilterCheck(const Archetype&) const noexcept {
+            return true;
+        }
+        [[nodiscard]] virtual bool extraChunkFilterCheck(const Archetype&, ChunkIndex) const noexcept {
+            return true;
+        }
+
+        virtual uint32_t applyFilter(World&) noexcept;
         [[nodiscard]] virtual uint32_t taskCount(World&, uint32_t entity_count) const noexcept;
+
+    protected:
+        WorldVersion last_update_version_;
+        WorldFilterResult filter_result_;
     };
 }

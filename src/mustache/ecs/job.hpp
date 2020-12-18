@@ -20,23 +20,6 @@ namespace mustache {
     public:
         using Info = JobInfo<T>;
 
-        virtual uint32_t applyFilter(World& world) noexcept override {
-            const auto cur_world_version = world.version();
-            const WorldFilterParam check {
-                checkMask(),
-                last_update_version_
-            };
-            const WorldFilterParam set {
-                updateMask(),
-                cur_world_version
-            };
-            filter_result_.apply(world, check, set);
-            if (filter_result_.total_entity_count > 0) {
-                last_update_version_ = cur_world_version;
-            }
-            return filter_result_.total_entity_count;
-        }
-
         PerEntityJob() {
             filter_result_.mask_ = Info::componentMask();
         }
@@ -133,8 +116,6 @@ namespace mustache {
             }
         }
 
-        WorldFilterResult filter_result_;
-        WorldVersion last_update_version_;
     };
 
     template<typename _F, size_t... _I>
