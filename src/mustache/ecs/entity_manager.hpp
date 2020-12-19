@@ -23,6 +23,13 @@ namespace mustache {
     template<typename TupleType>
     class EntityBuilder;
 
+    struct ArchetypeChunkSize {
+        uint32_t min = 0u;
+        uint32_t max = 0u;
+    };
+
+    using ArchetypeChunkSizeFunction = std::function<ArchetypeChunkSize (const ComponentIdMask&)>;
+
     class EntityManager : public Uncopiable {
     public:
         explicit EntityManager(World& world);
@@ -119,6 +126,32 @@ namespace mustache {
             const auto depend_on_mask = ComponentFactory::makeMask<DEPENDENT...>();
             addDependency(component_id, depend_on_mask);
         }
+
+        void addChunkSizeFunction(const ArchetypeChunkSizeFunction& function) {
+            if (function) {
+                /// TODO: update archetypes
+                get_chunk_size_functions_.push_back(function);
+            }
+        }
+
+
+        template <typename... ARGS>
+        void addChunkSizeFunction(uint32_t min, uint32_t max) {
+            const auto check_mask = ComponentFactory::makeMask<ARGS...>();
+            addChunkSizeFunction([min, max, check_mask](const ComponentIdMask& arch_mask) noexcept {
+                ArchetypeChunkSize result;
+                if (arch_mask.isMatch(check_mask)) {
+                    result.min = min;
+                    result.max = max;
+                }
+                return result;
+            });
+        }
+
+        void setDefaultArchetypeVersionChunkSize(uint32_t value) noexcept {
+            /// TODO: update archetypes
+            archetype_chunk_size_info_.default_size = value;
+        }
     private:
         template<typename Component, typename TupleType, size_t... _I>
         void initComponent(Archetype& archetype, ArchetypeEntityIndex entity_index,
@@ -178,6 +211,15 @@ namespace mustache {
         // TODO: replace shared pointed with some kind of unique_ptr but with deleter calling clearArchetype
         // NOTE: must be the last field(for correct default destructor).
         ArrayWrapper<std::shared_ptr<Archetype>, ArchetypeIndex, true> archetypes_;
+
+        // archetype stores component version for every  default_archetype_component_version_chunk_size entities
+        struct ArchetypeVersionChunkSize {
+            uint32_t default_size = 1024u;
+            uint32_t min_size = 0u;
+            uint32_t max_size = 0u;
+        };
+        ArchetypeVersionChunkSize archetype_chunk_size_info_;
+        std::vector<ArchetypeChunkSizeFunction> get_chunk_size_functions_;
     };
 
     bool EntityManager::isEntityValid(Entity entity) const noexcept {
