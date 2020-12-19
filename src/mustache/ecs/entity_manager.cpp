@@ -24,7 +24,35 @@ Archetype& EntityManager::getArchetype(const ComponentIdMask& mask) {
         clearArchetype(*archetype);
         delete archetype;
     };
-    result = new Archetype(world_, archetypes_.back_index().next(), arch_mask);
+
+    auto min = archetype_chunk_size_info_.min_size;
+    auto max = archetype_chunk_size_info_.max_size;
+
+    for (const auto& func : get_chunk_size_functions_) {
+        const auto size = func(arch_mask);
+        if (min == 0 || size.min > min) {
+            min = size.min;
+        }
+
+        if (max == 0 || (size.max > 0 && size.max < max)) {
+            max = size.max;
+        }
+    }
+    auto chunk_size = archetype_chunk_size_info_.default_size;
+
+    if (max < min) {
+        throw std::runtime_error("Can not create archetype: " + std::to_string(max) + " < " + std::to_string(min));
+    }
+
+    if (chunk_size < min) {
+        chunk_size = min;
+    }
+
+    if (max > 0 && chunk_size > max) {
+        chunk_size = max;
+    }
+
+    result = new Archetype(world_, archetypes_.back_index().next(), arch_mask, chunk_size);
     archetypes_.emplace_back(result, deleter);
     return *result;
 }
@@ -92,6 +120,18 @@ void EntityManager::addDependency(ComponentId component, const ComponentIdMask& 
     dependency = dependency.merge(extra.merge(getExtraComponents(extra)));
 }
 
+void EntityManager::addChunkSizeFunction(const ArchetypeChunkSizeFunction& function) {
+    if (function) {
+        /// TODO: update archetypes
+        get_chunk_size_functions_.push_back(function);
+    }
+}
+
+void EntityManager::setDefaultArchetypeVersionChunkSize(uint32_t value) noexcept {
+    /// TODO: update archetypes
+    archetype_chunk_size_info_.default_size = value;
+}
+
 ComponentIdMask EntityManager::getExtraComponents(const ComponentIdMask& mask) const noexcept {
     ComponentIdMask result;
     if (!dependencies_.empty()) {
@@ -104,4 +144,3 @@ ComponentIdMask EntityManager::getExtraComponents(const ComponentIdMask& mask) c
     }
     return result;
 }
-

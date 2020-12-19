@@ -5,17 +5,19 @@
 
 using namespace mustache;
 
-Archetype::Archetype(World& world, ArchetypeIndex id, const ComponentIdMask& mask):
+Archetype::Archetype(World& world, ArchetypeIndex id, const ComponentIdMask& mask, uint32_t chunk_size):
         world_{world},
         mask_{mask},
         operation_helper_{world.memoryManager(), mask},
         data_storage_{mask, world_.memoryManager()},
         entities_{world.memoryManager()},
         components_count_{mask.componentsCount()},
+        chunk_size_{chunk_size},
         chunk_versions_{world.memoryManager()},
         global_versions_{world.memoryManager()},
         id_{id} {
     global_versions_.resize(components_count_, WorldVersion::null());
+    Logger{}.debug("Archetype version chunk size: %d", chunk_size);
 }
 
 Archetype::~Archetype() {

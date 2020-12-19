@@ -51,7 +51,7 @@ namespace mustache {
      */
     class Archetype : public Uncopiable {
     public:
-        Archetype(World& world, ArchetypeIndex id, const ComponentIdMask& mask);
+        Archetype(World& world, ArchetypeIndex id, const ComponentIdMask& mask, uint32_t chunk_size);
         ~Archetype();
 
         template<FunctionSafety _Safety = FunctionSafety::kDefault>

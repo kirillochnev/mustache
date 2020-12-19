@@ -616,6 +616,31 @@ TEST(EntityManager, component_builder) {
     ASSERT_EQ(entities.getComponent<Component2>(entity)->value, 2);
 }
 
+TEST(EntityManager, archetype_chunk_size) {
+    struct Component0 {
+
+    };
+    struct Component1 {
+
+    };
+    struct Component2 {
+
+    };
+    mustache::World world;
+    auto& entities = world.entities();
+    entities.addChunkSizeFunction<Component0, Component1, Component2>(32, 32);
+    auto capacity = entities.getArchetype<Component0, Component1, Component2>().chunkCapacity().toInt();
+    ASSERT_EQ(capacity, 32);
+    capacity = entities.getArchetype<Component0>().chunkCapacity().toInt();
+    ASSERT_EQ(capacity, 1024);
+
+    entities.addChunkSizeFunction<Component1>(16, 16);
+    capacity = entities.getArchetype<Component0, Component1>().chunkCapacity().toInt();
+    ASSERT_EQ(capacity, 16);
+    capacity = entities.getArchetype<Component1, Component2>().chunkCapacity().toInt();
+    ASSERT_EQ(capacity, 16);
+}
+
 TEST(EntityManager, dependency) {
     struct MainComponent {
         uint32_t value = 0xABADBABE;
