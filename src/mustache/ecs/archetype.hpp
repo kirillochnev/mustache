@@ -165,7 +165,7 @@ namespace mustache {
             const auto entities_count = entities_.size();
             ChunkIndex result;
             if (entities_count > 0) {
-                result = ChunkIndex::make(entities_count / chunk_size_);
+                result = ChunkIndex::make((entities_count - 1u) / chunk_size_);
             }
             return result;
         }
@@ -254,7 +254,7 @@ namespace mustache {
                 const auto last_index = first_index + components_count_;
 
                 if (chunk_versions_.size() <= last_index) {
-                    chunk_versions_.resize(last_index + 1);
+                    chunk_versions_.resize(last_index);
                 }
                 for (uint32_t component_i = 0; component_i < components_count_; ++component_i) {
                     chunk_versions_[component_i + first_index] = world_version;
