@@ -17,7 +17,7 @@ Archetype::Archetype(World& world, ArchetypeIndex id, const ComponentIdMask& mas
         global_versions_{world.memoryManager()},
         id_{id} {
     global_versions_.resize(components_count_, WorldVersion::null());
-    Logger{}.info("Archetype version chunk size: %d", chunk_size);
+    Logger{}.debug("Archetype version chunk size: %d", chunk_size);
 }
 
 Archetype::~Archetype() {

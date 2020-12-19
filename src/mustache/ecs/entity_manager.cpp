@@ -120,6 +120,18 @@ void EntityManager::addDependency(ComponentId component, const ComponentIdMask& 
     dependency = dependency.merge(extra.merge(getExtraComponents(extra)));
 }
 
+void EntityManager::addChunkSizeFunction(const ArchetypeChunkSizeFunction& function) {
+    if (function) {
+        /// TODO: update archetypes
+        get_chunk_size_functions_.push_back(function);
+    }
+}
+
+void EntityManager::setDefaultArchetypeVersionChunkSize(uint32_t value) noexcept {
+    /// TODO: update archetypes
+    archetype_chunk_size_info_.default_size = value;
+}
+
 ComponentIdMask EntityManager::getExtraComponents(const ComponentIdMask& mask) const noexcept {
     ComponentIdMask result;
     if (!dependencies_.empty()) {
@@ -132,4 +144,3 @@ ComponentIdMask EntityManager::getExtraComponents(const ComponentIdMask& mask) c
     }
     return result;
 }
-

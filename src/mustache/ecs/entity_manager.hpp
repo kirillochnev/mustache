@@ -127,13 +127,7 @@ namespace mustache {
             addDependency(component_id, depend_on_mask);
         }
 
-        void addChunkSizeFunction(const ArchetypeChunkSizeFunction& function) {
-            if (function) {
-                /// TODO: update archetypes
-                get_chunk_size_functions_.push_back(function);
-            }
-        }
-
+        void addChunkSizeFunction(const ArchetypeChunkSizeFunction& function);
 
         template <typename... ARGS>
         void addChunkSizeFunction(uint32_t min, uint32_t max) {
@@ -148,10 +142,7 @@ namespace mustache {
             });
         }
 
-        void setDefaultArchetypeVersionChunkSize(uint32_t value) noexcept {
-            /// TODO: update archetypes
-            archetype_chunk_size_info_.default_size = value;
-        }
+        void setDefaultArchetypeVersionChunkSize(uint32_t value) noexcept;
     private:
         template<typename Component, typename TupleType, size_t... _I>
         void initComponent(Archetype& archetype, ArchetypeEntityIndex entity_index,
