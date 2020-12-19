@@ -81,6 +81,9 @@ namespace mustache {
             return world_storage_;
         }
 
+        void updateVersion() noexcept {
+            ++version_;
+        }
     private:
         WorldId id_;
         WorldContext context_;
