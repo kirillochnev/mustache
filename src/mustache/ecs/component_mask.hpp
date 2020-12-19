@@ -11,6 +11,7 @@ namespace mustache {
 
     template<typename _ItemType, size_t _MaxElements>
     struct ComponentMask {
+
         ComponentMask() = default;
 
         explicit ComponentMask(const std::initializer_list<_ItemType>& items) {
@@ -72,6 +73,12 @@ namespace mustache {
             value_.set(item.toInt());
         }
 
+        [[nodiscard]] ComponentMask merge(const ComponentMask& extra) const noexcept {
+            ComponentMask result;
+            result.value_ = value_ | extra.value_;
+            return result;
+        }
+
         void set(_ItemType item, bool value) noexcept {
             value_.set(item.toInt(), value);
         }
@@ -81,6 +88,10 @@ namespace mustache {
         }
 
         [[nodiscard]] bool operator==(const ComponentMask& rhs) const noexcept {
+            return value_ == rhs.value_;
+        }
+
+        [[nodiscard]] bool operator!=(const ComponentMask& rhs) const noexcept {
             return value_ == rhs.value_;
         }
 
@@ -96,6 +107,15 @@ namespace mustache {
     };
 
     struct ComponentIdMask : public ComponentMask<ComponentId, 64> {
+        ComponentIdMask(const ComponentMask<ComponentId, 64>& oth):
+            ComponentMask{oth} {
+
+        }
+        ComponentIdMask(ComponentMask<ComponentId, 64>&& oth):
+                ComponentMask{std::move(oth)} {
+
+        }
+
         std::string toString() const noexcept;
         using ComponentMask::ComponentMask;
     };

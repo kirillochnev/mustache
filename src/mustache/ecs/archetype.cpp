@@ -33,7 +33,7 @@ void Archetype::callDestructor(const ElementView& view) {
 }
 
 void Archetype::externalMove(Entity entity, Archetype& prev_archetype, ArchetypeEntityIndex prev_index,
-        bool initialize_missing_components) {
+                             const ComponentIdMask& skip_constructor) {
 
     const auto index = pushBack(entity);
 
@@ -45,7 +45,7 @@ void Archetype::externalMove(Entity entity, Archetype& prev_archetype, Archetype
         if (prev_ptr != nullptr) {
             auto component_ptr = dest_view.getData<FunctionSafety::kUnsafe>(component_index);
             info.move(component_ptr, prev_ptr);
-        } else if (initialize_missing_components && info.constructor) {
+        } else if (info.constructor && !skip_constructor.has(info.id)) {
             auto component_ptr = dest_view.getData<FunctionSafety::kUnsafe>(component_index);
             info.constructor(component_ptr);
         }
@@ -58,14 +58,19 @@ void Archetype::externalMove(Entity entity, Archetype& prev_archetype, Archetype
     world_.entities().updateLocation(entity, id_, index.toArchetypeIndex());
 }
 
-ArchetypeEntityIndex Archetype::insert(Entity entity, bool call_constructor) {
+ArchetypeEntityIndex Archetype::insert(Entity entity, const ComponentIdMask& skip_constructor) {
     const auto index = pushBack(entity);
 
-    if (call_constructor) {
+    const bool is_skip_mask_empty = skip_constructor.isEmpty();
+    const bool skip_all_constructors = (skip_constructor == mask_);
+    if (!skip_all_constructors) {
         const auto view = getElementView(index.toArchetypeIndex());
         for (const auto& info : operation_helper_.insert) {
-            auto component_ptr = view.getData<FunctionSafety::kUnsafe>(info.component_index);
-            info.constructor(component_ptr);
+            const auto& component_id = operation_helper_.component_index_to_component_id[info.component_index];
+            if (is_skip_mask_empty || !skip_constructor.has(component_id)) {
+                auto component_ptr = view.getData<FunctionSafety::kUnsafe>(info.component_index);
+                info.constructor(component_ptr);
+            }
         }
     }
     updateAllVersions(index.toArchetypeIndex(), worldVersion());
