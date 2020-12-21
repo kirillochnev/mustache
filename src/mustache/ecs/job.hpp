@@ -56,6 +56,9 @@ namespace mustache {
             dispatcher.waitForParallelFinish();
         }
 
+        virtual std::string name() const noexcept override {
+            return type_name<T>();
+        }
     protected:
 
         template<typename... _ARGS>
@@ -120,7 +123,15 @@ namespace mustache {
 
     template<typename _F, typename... ARGS>
     void EntityManager::forEachWithArgsTypes(_F&& function, JobRunMode mode) {
-        using Info = utils::function_traits<_F>;
+        static std::string job_name = "";
+        if (job_name.empty()) {
+            std::string str = ((type_name<ARGS>() + ", ") + ... + "");
+            if (!str.empty()) {
+                str.pop_back();
+                str.pop_back();
+            }
+            job_name = "ForEachJob<" + str + ">";
+        }
         struct TmpJob : public PerEntityJob<TmpJob> {
             TmpJob(_F&& f):
                     func{std::forward<_F>(f)} {
@@ -129,6 +140,10 @@ namespace mustache {
             _F&& func;
             void operator() (ARGS... args) {
                 func(std::forward<ARGS>(args)...);
+            }
+
+            virtual std::string name() const noexcept override {
+                return job_name;
             }
         };
         TmpJob job{std::forward<_F>(function)};
