@@ -112,7 +112,12 @@ uint32_t BaseJob::applyFilter(World& world) noexcept {
         last_update_version_ = cur_world_version;
     }
 
-    return filter_result_.total_entity_count;
+    const bool run_job = filter_result_.total_entity_count > 0u;
+    if (run_job) {
+        world.incrementVersion();
+    }
+
+    return run_job;
 }
 
 void BaseJob::onJobBegin(World&, TasksCount, JobSize, JobRunMode) noexcept {
