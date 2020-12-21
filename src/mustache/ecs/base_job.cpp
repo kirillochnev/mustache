@@ -83,17 +83,16 @@ uint32_t BaseJob::taskCount(World& world, uint32_t entity_count) const noexcept 
 
 void BaseJob::run(World& world, JobRunMode mode) {
     const auto entities_count = applyFilter(world);
-    switch (mode) {
-        case JobRunMode::kCurrentThread:
+    const auto task_count = (mode == JobRunMode::kParallel) ? std::max(1u, taskCount(world, entities_count)) : 1u;
+    if (task_count > 0u) {
+        onJobBegin(world, TasksCount::make(task_count), JobSize::make(entities_count), mode);
+        if (mode == JobRunMode::kCurrentThread) {
             runCurrentThread(world);
-            break;
-        case JobRunMode::kParallel:
-            runParallel(world, taskCount(world, entities_count));
-            break;
-        case JobRunMode::kSingleThread:
-            runParallel(world, 1);
-            break;
-    };
+        } else {
+            runParallel(world, task_count);
+        }
+        onJobEnd(world, TasksCount::make(task_count), JobSize::make(entities_count), mode);
+    }
 }
 
 uint32_t BaseJob::applyFilter(World& world) noexcept {
@@ -114,4 +113,12 @@ uint32_t BaseJob::applyFilter(World& world) noexcept {
     }
 
     return filter_result_.total_entity_count;
+}
+
+void BaseJob::onJobBegin(World&, TasksCount, JobSize, JobRunMode) noexcept {
+
+}
+
+void BaseJob::onJobEnd(World&, TasksCount, JobSize, JobRunMode) noexcept {
+
 }

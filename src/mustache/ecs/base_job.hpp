@@ -15,6 +15,9 @@ namespace mustache {
         kDefault = kCurrentThread,
     };
 
+    struct TasksCount : public IndexLike<uint32_t, TasksCount>{};
+    struct JobSize : public IndexLike<uint32_t, JobSize>{};
+
     class BaseJob {
     public:
         virtual ~BaseJob() = default;
@@ -25,6 +28,7 @@ namespace mustache {
         virtual void runCurrentThread(World&) = 0;
         virtual ComponentIdMask checkMask() const noexcept = 0;
         virtual ComponentIdMask updateMask() const noexcept = 0;
+        [[nodiscard]] virtual std::string name() const noexcept = 0;
 
         [[nodiscard]] virtual bool extraArchetypeFilterCheck(const Archetype&) const noexcept {
             return true;
@@ -36,6 +40,8 @@ namespace mustache {
         virtual uint32_t applyFilter(World&) noexcept;
         [[nodiscard]] virtual uint32_t taskCount(World&, uint32_t entity_count) const noexcept;
 
+        virtual void onJobBegin(World&, TasksCount, JobSize total_entity_count, JobRunMode mode) noexcept;
+        virtual void onJobEnd(World&, TasksCount, JobSize total_entity_count, JobRunMode mode) noexcept;
     protected:
         WorldVersion last_update_version_;
         WorldFilterResult filter_result_;
