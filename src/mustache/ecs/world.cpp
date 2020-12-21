@@ -28,7 +28,7 @@ void World::init() {
 }
 
 void World::update() {
-    updateVersion();
+    incrementVersion();
 
     if (systems_) {
         systems_->update();

@@ -81,7 +81,7 @@ namespace mustache {
             return world_storage_;
         }
 
-        void updateVersion() noexcept {
+        void incrementVersion() noexcept {
             ++version_;
         }
     private:
