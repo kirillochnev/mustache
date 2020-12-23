@@ -51,8 +51,10 @@ add_library(${PROJECT_NAME} STATIC
         mustache/ecs/entity_group.hpp
         mustache/ecs/world_filter.cpp
         mustache/ecs/world_filter.hpp
-        mustache/ecs/component_data_storage.cpp
-        mustache/ecs/component_data_storage.hpp
+        mustache/ecs/base_component_data_storage.cpp
+        mustache/ecs/base_component_data_storage.hpp
+        mustache/ecs/default_component_data_storage.cpp
+        mustache/ecs/default_component_data_storage.hpp
         mustache/ecs/new_component_data_storage.cpp
         mustache/ecs/new_component_data_storage.hpp
         mustache/ecs/event_manager.cpp

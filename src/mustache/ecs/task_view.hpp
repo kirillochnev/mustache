@@ -29,7 +29,7 @@ namespace mustache {
                     ++current_block_;
                     dist_to_block_end = filter_result_->blocks[current_block_].end.toInt() - index_in_archetype;
                 }
-                array_size_ = std::min(dist_to_block_end, std::min(elementArraySize(), dist_to_end_));
+                array_size_ = std::min(dist_to_block_end, std::min(distToChunkEnd(), dist_to_end_));
             }
         }
 
@@ -49,7 +49,7 @@ namespace mustache {
                     ++current_block_;
                     dist_to_block_end = filter_result_->blocks[current_block_].end.toInt() - index_in_archetype;
                 }
-                array_size_ = std::min(dist_to_block_end, std::min(elementArraySize(), dist_to_end_));
+                array_size_ = std::min(dist_to_block_end, std::min(distToChunkEnd(), dist_to_end_));
             }
 
             return *this;

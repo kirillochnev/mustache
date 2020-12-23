@@ -4,8 +4,7 @@
 #include <mustache/ecs/id_deff.hpp>
 #include <mustache/ecs/job_arg_parcer.hpp>
 #include <mustache/ecs/archetype_operation_helper.hpp>
-#include <mustache/ecs/component_data_storage.hpp>
-#include <mustache/ecs/new_component_data_storage.hpp>
+#include <mustache/ecs/base_component_data_storage.hpp>
 #include <mustache/ecs/component_factory.hpp>
 #include <mustache/ecs/entity_group.hpp>
 #include <mustache/utils/uncopiable.hpp>
@@ -18,19 +17,15 @@ namespace mustache {
 
     class World;
     class EntityManager;
-
-    using ArchetypeComponentDataStorage = ComponentDataStorage;
-
     class Archetype;
 
     // NOTE: element view does not update component versions
-    struct ElementView : public ArchetypeComponentDataStorage::ElementView {
-        using Super = ArchetypeComponentDataStorage::ElementView;
-        using Super::Super;
+    struct ElementView : public DataStorageIterator {
+        using DataStorageIterator::DataStorageIterator;
 
-        ElementView(const Super& view, const Archetype& archetype):
-            Super{view},
-            archetype_{&archetype} {
+        ElementView(const DataStorageIterator& view, const Archetype& archetype):
+                DataStorageIterator{view},
+                archetype_{&archetype} {
 
         }
 
@@ -71,7 +66,7 @@ namespace mustache {
         }
 
         [[nodiscard]] uint32_t capacity() const noexcept {
-            return data_storage_.capacity();
+            return data_storage_->capacity();
         }
 
         [[nodiscard]] ArchetypeIndex id() const noexcept {
@@ -113,18 +108,18 @@ namespace mustache {
 
         template<FunctionSafety _Safety = FunctionSafety::kDefault>
         void* getComponent(ComponentId component_id, ArchetypeEntityIndex index) const noexcept {
-            return data_storage_.getData<_Safety>(operation_helper_.componentIndex(component_id),
+            return data_storage_->getData<_Safety>(operation_helper_.componentIndex(component_id),
                     ComponentStorageIndex::fromArchetypeIndex(index));
         }
 
         template<FunctionSafety _Safety = FunctionSafety::kDefault>
         const void* getConstComponent(ComponentIndex component_index, ArchetypeEntityIndex index) const noexcept {
-            return data_storage_.getData<_Safety>(component_index, ComponentStorageIndex::fromArchetypeIndex(index));
+            return data_storage_->getData<_Safety>(component_index, ComponentStorageIndex::fromArchetypeIndex(index));
         }
 
         template<FunctionSafety _Safety = FunctionSafety::kDefault>
         void* getComponent(ComponentIndex component_index, ArchetypeEntityIndex index, WorldVersion version) noexcept {
-            auto res = data_storage_.getData<_Safety>(component_index, ComponentStorageIndex::fromArchetypeIndex(index));
+            auto res = data_storage_->getData<_Safety>(component_index, ComponentStorageIndex::fromArchetypeIndex(index));
             if (res != nullptr) {
                 const auto chunk = index.toInt() / chunk_size_;
                 auto versions = chunk_versions_.data() + components_count_ * chunk;
@@ -137,7 +132,7 @@ namespace mustache {
 
         [[nodiscard]] ElementView getElementView(ArchetypeEntityIndex index) const noexcept {
             return ElementView {
-                data_storage_.getElementView(ComponentStorageIndex::fromArchetypeIndex(index)),
+                    data_storage_->getIterator(ComponentStorageIndex::fromArchetypeIndex(index)),
                 *this
             };
         }
@@ -283,13 +278,13 @@ namespace mustache {
         [[nodiscard]] ComponentStorageIndex pushBack(Entity entity) {
             const auto index = ComponentStorageIndex::make(entities_.size());
             entities_.push_back(entity);
-            data_storage_.pushBack();
+            data_storage_->pushBack();
             return index;
         }
 
         void popBack() {
             entities_.pop_back();
-            data_storage_.decrSize();
+            data_storage_->decrSize();
         }
 
         /// Archetype size == 0
@@ -321,7 +316,7 @@ namespace mustache {
         World& world_;
         const ComponentIdMask mask_;
         ArchetypeOperationHelper operation_helper_;
-        ArchetypeComponentDataStorage data_storage_;
+        std::unique_ptr<BaseComponentDataStorage> data_storage_;
         ArrayWrapper<Entity, ArchetypeEntityIndex, true> entities_;
         const uint32_t components_count_;
         const uint32_t chunk_size_ = 1024u;

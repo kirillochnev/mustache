@@ -1,7 +1,11 @@
 #include "archetype.hpp"
+
 #include <mustache/utils/logger.hpp>
-#include <mustache/ecs/component_factory.hpp>
+
 #include <mustache/ecs/world.hpp>
+#include <mustache/ecs/component_factory.hpp>
+#include <mustache/ecs/new_component_data_storage.hpp>
+#include <mustache/ecs/default_component_data_storage.hpp>
 
 using namespace mustache;
 
@@ -9,7 +13,7 @@ Archetype::Archetype(World& world, ArchetypeIndex id, const ComponentIdMask& mas
         world_{world},
         mask_{mask},
         operation_helper_{world.memoryManager(), mask},
-        data_storage_{mask, world_.memoryManager()},
+        data_storage_{std::make_unique<DefaultComponentDataStorage>(mask, world_.memoryManager())},
         entities_{world.memoryManager()},
         components_count_{mask.componentsCount()},
         chunk_size_{chunk_size},
@@ -24,7 +28,7 @@ Archetype::~Archetype() {
     if (!isEmpty()) {
         Logger{}.error("Destroying non-empty archetype");
     }
-    data_storage_.clear(true);
+    data_storage_->clear(true);
 }
 
 void Archetype::callDestructor(const ElementView& view) {
@@ -110,7 +114,7 @@ void Archetype::internalMove(ArchetypeEntityIndex source_index, ArchetypeEntityI
 void Archetype::remove(Entity entity_to_destroy, ArchetypeEntityIndex entity_index) {
 //    Logger{}.debug("Removing entity from: %s pos: %d", mask_.toString(), entity_index.toInt());
 
-    const auto last_index = data_storage_.lastItemIndex().toArchetypeIndex();
+    const auto last_index = data_storage_->lastItemIndex().toArchetypeIndex();
     if (entity_index == last_index) {
         if (!operation_helper_.destroy.empty()) {
             callDestructor(getElementView(entity_index));
@@ -134,12 +138,12 @@ void Archetype::clear() {
     }
 
     for (const auto& info : operation_helper_.destroy) {
-        for (auto i = ComponentStorageIndex::make(0); i < data_storage_.lastItemIndex().next(); ++i) {
-            auto component_ptr = data_storage_.getData(info.component_index, i);
+        for (auto i = ComponentStorageIndex::make(0); i < data_storage_->lastItemIndex().next(); ++i) {
+            auto component_ptr = data_storage_->getData(info.component_index, i);
             info.destructor(component_ptr);
         }
     }
 
     entities_.clear();
-    data_storage_.clear(false);
+    data_storage_->clear(false);
 }
