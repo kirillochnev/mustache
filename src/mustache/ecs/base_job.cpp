@@ -85,6 +85,8 @@ void BaseJob::run(World& world, JobRunMode mode) {
     const auto entities_count = applyFilter(world);
     const auto task_count = (mode == JobRunMode::kParallel) ? std::max(1u, taskCount(world, entities_count)) : 1u;
     if (task_count > 0u) {
+        world.incrementVersion();
+
         onJobBegin(world, TasksCount::make(task_count), JobSize::make(entities_count), mode);
         if (mode == JobRunMode::kCurrentThread) {
             runCurrentThread(world);
@@ -112,12 +114,7 @@ uint32_t BaseJob::applyFilter(World& world) noexcept {
         last_update_version_ = cur_world_version;
     }
 
-    const bool run_job = filter_result_.total_entity_count > 0u;
-    if (run_job) {
-        world.incrementVersion();
-    }
-
-    return run_job;
+    return filter_result_.total_entity_count;
 }
 
 void BaseJob::onJobBegin(World&, TasksCount, JobSize, JobRunMode) noexcept {

@@ -56,7 +56,7 @@ namespace mustache {
         void allocateChunk();
         void freeChunk(ChunkPtr chunk) noexcept;
 
-        MemoryManager* memory_manager_;
+        MemoryManager* memory_manager_ = nullptr;
         ArrayWrapper<ComponentDataGetter, ComponentIndex, true> component_getter_info_; // ComponentIndex -> {offset, size}
         uint32_t size_{0u};
         ChunkCapacity chunk_capacity_;
