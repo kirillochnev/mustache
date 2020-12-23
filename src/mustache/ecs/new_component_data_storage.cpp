@@ -23,15 +23,6 @@ NewComponentDataStorage::NewComponentDataStorage(const ComponentIdMask& mask, Me
                    mask.toString().c_str(), chunkCapacity().toInt());
 }
 
-
-void NewComponentDataStorage::incSize() noexcept {
-    ++size_;
-}
-
-void NewComponentDataStorage::decrSize() noexcept {
-    --size_;
-}
-
 void NewComponentDataStorage::clear(bool free_chunks) {
     size_ = 0;
     if (free_chunks) {
@@ -49,7 +40,23 @@ void NewComponentDataStorage::reserve(size_t new_capacity) {
         allocateBlock();
     }
 }
+//
+//NewComponentDataStorage::ElementView NewComponentDataStorage::getIterator(ComponentStorageIndex index) const noexcept {
+//    return ElementView {this, index};
+//}
 
-NewComponentDataStorage::ElementView NewComponentDataStorage::getIterator(ComponentStorageIndex index) const noexcept {
-    return ElementView {this, index};
+ComponentStorageIndex NewComponentDataStorage::pushBack() {
+    const auto cur_size = size();
+    const auto new_size = cur_size + 1;
+    reserve(new_size);
+    ComponentStorageIndex index = ComponentStorageIndex::make(cur_size);
+    incSize();
+    return index;
+}
+
+void NewComponentDataStorage::allocateBlock() {
+    for (auto& component : components_) {
+        component.allocate();
+    }
+    capacity_ += kComponentBlockSize;
 }
