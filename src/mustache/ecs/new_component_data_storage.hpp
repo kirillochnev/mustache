@@ -25,7 +25,7 @@ namespace mustache {
 
         template<FunctionSafety _Safety = FunctionSafety::kDefault>
         MUSTACHE_INLINE void* getData(ComponentIndex component_index, ComponentStorageIndex index) const noexcept;
-        ElementView getElementView(ComponentStorageIndex index) const noexcept;
+        ElementView getIterator(ComponentStorageIndex index) const noexcept;
 
         template<FunctionSafety _Safety = FunctionSafety::kDefault>
         MUSTACHE_INLINE ComponentStorageIndex pushBack();
@@ -131,7 +131,7 @@ namespace mustache {
             return global_index_;
         }
 
-        [[nodiscard]] uint32_t elementArraySize() const noexcept {
+        [[nodiscard]] uint32_t distToChunkEnd() const noexcept {
             const auto diff = [](const auto a, const auto b) noexcept{
                 return b > a ? b - a : 0;
             };

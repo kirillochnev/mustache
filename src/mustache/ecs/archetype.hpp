@@ -5,6 +5,8 @@
 #include <mustache/ecs/job_arg_parcer.hpp>
 #include <mustache/ecs/archetype_operation_helper.hpp>
 #include <mustache/ecs/base_component_data_storage.hpp>
+#include <mustache/ecs/new_component_data_storage.hpp>
+
 #include <mustache/ecs/component_factory.hpp>
 #include <mustache/ecs/entity_group.hpp>
 #include <mustache/utils/uncopiable.hpp>
@@ -20,11 +22,12 @@ namespace mustache {
     class Archetype;
 
     // NOTE: element view does not update component versions
-    struct ElementView : public DataStorageIterator {
-        using DataStorageIterator::DataStorageIterator;
+struct ElementView : public NewComponentDataStorage::ElementView {
+    using Super = NewComponentDataStorage::ElementView;
+        using Super::Super;
 
-        ElementView(const DataStorageIterator& view, const Archetype& archetype):
-                DataStorageIterator{view},
+        ElementView(const Super& view, const Archetype& archetype):
+                Super{view},
                 archetype_{&archetype} {
 
         }
@@ -316,7 +319,7 @@ namespace mustache {
         World& world_;
         const ComponentIdMask mask_;
         ArchetypeOperationHelper operation_helper_;
-        std::unique_ptr<BaseComponentDataStorage> data_storage_;
+        std::unique_ptr<NewComponentDataStorage> data_storage_;
         ArrayWrapper<Entity, ArchetypeEntityIndex, true> entities_;
         const uint32_t components_count_;
         const uint32_t chunk_size_ = 1024u;

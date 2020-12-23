@@ -50,6 +50,6 @@ void NewComponentDataStorage::reserve(size_t new_capacity) {
     }
 }
 
-NewComponentDataStorage::ElementView NewComponentDataStorage::getElementView(ComponentStorageIndex index) const noexcept {
+NewComponentDataStorage::ElementView NewComponentDataStorage::getIterator(ComponentStorageIndex index) const noexcept {
     return ElementView {this, index};
 }

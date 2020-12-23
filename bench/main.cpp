@@ -266,10 +266,10 @@ int main() {
 //    create1mBuilder();
 //    createEmptyAndAssign();
 
-//    iterate500k();
+    iterate500k();
 //    bench_events();
 
 //    POC();
-    storeLoad();
+//    storeLoad();
     return 0;
 }
