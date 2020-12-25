@@ -13,7 +13,7 @@ Archetype::Archetype(World& world, ArchetypeIndex id, const ComponentIdMask& mas
         world_{world},
         mask_{mask},
         operation_helper_{world.memoryManager(), mask},
-        data_storage_{std::make_unique<NewComponentDataStorage>(mask, world_.memoryManager())},
+        data_storage_{std::make_unique<DefaultComponentDataStorage>(mask, world_.memoryManager())},
         entities_{world.memoryManager()},
         components_count_{mask.componentsCount()},
         chunk_size_{chunk_size},
