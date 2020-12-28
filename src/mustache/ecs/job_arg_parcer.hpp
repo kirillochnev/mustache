@@ -103,51 +103,137 @@ namespace mustache {
     template <typename T>
     class JobFunctionInfo {
     public:
+        struct ArgInfo {
+           enum ArgType: uint32_t {
+               kComponent = 0,
+               kSharedComponent = 1,
+               kEntity = 2,
+               kInvocationIndex = 3
+           };
+           ArgType type;
+           uint32_t position;
+            constexpr ArgInfo() = default;
+            constexpr ArgInfo(ArgType t, uint32_t pos):
+                type {t},
+                position {pos} {
+            }
+        };
+        template<size_t _I>
+        static constexpr ArgInfo getArgInfo() noexcept {
+            using ArgType = typename utils::function_traits<T>::template arg<_I>::type;
+            if constexpr (IsArgEntity<ArgType>::value)  {
+                return ArgInfo(ArgInfo::kEntity, _I);
+            }
+            if constexpr (IsArgJobInvocationIndex<ArgType>::value) {
+                return ArgInfo(ArgInfo::kInvocationIndex, _I);
+            }
+            if constexpr (isComponentShared<ArgType>()) {
+                return ArgInfo(ArgInfo::kSharedComponent, _I);
+            }
+            return ArgInfo(ArgInfo::kComponent, _I);
+        }
+
+        template<size_t... _I>
+        static constexpr std::array<ArgInfo, sizeof...(_I)> buildArgsInfo(const std::index_sequence<_I...>&) {
+            return std::array<ArgInfo, sizeof...(_I)> {
+                getArgInfo<_I>()...
+            };
+        }
         using FunctionType = T;
         using FC = utils::function_traits<T>;
         static constexpr size_t args_count = FC::arity;
-        static constexpr auto index_sequence = std::make_index_sequence<args_count>();
+        static constexpr auto args_indexes = std::make_index_sequence<args_count>();
+        static constexpr auto args_info = buildArgsInfo(args_indexes);
     private:
         template<size_t... _I>
         static constexpr auto buildPositionsOf(const std::index_sequence<_I...>&) {
             return PositionOf<typename FC::template arg<_I>::type...>{};
         }
     public:
-        using Position = decltype(buildPositionsOf(index_sequence));
+        using Position = decltype(buildPositionsOf(args_indexes));
 
-        static constexpr size_t componentsCount() noexcept {
-            size_t result = args_count;
-            if constexpr (Position::entity >= 0) {
-                --result;
-            }
-            if constexpr (Position::job_invocation >= 0) {
-                --result;
-            }
-            if constexpr (Position::array_size >= 0) {
-                --result;
-            }
+        template<size_t... _I>
+        static constexpr size_t sharedComponentsCount(const std::index_sequence<_I...>&) noexcept {
+            const auto count_of = [](bool v) {
+                return v ? 1 : 0;
+            };
+            return (count_of(isComponentShared<typename FC::template arg<_I>::type>()) + ... + 0);
+        }
 
+        static constexpr size_t sharedComponentsCount() noexcept {
+            return sharedComponentsCount(args_indexes);
+        }
+
+        static constexpr size_t anyComponentsCount() noexcept {
+            size_t result = 0;
+            for (const auto& info : args_info) {
+                if (info.type == ArgInfo::kSharedComponent || info.type == ArgInfo::kComponent) {
+                    ++result;
+                }
+            }
             return result;
         }
 
+        static constexpr size_t componentsCount() noexcept {
+            return anyComponentsCount() - sharedComponentsCount();
+        }
+
+        static constexpr size_t any_components_count = anyComponentsCount();
         static constexpr size_t components_count = componentsCount();
+        static constexpr size_t shared_components_count = sharedComponentsCount();
 
 
         static constexpr size_t componentPosition(size_t component_index) noexcept {
-            if (component_index >= static_cast<size_t>(Position::entity)) {
-                ++component_index;
+            uint32_t result = 0u;
+            for (const auto& info : args_info) {
+                if (component_index < 1) {
+                    break;
+                }
+                if (info.type == ArgInfo::kSharedComponent || info.type == ArgInfo::kComponent) {
+                    --component_index;
+                }
+                ++result;
             }
-            if (component_index >= static_cast<size_t>(Position::job_invocation)) {
-                ++component_index;
+            return result;
+        }
+
+        static constexpr size_t uniqueComponentPosition(size_t component_index) noexcept {
+            uint32_t result = 0u;
+            for (const auto& info : args_info) {
+                if (component_index < 1) {
+                    break;
+                }
+                if (info.type == ArgInfo::kComponent) {
+                    --component_index;
+                }
+                ++result;
             }
-            if (component_index >= static_cast<size_t>(Position::array_size)) {
-                ++component_index;
+            return result;
+        }
+        static constexpr size_t sharedComponentPosition(size_t component_index) noexcept {
+            uint32_t result = 0u;
+            for (const auto& info : args_info) {
+                if (component_index < 1) {
+                    break;
+                }
+                if (info.type == ArgInfo::kSharedComponent) {
+                    --component_index;
+                }
+                ++result;
             }
-            return component_index;
+            return result;
         }
 
         template<size_t... _I>
         static constexpr auto buildComponentIndexes(const std::index_sequence<_I...>&) {
+            return std::index_sequence<componentPosition(_I)...>{};
+        }
+        template<size_t... _I>
+        static constexpr auto buildSharedComponentIndexes(const std::index_sequence<_I...>&) {
+            return std::index_sequence<componentPosition(_I)...>{};
+        }
+        template<size_t... _I>
+        static constexpr auto buildUniqueComponentIndexes(const std::index_sequence<_I...>&) {
             return std::index_sequence<componentPosition(_I)...>{};
         }
 
@@ -158,12 +244,22 @@ namespace mustache {
             };
             return ReturnType{}; // tuple type may be non-default constructable
         }
-        static constexpr auto components_positions = buildComponentIndexes(std::make_index_sequence<components_count>());
-        using ArgsTypeTuple = typename decltype(buildArgsTuple(index_sequence))::type;
+        static constexpr auto any_components_indexes =
+                buildComponentIndexes(std::make_index_sequence<any_components_count>());
+        static constexpr auto shared_components_indexes =
+                buildSharedComponentIndexes(std::make_index_sequence<shared_components_count>());
+        static constexpr auto components_positions =
+                buildComponentIndexes(std::make_index_sequence<components_count>());
+        static constexpr auto unique_components_positions =
+                buildUniqueComponentIndexes(std::make_index_sequence<components_count>());
+
+        using ArgsTypeTuple = typename decltype(buildArgsTuple(args_indexes))::type;
         using ComponentsTypeTuple = typename decltype(buildArgsTuple(components_positions))::type;
+        using UniqueComponentsTypeTuple = typename decltype(buildArgsTuple(unique_components_positions))::type;
+        using SharedComponentsTypeTuple = typename decltype(buildArgsTuple(shared_components_indexes))::type;
 
         template<size_t I>
-        struct Component {
+        struct AnyComponentType {
             using type = typename std::tuple_element<I, ComponentsTypeTuple>::type;
         };
     };
@@ -198,7 +294,7 @@ namespace mustache {
 
         template<size_t... _I>
         static ComponentIdMask componentMask(std::index_sequence<_I...>&&) noexcept {
-            return ComponentFactory::makeMask<typename FunctionInfo::template Component<_I> ::type...>();
+            return ComponentFactory::makeMask<typename FunctionInfo::template AnyComponentType<_I> ::type...>();
         }
         static ComponentIdMask componentMask() noexcept {
             return componentMask(std::make_index_sequence<FunctionInfo::components_count>());
@@ -215,7 +311,7 @@ namespace mustache {
         static ComponentIdMask updateMask(std::index_sequence<_I...>&&) noexcept {
             ComponentIdMask result;
             std::array array {
-                componentInfo<typename FunctionInfo::template Component<_I> ::type>()...
+                componentInfo<typename FunctionInfo::template AnyComponentType<_I> ::type>()...
             };
             for (const auto& pair : array) {
                 result.set(pair.first, pair.second);
@@ -245,7 +341,7 @@ namespace mustache {
         };
         if constexpr (sizeof...(_I) > 0) {
             const std::array array = {std::make_pair(info::componentPosition(_I),
-                                                     type_name<typename info::template Component<_I>::type>())...};
+                                      type_name<typename info::template AnyComponentType<_I>::type>())...};
             show_component(array);
         }
     }

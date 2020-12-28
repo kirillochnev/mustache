@@ -325,6 +325,7 @@ struct ElementView : public DataStorageIterator {
         std::vector<WorldVersion, Allocator<WorldVersion> > chunk_versions_; // per chunk component version
         mustache::ArrayWrapper<WorldVersion, ComponentIndex, true> global_versions_; // global component version
 
+//        mustache::ArrayWrapper<SharedComponentIndex, std::shared_ptr<void>, true> shared_components_;
         const ArchetypeIndex id_;
     };
 

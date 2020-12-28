@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdexcept>
+#include <mustache/ecs/shared_component.hpp>
 
 namespace mustache {
 
@@ -226,6 +227,13 @@ namespace mustache {
         constexpr static bool is_component_required = false;
         constexpr static bool is_component_mutable = false;
     };
+
+
+    template <typename T>
+    constexpr bool isComponentShared() noexcept {
+        using PureType = typename ComponentType<T>::type;
+        return std::is_base_of<SharedComponentTag, PureType>::value;
+    }
 
     template <typename T>
     struct IsComponentRequired {

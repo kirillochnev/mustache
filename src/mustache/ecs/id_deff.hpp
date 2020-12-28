@@ -66,6 +66,8 @@ namespace mustache {
     /// index(position) of component in archetype
     struct ComponentIndex : public IndexLike<uint32_t, ComponentIndex>{};
 
+    struct SharedComponentIndex : public IndexLike<uint32_t, SharedComponentIndex>{};
+
     // size of component array for Job::forEachArray function, this allows to use int-types as components
     struct ComponentArraySize : public IndexLike<uint32_t, ComponentArraySize>{};
 
