@@ -77,7 +77,7 @@ namespace mustache {
 
         template<size_t _I, typename _ViewType>
         MUSTACHE_INLINE auto getComponentHandler(const _ViewType& view, ComponentIndex index) noexcept {
-            using RequiredType = typename Info::FunctionInfo::template AnyComponentType<_I>::type;
+            using RequiredType = typename Info::FunctionInfo::template UniqueComponentType<_I>::type;
             using Component = typename ComponentType<RequiredType>::type;
             if constexpr (IsComponentRequired<RequiredType>::value) {
                 auto ptr = view.template getData<FunctionSafety::kUnsafe>(index);
@@ -100,7 +100,7 @@ namespace mustache {
                 auto& archetype = *info.archetype();
                 static const std::array<ComponentId, sizeof...(_I)> ids {
                         ComponentFactory::registerComponent<typename ComponentType<typename Info::FunctionInfo::
-                        template AnyComponentType<_I>::type>::type>()...
+                        template UniqueComponentType<_I>::type>::type>()...
                 };
                 std::array<ComponentIndex, sizeof...(_I)> component_indexes {
                         archetype.getComponentIndex(ids[_I])...

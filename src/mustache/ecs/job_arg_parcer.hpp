@@ -248,19 +248,25 @@ namespace mustache {
                 buildComponentIndexes(std::make_index_sequence<any_components_count>());
         static constexpr auto shared_components_indexes =
                 buildSharedComponentIndexes(std::make_index_sequence<shared_components_count>());
-        static constexpr auto components_positions =
-                buildComponentIndexes(std::make_index_sequence<components_count>());
-        static constexpr auto unique_components_positions =
+        static constexpr auto unique_components_indexes =
                 buildUniqueComponentIndexes(std::make_index_sequence<components_count>());
 
         using ArgsTypeTuple = typename decltype(buildArgsTuple(args_indexes))::type;
-        using ComponentsTypeTuple = typename decltype(buildArgsTuple(components_positions))::type;
-        using UniqueComponentsTypeTuple = typename decltype(buildArgsTuple(unique_components_positions))::type;
+        using AnyComponentsTypeTuple = typename decltype(buildArgsTuple(any_components_indexes))::type;
+        using UniqueComponentsTypeTuple = typename decltype(buildArgsTuple(unique_components_indexes))::type;
         using SharedComponentsTypeTuple = typename decltype(buildArgsTuple(shared_components_indexes))::type;
 
         template<size_t I>
         struct AnyComponentType {
-            using type = typename std::tuple_element<I, ComponentsTypeTuple>::type;
+            using type = typename std::tuple_element<I, AnyComponentsTypeTuple>::type;
+        };
+        template<size_t I>
+        struct UniqueComponentType {
+            using type = typename std::tuple_element<I, UniqueComponentsTypeTuple>::type;
+        };
+        template<size_t I>
+        struct SharedComponentType {
+            using type = typename std::tuple_element<I, SharedComponentsTypeTuple>::type;
         };
     };
 
@@ -293,11 +299,11 @@ namespace mustache {
         static constexpr bool has_for_each_array = testForEachArray<T>(nullptr);
 
         template<size_t... _I>
-        static ComponentIdMask componentMask(std::index_sequence<_I...>&&) noexcept {
-            return ComponentFactory::makeMask<typename FunctionInfo::template AnyComponentType<_I> ::type...>();
+        static ComponentIdMask componentMask(const std::index_sequence<_I...>&) noexcept {
+            return ComponentFactory::makeMask<typename FunctionInfo::template UniqueComponentType<_I> ::type...>();
         }
         static ComponentIdMask componentMask() noexcept {
-            return componentMask(std::make_index_sequence<FunctionInfo::components_count>());
+            return componentMask(FunctionInfo::unique_components_indexes);
         }
 
         template<typename _C>
@@ -311,7 +317,7 @@ namespace mustache {
         static ComponentIdMask updateMask(std::index_sequence<_I...>&&) noexcept {
             ComponentIdMask result;
             std::array array {
-                componentInfo<typename FunctionInfo::template AnyComponentType<_I> ::type>()...
+                componentInfo<typename FunctionInfo::template UniqueComponentType<_I> ::type>()...
             };
             for (const auto& pair : array) {
                 result.set(pair.first, pair.second);
@@ -341,7 +347,7 @@ namespace mustache {
         };
         if constexpr (sizeof...(_I) > 0) {
             const std::array array = {std::make_pair(info::componentPosition(_I),
-                                      type_name<typename info::template AnyComponentType<_I>::type>())...};
+                                      type_name<typename info::template UniqueComponentType<_I>::type>())...};
             show_component(array);
         }
     }
