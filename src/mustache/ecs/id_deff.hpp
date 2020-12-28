@@ -13,6 +13,7 @@ namespace mustache {
     struct WorldVersion : public IndexLike<uint32_t, WorldVersion>{};
 
     struct ComponentId : public IndexLike<uint32_t, ComponentId>{};
+    struct SharedComponentId : public IndexLike<uint32_t, SharedComponentId>{};
 
     struct PerEntityJobTaskId : public IndexLike<uint32_t , PerEntityJobTaskId> {};
     struct PerEntityJobEntityIndexInTask : public IndexLike<uint32_t , PerEntityJobEntityIndexInTask> {};

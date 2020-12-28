@@ -33,23 +33,26 @@ namespace mustache {
         }
 
         MUSTACHE_INLINE void runCurrentThread(World& world) override {
-            static constexpr auto index_sequence = std::make_index_sequence<Info::FunctionInfo::components_count>();
+            static constexpr auto unique_components = std::make_index_sequence<Info::FunctionInfo::components_count>();
+            static constexpr auto shared_components = std::make_index_sequence<Info::FunctionInfo::shared_components_count>();
             auto& dispatcher = world.dispatcher();
             PerEntityJobTaskId task_id = PerEntityJobTaskId::make(0);
             const auto thread_id = dispatcher.currentThreadId();
             for (auto task : JobView::make(filter_result_, 1)) {
-                singleTask(task, task_id, thread_id, index_sequence);
+                singleTask(task, task_id, thread_id, unique_components, shared_components);
                 ++task_id;
             }
         }
 
         MUSTACHE_INLINE void runParallel(World& world, uint32_t task_count) override {
-            static constexpr auto index_sequence = std::make_index_sequence<Info::FunctionInfo::components_count>();
+            static constexpr auto unique_components = std::make_index_sequence<Info::FunctionInfo::components_count>();
+            static constexpr auto shared_components = std::make_index_sequence<Info::FunctionInfo::shared_components_count>();
+
             PerEntityJobTaskId task_id = PerEntityJobTaskId::make(0);
             auto& dispatcher = world.dispatcher();
             for (auto task : JobView::make(filter_result_, task_count)) {
                 dispatcher.addParallelTask([task, this, task_id](ThreadId thread_id) {
-                    singleTask(task, task_id, thread_id, index_sequence);
+                    singleTask(task, task_id, thread_id, unique_components, shared_components);
                 });
                 ++task_id;
             }
@@ -89,15 +92,18 @@ namespace mustache {
             }
         }
 
-        template<size_t... _I>
+        template<size_t... _I, size_t... _SI>
         MUSTACHE_INLINE void singleTask(TaskView task_view, PerEntityJobTaskId task_id, ThreadId thread_id,
-                const std::index_sequence<_I...>&) {
+                                        const std::index_sequence<_I...>&, const std::index_sequence<_SI...>&) {
             JobInvocationIndex invocation_index;
             invocation_index.task_index = task_id;
             invocation_index.entity_index_in_task = PerEntityJobEntityIndexInTask::make(0);
             invocation_index.thread_id = thread_id;
+            auto shared_components = std::make_tuple(
+                    static_cast<typename Info::FunctionInfo::template SharedComponentType<_SI>::type>(nullptr)...);
             for (const auto& info : task_view) {
                 auto& archetype = *info.archetype();
+                archetype.getSharedComponents(shared_components);
                 static const std::array<ComponentId, sizeof...(_I)> ids {
                         ComponentFactory::registerComponent<typename ComponentType<typename Info::FunctionInfo::
                         template UniqueComponentType<_I>::type>::type>()...
@@ -110,10 +116,12 @@ namespace mustache {
                     if constexpr (Info::FunctionInfo::Position::entity >= 0) {
                         forEachArrayGenerated(ComponentArraySize::make(array.arraySize()), invocation_index,
                                               RequiredComponent<Entity>(array.getEntity<FunctionSafety::kUnsafe>()),
-                                              getComponentHandler<_I>(array, component_indexes[_I])...);
+                                              getComponentHandler<_I>(array, component_indexes[_I])...,
+                                              SharedComponent{std::get<_SI>(shared_components)}...);
                     } else {
                         forEachArrayGenerated(ComponentArraySize::make(array.arraySize()), invocation_index,
-                                              getComponentHandler<_I>(array, component_indexes[_I])...);
+                                              getComponentHandler<_I>(array, component_indexes[_I])...,
+                                              SharedComponent{std::get<_SI>(shared_components)}...);
                     }
                 }
             }

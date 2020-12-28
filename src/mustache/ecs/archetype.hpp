@@ -21,7 +21,7 @@ namespace mustache {
     class Archetype;
 
     // NOTE: element view does not update component versions
-struct ElementView : public DataStorageIterator {
+    struct ElementView : public DataStorageIterator {
         using DataStorageIterator::DataStorageIterator;
 
         ElementView(const DataStorageIterator& view, const Archetype& archetype):
@@ -32,6 +32,10 @@ struct ElementView : public DataStorageIterator {
 
         template<FunctionSafety _Safety = FunctionSafety::kSafe>
         MUSTACHE_INLINE Entity* getEntity() const;
+
+
+        template<FunctionSafety _Safety = FunctionSafety::kSafe>
+        MUSTACHE_INLINE void* getSharedComponent(SharedComponentIndex index) const noexcept;
 
         const Archetype* archetype_ = nullptr;
     };
@@ -233,6 +237,20 @@ struct ElementView : public DataStorageIterator {
             return index_mask;
         }
 
+        template<FunctionSafety _Safety = FunctionSafety::kSafe>
+        [[nodiscard]] MUSTACHE_INLINE void* getSharedComponent(SharedComponentIndex index) const noexcept {
+            return nullptr; // TODO: impl me
+        }
+
+        template<typename T>
+        [[nodiscard]] MUSTACHE_INLINE SharedComponentIndex sharedComponentIndex() const noexcept {
+            return SharedComponentIndex::make(0); // TODO: impl me
+        }
+        template<typename... ARGS>
+        bool getSharedComponents(std::tuple<ARGS...>& out) {
+            out = std::make_tuple(static_cast<ARGS*>(getSharedComponent(sharedComponentIndex<ARGS>()))...);
+            return true;
+        }
     private:
         friend ElementView;
         friend EntityManager;
@@ -342,6 +360,12 @@ struct ElementView : public DataStorageIterator {
         }
         // TODO: remove const_cast
         return const_cast<Entity*>(archetype_->entities_.data()) + gi.toInt();
+    }
+
+
+    template<FunctionSafety _Safety>
+    MUSTACHE_INLINE void* ElementView::getSharedComponent(SharedComponentIndex index) const noexcept {
+        return archetype_->template getSharedComponent<_Safety>(index);
     }
 
 }

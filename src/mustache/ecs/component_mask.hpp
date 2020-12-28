@@ -108,10 +108,25 @@ namespace mustache {
 
     struct ComponentIdMask : public ComponentMask<ComponentId, 64> {
         ComponentIdMask(const ComponentMask<ComponentId, 64>& oth):
-            ComponentMask{oth} {
+                ComponentMask{oth} {
 
         }
         ComponentIdMask(ComponentMask<ComponentId, 64>&& oth):
+                ComponentMask{std::move(oth)} {
+
+        }
+
+        std::string toString() const noexcept;
+        using ComponentMask::ComponentMask;
+    };
+
+
+    struct SharedComponentIdMask : public ComponentMask<SharedComponentId, 64> {
+        SharedComponentIdMask(const ComponentMask<SharedComponentId, 64>& oth):
+                ComponentMask{oth} {
+
+        }
+        SharedComponentIdMask(ComponentMask<SharedComponentId, 64>&& oth):
                 ComponentMask{std::move(oth)} {
 
         }

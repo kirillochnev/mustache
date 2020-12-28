@@ -270,7 +270,6 @@ namespace mustache {
         };
     };
 
-
     template<typename T>
     struct JobInfo {
     private:

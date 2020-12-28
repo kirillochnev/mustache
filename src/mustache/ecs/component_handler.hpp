@@ -24,15 +24,19 @@ namespace mustache {
 
         }
         ComponentHandler operator++(int) {
-            ComponentHandler cpy = *this;
-            if constexpr (_IsRequired) {
-                ++ptr_;
+            if constexpr (std::is_base_of<SharedComponentTag, T>::value) {
+                return *this;
             } else {
-                if (ptr_ != nullptr) {
+                ComponentHandler cpy = *this;
+                if constexpr (_IsRequired) {
                     ++ptr_;
+                } else {
+                    if (ptr_ != nullptr) {
+                        ++ptr_;
+                    }
                 }
+                return cpy;
             }
-            return cpy;
         }
         operator bool() const noexcept {
             return ptr_ != nullptr;
@@ -95,6 +99,10 @@ namespace mustache {
 
     template<typename T>
     using OptionalComponent = ComponentHandler<T, false>;
+
+
+    template<typename T>
+    using SharedComponent = ComponentHandler<T, true>;
 
     template<typename T>
     struct IsComponentMutable {
