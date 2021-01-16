@@ -58,7 +58,7 @@ namespace mustache {
         template<FunctionSafety _Safety = FunctionSafety::kSafe>
         MUSTACHE_INLINE void destroyNow(Entity entity);
 
-        Archetype& getArchetype(const ComponentIdMask&);
+        Archetype& getArchetype(const ComponentIdMask&, const SharedComponentsInfo& shared_component_mask);
 
         template<typename... ARGS>
         MUSTACHE_INLINE Archetype& getArchetype();
@@ -144,6 +144,7 @@ namespace mustache {
 
         void setDefaultArchetypeVersionChunkSize(uint32_t value) noexcept;
     private:
+
         template<typename Component, typename TupleType, size_t... _I>
         void initComponent(Archetype& archetype, ArchetypeEntityIndex entity_index,
                            TupleType& tuple, std::index_sequence<_I...>&&) {
@@ -158,7 +159,7 @@ namespace mustache {
         bool initComponent(Archetype& archetype, ArchetypeEntityIndex entity_index, Arg&& arg);
 
         template<typename TupleType, size_t... _I>
-        void initComponents(Entity entity, TupleType& tuple, std::index_sequence<_I...>&&);
+        void initComponents(Entity entity, TupleType& tuple, const SharedComponentsInfo&, std::index_sequence<_I...>&&);
 
         [[nodiscard]] WorldVersion worldVersion() const noexcept {
             return world_version_;
@@ -189,7 +190,10 @@ namespace mustache {
         };
 
         World& world_;
-        std::map<ComponentIdMask , Archetype* > mask_to_arch_;
+
+        ArrayWrapper<SharedComponentsData, SharedComponentId, false> shared_components_;
+        using ArchetypeMap = std::map<SharedComponentsData, Archetype*>;
+        std::map<ArchetypeComponents, ArchetypeMap> mask_to_arch_;
         std::map<ComponentId, ComponentIdMask > dependencies_;
         EntityId next_slot_ = EntityId::make(0);
 
@@ -279,7 +283,7 @@ namespace mustache {
     }
     template<typename... ARGS>
     Archetype& EntityManager::getArchetype() {
-        return getArchetype(ComponentFactory::makeMask<ARGS...>());
+        return getArchetype(ComponentFactory::makeMask<ARGS...>(), SharedComponentsInfo{});
     }
 
     size_t EntityManager::getArchetypesCount() const noexcept {
@@ -343,7 +347,7 @@ namespace mustache {
             }
         }
         mask.set(component_id, false);
-        auto& archetype = getArchetype(mask);
+        auto& archetype = getArchetype(mask, prev_archetype.sharedComponentInfo());
         if (&archetype == &prev_archetype) {
             return false;
         }
@@ -363,7 +367,7 @@ namespace mustache {
         auto& prev_arch = *archetypes_[location.archetype];
         ComponentIdMask mask = prev_arch.mask_;
         mask.add(component_id);
-        auto& arch = getArchetype(mask);
+        auto& arch = getArchetype(mask, prev_arch.sharedComponentInfo());
         const auto prev_index = location.index;
         const auto skip_init_mask = use_custom_constructor ? ComponentIdMask{component_id} : ComponentIdMask{};
         arch.externalMove(e, prev_arch, prev_index, skip_init_mask);
@@ -410,9 +414,10 @@ namespace mustache {
     }
 
     template<typename TupleType, size_t... _I>
-    void EntityManager::initComponents(Entity entity, TupleType& tuple, std::index_sequence<_I...>&&) {
+    void EntityManager::initComponents(Entity entity, TupleType& tuple,
+                                       const SharedComponentsInfo& info, std::index_sequence<_I...>&&) {
         const auto mask = ComponentFactory::makeMask<typename std::tuple_element<_I, TupleType>::type::Component...>();
-        Archetype& archetype = getArchetype(mask);
+        Archetype& archetype = getArchetype(mask, info);
         const auto index = archetype.insert(entity, mask);
         auto unused_init_list = {initComponent(archetype, index, std::get<_I>(tuple))...};
         (void ) unused_init_list;
@@ -431,7 +436,8 @@ namespace mustache {
     Entity EntityManager::create(EntityBuilder<TupleType>& args_pack) {
         Entity entity = create();
         constexpr size_t num_components = std::tuple_size<TupleType>();
-        initComponents<TupleType>(entity, args_pack.getArgs(), std::make_index_sequence<num_components>());
+        const SharedComponentsInfo shared; // TODO: fill me
+        initComponents<TupleType>(entity, args_pack.getArgs(), shared, std::make_index_sequence<num_components>());
         return entity;
     }
 }

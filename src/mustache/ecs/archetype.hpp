@@ -45,13 +45,18 @@ namespace mustache {
         WorldVersion version;
     };
 
+    struct ArchetypeComponents {
+        ComponentIdMask unique;
+        SharedComponentIdMask shared;
+    };
     /**
      * Stores Entities with same component set
      * NOTE: It is has no information about entity manager, so Archetype's methods don't effects entity location.
      */
     class Archetype : public Uncopiable {
     public:
-        Archetype(World& world, ArchetypeIndex id, const ComponentIdMask& mask, uint32_t chunk_size);
+        Archetype(World& world, ArchetypeIndex id, const ComponentIdMask& mask,
+                  const SharedComponentsInfo& shared_components_info, uint32_t chunk_size);
         ~Archetype();
 
         template<FunctionSafety _Safety = FunctionSafety::kDefault>
@@ -86,12 +91,34 @@ namespace mustache {
             return ChunkCapacity::make(chunk_size_);
         }
 
-        bool isMatch(const ComponentIdMask& mask) const noexcept {
+        [[nodiscard]] bool isMatch(const ComponentIdMask& mask) const noexcept {
             return mask_.isMatch(mask);
+        }
+
+        [[nodiscard]] bool isMatch(const SharedComponentIdMask& mask) const noexcept {
+            return shared_components_info_.ids.isMatch(mask);
+        }
+
+        [[nodiscard]] SharedComponentTag* getSharedComponent(SharedComponentId id) const noexcept {
+            uint32_t i = 0u;
+            SharedComponentTag* result = nullptr;
+            shared_components_info_.ids.forEachItem([this, id, &i, &result](SharedComponentId current_id){
+                if (current_id == id) {
+                    result = shared_components_info_.data[i].get();
+                    return false;
+                }
+                ++i;
+                return true;
+            });
+            return result;
         }
 
         bool hasComponent(ComponentId component_id) const noexcept {
             return mask_.has(component_id);
+        }
+
+        bool hasComponent(SharedComponentId component_id) const noexcept {
+            return shared_components_info_.ids.has(component_id);
         }
 
         template<typename T>
@@ -251,6 +278,10 @@ namespace mustache {
             out = std::make_tuple(static_cast<ARGS*>(getSharedComponent(sharedComponentIndex<ARGS>()))...);
             return true;
         }
+
+        [[nodiscard]] MUSTACHE_INLINE const SharedComponentsInfo& sharedComponentInfo() const noexcept {
+            return shared_components_info_;
+        }
     private:
         friend ElementView;
         friend EntityManager;
@@ -334,6 +365,7 @@ namespace mustache {
 
         World& world_;
         const ComponentIdMask mask_;
+        const SharedComponentsInfo shared_components_info_;
         ArchetypeOperationHelper operation_helper_;
         std::unique_ptr<BaseComponentDataStorage> data_storage_;
         ArrayWrapper<Entity, ArchetypeEntityIndex, true> entities_;

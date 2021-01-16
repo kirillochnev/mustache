@@ -3,6 +3,12 @@
 
 using namespace mustache;
 
+namespace mustache {
+    bool operator<(const ArchetypeComponents& lhs, const ArchetypeComponents& rhs) noexcept {
+        return lhs.unique < rhs.unique;
+    }
+}
+
 EntityManager::EntityManager(World& world):
         world_{world},
         entities_{world.memoryManager()},
@@ -14,9 +20,13 @@ EntityManager::EntityManager(World& world):
 
 }
 
-Archetype& EntityManager::getArchetype(const ComponentIdMask& mask) {
+Archetype& EntityManager::getArchetype(const ComponentIdMask& mask, const SharedComponentsInfo& shared) {
     const ComponentIdMask arch_mask = mask.merge(getExtraComponents(mask));
-    auto& result = mask_to_arch_[arch_mask];
+    ArchetypeComponents archetype_components;
+    archetype_components.unique = arch_mask;
+    archetype_components.shared = shared.ids;
+    auto& map = mask_to_arch_[archetype_components];
+    auto& result = map[shared.data];
     if(result) {
         return *result;
     }
@@ -52,7 +62,7 @@ Archetype& EntityManager::getArchetype(const ComponentIdMask& mask) {
         chunk_size = max;
     }
 
-    result = new Archetype(world_, archetypes_.back_index().next(), arch_mask, chunk_size);
+    result = new Archetype(world_, archetypes_.back_index().next(), arch_mask, shared, chunk_size);
     archetypes_.emplace_back(result, deleter);
     return *result;
 }

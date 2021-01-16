@@ -9,9 +9,11 @@
 
 using namespace mustache;
 
-Archetype::Archetype(World& world, ArchetypeIndex id, const ComponentIdMask& mask, uint32_t chunk_size):
+Archetype::Archetype(World& world, ArchetypeIndex id, const ComponentIdMask& mask,
+                     const SharedComponentsInfo& shared_components_info, uint32_t chunk_size):
         world_{world},
         mask_{mask},
+        shared_components_info_ {shared_components_info},
         operation_helper_{world.memoryManager(), mask},
         data_storage_{std::make_unique<DefaultComponentDataStorage>(mask, world_.memoryManager())},
         entities_{world.memoryManager()},

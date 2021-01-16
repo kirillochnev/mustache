@@ -4,6 +4,7 @@
 
 #include <bitset>
 #include <vector>
+#include <memory>
 #include <cstdint>
 #include <initializer_list>
 
@@ -120,7 +121,6 @@ namespace mustache {
         using ComponentMask::ComponentMask;
     };
 
-
     struct SharedComponentIdMask : public ComponentMask<SharedComponentId, 64> {
         SharedComponentIdMask(const ComponentMask<SharedComponentId, 64>& oth):
                 ComponentMask{oth} {
@@ -133,6 +133,15 @@ namespace mustache {
 
         std::string toString() const noexcept;
         using ComponentMask::ComponentMask;
+    };
+
+    struct SharedComponentTag;
+
+    using SharedComponentsData = std::vector<std::shared_ptr<SharedComponentTag> >;
+
+    struct SharedComponentsInfo {
+        SharedComponentIdMask ids;
+        SharedComponentsData data;
     };
 
     struct ComponentIndexMask : public ComponentMask<ComponentIndex, 64> {
