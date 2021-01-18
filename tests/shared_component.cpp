@@ -102,4 +102,31 @@ TEST(SharedComponent, AssignShared) {
     entities.forEach(job_function);
     ASSERT_EQ(count, 2);
     ASSERT_TRUE(is_ok);
+
+    auto e2 = entities.create();
+    SharedComponent0 value;
+    value.bad_babe = 0;
+    auto& ref2 = entities.assign<SharedComponent0>(e2, value);
+
+    ASSERT_EQ(&ref2, entities.getComponent<SharedComponent0>(e2));
+    ASSERT_EQ(ptr.dead_beef, 0xDEADBEEF);
+    ASSERT_EQ(ptr.boobs, 0xB00B5);
+    ASSERT_EQ(ptr.bad_babe, 0xBADBABE);
+    ASSERT_EQ(entities.getComponent<Component0>(e)->src, "Component0: hello world");
+
+    ASSERT_EQ(ptr1.dead_beef, 0xDEADBEEF);
+    ASSERT_EQ(ptr1.boobs, 0xB00B5);
+    ASSERT_EQ(ptr1.bad_babe, 0xBADBABE);
+    ASSERT_EQ(entities.getComponent<Component0>(e1)->src, "Component0: hello world");
+    ASSERT_EQ(entities.getComponent<Component1>(e1)->src, "Component1: hello world");
+
+    std::map<const SharedComponent0*, uint32_t> counts;
+    count = 0;
+    entities.forEach([&counts, &count](const SharedComponent0& v){
+        ++counts[&v];
+        ++count;
+    });
+    ASSERT_EQ(count, 3);
+    ASSERT_EQ(counts[&ptr], 2);
+    ASSERT_EQ(counts[&ref2], 1);
 }
