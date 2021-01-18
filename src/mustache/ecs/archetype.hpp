@@ -99,20 +99,6 @@ namespace mustache {
             return shared_components_info_.ids.isMatch(mask);
         }
 
-        [[nodiscard]] SharedComponentTag* getSharedComponent(SharedComponentId id) const noexcept {
-            uint32_t i = 0u;
-            SharedComponentTag* result = nullptr;
-            shared_components_info_.ids.forEachItem([this, id, &i, &result](SharedComponentId current_id){
-                if (current_id == id) {
-                    result = shared_components_info_.data[i].get();
-                    return false;
-                }
-                ++i;
-                return true;
-            });
-            return result;
-        }
-
         bool hasComponent(ComponentId component_id) const noexcept {
             return mask_.has(component_id);
         }
@@ -266,16 +252,36 @@ namespace mustache {
 
         template<FunctionSafety _Safety = FunctionSafety::kSafe>
         [[nodiscard]] MUSTACHE_INLINE void* getSharedComponent(SharedComponentIndex index) const noexcept {
-            return nullptr; // TODO: impl me
+            if constexpr (isSafe(_Safety)) {
+                if (!index.isValid() || shared_components_info_.data.size() < index.toInt()) {
+                    return nullptr;
+                }
+                return shared_components_info_.data[index.template toInt()].get();
+            }
+            return nullptr;
         }
 
+        [[nodiscard]] MUSTACHE_INLINE SharedComponentIndex sharedComponentIndex(SharedComponentId id) const noexcept {
+            uint32_t i = 0u;
+            SharedComponentIndex result = SharedComponentIndex::null();
+            shared_components_info_.ids.forEachItem([this, id, &i, &result](SharedComponentId current_id){
+                if (current_id == id) {
+                    result = SharedComponentIndex::make(i);
+                    return false;
+                }
+                ++i;
+                return true;
+            });
+            return result;
+        }
         template<typename T>
         [[nodiscard]] MUSTACHE_INLINE SharedComponentIndex sharedComponentIndex() const noexcept {
-            return SharedComponentIndex::make(0); // TODO: impl me
+            using Component = typename ComponentType<T>::type;
+            return sharedComponentIndex(ComponentFactory::registerSharedComponent<Component>());
         }
         template<typename... ARGS>
         bool getSharedComponents(std::tuple<ARGS...>& out) {
-            out = std::make_tuple(static_cast<ARGS*>(getSharedComponent(sharedComponentIndex<ARGS>()))...);
+            out = std::make_tuple(static_cast<ARGS>(getSharedComponent(sharedComponentIndex<ARGS>()))...);
             return true;
         }
 

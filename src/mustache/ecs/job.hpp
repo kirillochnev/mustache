@@ -78,6 +78,12 @@ namespace mustache {
             }
         }
 
+        template <typename _C>
+        static constexpr SharedComponent<_C> makeShared(_C* ptr) noexcept {
+            static_assert(isComponentShared<_C>(), "Component is not shared");
+            return SharedComponent<_C>{ptr};
+        }
+
         template<size_t _I, typename _ViewType>
         MUSTACHE_INLINE auto getComponentHandler(const _ViewType& view, ComponentIndex index) noexcept {
             using RequiredType = typename Info::FunctionInfo::template UniqueComponentType<_I>::type;
@@ -92,6 +98,13 @@ namespace mustache {
             }
         }
 
+        template<size_t _ComponentIndex>
+        static constexpr auto getNullptr() noexcept {
+            using Type = typename Info::FunctionInfo::template SharedComponentType<_ComponentIndex>::type;
+            using ResultType = typename std::remove_reference<Type>::type*;
+            return static_cast<ResultType>(nullptr);
+        }
+
         template<size_t... _I, size_t... _SI>
         MUSTACHE_INLINE void singleTask(TaskView task_view, PerEntityJobTaskId task_id, ThreadId thread_id,
                                         const std::index_sequence<_I...>&, const std::index_sequence<_SI...>&) {
@@ -100,7 +113,8 @@ namespace mustache {
             invocation_index.entity_index_in_task = PerEntityJobEntityIndexInTask::make(0);
             invocation_index.thread_id = thread_id;
             auto shared_components = std::make_tuple(
-                    static_cast<typename Info::FunctionInfo::template SharedComponentType<_SI>::type>(nullptr)...);
+                    getNullptr<_SI>()...
+            );
             for (const auto& info : task_view) {
                 auto& archetype = *info.archetype();
                 archetype.getSharedComponents(shared_components);
@@ -117,11 +131,11 @@ namespace mustache {
                         forEachArrayGenerated(ComponentArraySize::make(array.arraySize()), invocation_index,
                                               RequiredComponent<Entity>(array.getEntity<FunctionSafety::kUnsafe>()),
                                               getComponentHandler<_I>(array, component_indexes[_I])...,
-                                              SharedComponent{std::get<_SI>(shared_components)}...);
+                                              makeShared(std::get<_SI>(shared_components))...);
                     } else {
                         forEachArrayGenerated(ComponentArraySize::make(array.arraySize()), invocation_index,
                                               getComponentHandler<_I>(array, component_indexes[_I])...,
-                                              SharedComponent{std::get<_SI>(shared_components)}...);
+                                              makeShared(std::get<_SI>(shared_components))...);
                     }
                 }
             }

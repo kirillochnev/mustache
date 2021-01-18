@@ -15,10 +15,20 @@ namespace mustache {
         ~ComponentFactory() = delete;
 
         template <typename T>
+        static SharedComponentId registerSharedComponent() noexcept {
+            static const auto info = makeTypeInfo<T>();
+            static SharedComponentId result = sharedComponentId(info);
+            if (!result.isValid()) {
+                result = sharedComponentId(info);
+            }
+            return result;
+        }
+
+        template <typename T>
         static ComponentId registerComponent() {
             static const auto info = makeTypeInfo<T>();
             static ComponentId result = componentId(info);
-            if(!result.isValid()) {
+            if (!result.isValid()) {
                 result = componentId(info);
             }
             return result;
@@ -28,7 +38,7 @@ namespace mustache {
         static void applyToMask(ComponentIdMask& mask) noexcept {
             using Component = typename ComponentType<_C>::type;
             if constexpr (IsComponentRequired<_C>::value) {
-                static const auto id = registerComponent< typename ComponentType<_C>::type >();
+                static const auto id = registerComponent<Component>();
                 mask.set(id, true);
             }
         }
@@ -61,6 +71,7 @@ namespace mustache {
 
         static const TypeInfo& componentInfo(ComponentId id);
         static ComponentId componentId(const TypeInfo& info);
+        static SharedComponentId sharedComponentId(const TypeInfo& info);
 
     };
 

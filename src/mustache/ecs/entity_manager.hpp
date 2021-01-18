@@ -143,7 +143,19 @@ namespace mustache {
         }
 
         void setDefaultArchetypeVersionChunkSize(uint32_t value) noexcept;
+
+        template<typename T, typename... _ARGS>
+        MUSTACHE_INLINE T& assignShared(Entity e, _ARGS&&... args);
+
+        template<typename T, typename... _ARGS>
+        MUSTACHE_INLINE T& assignUnique(Entity e, _ARGS&&... args);
+
+        MUSTACHE_INLINE std::shared_ptr<SharedComponentTag> assignShared(Entity e,
+                                                const std::shared_ptr<SharedComponentTag>&, SharedComponentId id);
     private:
+
+        std::shared_ptr<SharedComponentTag> getCreatedSharedComponent(const std::shared_ptr<SharedComponentTag>& ptr,
+                                                                      SharedComponentId id);
 
         template<typename Component, typename TupleType, size_t... _I>
         void initComponent(Archetype& archetype, ArchetypeEntityIndex entity_index,
@@ -310,18 +322,25 @@ namespace mustache {
             return nullptr;
         }
         const auto& arch = archetypes_[location.archetype];
-        const auto index = arch->getComponentIndex(component_id);
-        if (!index.isValid()) {
-            return nullptr;
-        }
-        if constexpr (std::is_const<T>::value) {
-            auto ptr = arch->getConstComponent<FunctionSafety::kUnsafe>(index, location.index);
-            auto typed_ptr = reinterpret_cast<T*>(ptr);
-            return typed_ptr;
+
+        if constexpr (isComponentShared<T>()) {
+            auto ptr = arch->getSharedComponent(arch->sharedComponentIndex<T>());
+            return static_cast<T*>(ptr);
         } else {
-            auto ptr = arch->getComponent<FunctionSafety::kUnsafe>(index, location.index, worldVersion());
-            auto typed_ptr = reinterpret_cast<T*>(ptr);
-            return typed_ptr;
+            const auto index = arch->getComponentIndex(component_id);
+            if (!index.isValid()) {
+                return nullptr;
+            }
+
+            if constexpr (std::is_const<T>::value) {
+                auto ptr = arch->getConstComponent<FunctionSafety::kUnsafe>(index, location.index);
+                auto typed_ptr = reinterpret_cast<T*>(ptr);
+                return typed_ptr;
+            } else {
+                auto ptr = arch->getComponent<FunctionSafety::kUnsafe>(index, location.index, worldVersion());
+                auto typed_ptr = reinterpret_cast<T*>(ptr);
+                return typed_ptr;
+            }
         }
     }
 
@@ -359,7 +378,7 @@ namespace mustache {
     }
 
     template<typename T, typename... _ARGS>
-    T& EntityManager::assign(Entity e, _ARGS&&... args) {
+    T& EntityManager::assignUnique(Entity e, _ARGS&&... args) {
         static const auto component_id = ComponentFactory::registerComponent<T>();
         const auto& location = locations_[e.id()];
         constexpr bool use_custom_constructor = sizeof...(_ARGS) > 0;
@@ -377,6 +396,39 @@ namespace mustache {
         }
 
         return *reinterpret_cast<T*>(component_ptr);
+    }
+
+    std::shared_ptr<SharedComponentTag> EntityManager::assignShared(Entity e,
+                                                                    const std::shared_ptr<SharedComponentTag>& ptr,
+                                                                    SharedComponentId id) {
+        const auto& location = locations_[e.id()];
+
+        auto component_data = getCreatedSharedComponent(ptr, id);
+        auto& prev_arch = *archetypes_[location.archetype];
+        SharedComponentsInfo shared_components_info = prev_arch.sharedComponentInfo();
+        shared_components_info.data.push_back(component_data);
+        shared_components_info.ids.set(id, true);
+        auto& arch = getArchetype(prev_arch.componentMask(), shared_components_info);
+        const auto prev_index = location.index;
+        const ComponentIdMask skip_init_mask {};
+        arch.externalMove(e, prev_arch, prev_index, skip_init_mask);
+        return component_data;
+    }
+
+    template<typename T, typename... _ARGS>
+    T& EntityManager::assignShared(Entity e, _ARGS&&... args) {
+        auto ptr = std::make_shared<T>(std::forward<_ARGS>(args)...);
+        auto result = assignShared(e, ptr, ComponentFactory::registerSharedComponent<T>());
+        return *static_cast<T*>(result.get());
+    }
+
+    template<typename T, typename... _ARGS>
+    T& EntityManager::assign(Entity e, _ARGS&&... args) {
+        if constexpr (isComponentShared<T>()) {
+            return assignShared<T>(e, std::forward<_ARGS>(args)...);
+        } else {
+            return assignUnique<T>(e, std::forward<_ARGS>(args)...);
+        }
     }
 
     template<typename T, FunctionSafety _Safety>

@@ -186,10 +186,10 @@ namespace mustache {
         static constexpr size_t componentPosition(size_t component_index) noexcept {
             uint32_t result = 0u;
             for (const auto& info : args_info) {
-                if (component_index < 1) {
-                    break;
-                }
                 if (info.type == ArgInfo::kSharedComponent || info.type == ArgInfo::kComponent) {
+                    if (component_index < 1) {
+                        break;
+                    }
                     --component_index;
                 }
                 ++result;
@@ -200,10 +200,10 @@ namespace mustache {
         static constexpr size_t uniqueComponentPosition(size_t component_index) noexcept {
             uint32_t result = 0u;
             for (const auto& info : args_info) {
-                if (component_index < 1) {
-                    break;
-                }
                 if (info.type == ArgInfo::kComponent) {
+                    if (component_index < 1) {
+                        break;
+                    }
                     --component_index;
                 }
                 ++result;
@@ -213,10 +213,10 @@ namespace mustache {
         static constexpr size_t sharedComponentPosition(size_t component_index) noexcept {
             uint32_t result = 0u;
             for (const auto& info : args_info) {
-                if (component_index < 1) {
-                    break;
-                }
                 if (info.type == ArgInfo::kSharedComponent) {
+                    if (component_index < 1) {
+                        break;
+                    }
                     --component_index;
                 }
                 ++result;
@@ -230,7 +230,7 @@ namespace mustache {
         }
         template<size_t... _I>
         static constexpr auto buildSharedComponentIndexes(const std::index_sequence<_I...>&) {
-            return std::index_sequence<componentPosition(_I)...>{};
+            return std::index_sequence<sharedComponentPosition(_I)...>{};
         }
         template<size_t... _I>
         static constexpr auto buildUniqueComponentIndexes(const std::index_sequence<_I...>&) {

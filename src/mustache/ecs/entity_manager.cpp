@@ -154,3 +154,18 @@ ComponentIdMask EntityManager::getExtraComponents(const ComponentIdMask& mask) c
     }
     return result;
 }
+
+std::shared_ptr<SharedComponentTag> EntityManager::getCreatedSharedComponent(const std::shared_ptr<SharedComponentTag>& ptr,
+                                                                             SharedComponentId id) {
+    if (!shared_components_.has(id)) {
+        shared_components_.resize(id.next().toInt());
+    }
+    auto& arr = shared_components_[id];
+    for (const auto& v : arr) {
+        if (v.get() == ptr.get() || v->isEq(*ptr)) {
+            return v;
+        }
+    }
+    arr.push_back(ptr);
+    return ptr;
+}
