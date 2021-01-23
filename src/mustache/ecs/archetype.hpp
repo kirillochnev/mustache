@@ -334,7 +334,7 @@ namespace mustache {
         [[nodiscard]] ComponentStorageIndex pushBack(Entity entity) {
             const auto index = ComponentStorageIndex::make(entities_.size());
             entities_.push_back(entity);
-            data_storage_->pushBack();
+            data_storage_->emplace(index);
             return index;
         }
 

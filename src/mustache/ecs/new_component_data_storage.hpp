@@ -23,8 +23,6 @@ namespace mustache {
         void reserve(size_t new_capacity) override;
         void clear(bool free_chunks = true) override;
 
-        ComponentStorageIndex pushBack() override;
-
         void* getDataSafe(ComponentIndex component_index, ComponentStorageIndex index) const noexcept override;
 
         void* getDataUnsafe(ComponentIndex component_index, ComponentStorageIndex index) const noexcept override;

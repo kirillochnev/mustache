@@ -20,8 +20,6 @@ namespace mustache {
 
         uint32_t distToChunkEnd(ComponentStorageIndex index) const noexcept override;
 
-        ComponentStorageIndex pushBack() override;
-
         [[nodiscard]] MUSTACHE_INLINE ChunkCapacity chunkCapacity() const noexcept {
             return chunk_capacity_;
         }

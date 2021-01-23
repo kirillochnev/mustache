@@ -97,15 +97,6 @@ void* NewComponentDataStorage::getDataUnsafe(ComponentIndex component_index, Com
     return components_[component_index].get(index);
 }
 
-ComponentStorageIndex NewComponentDataStorage::pushBack() {
-    const auto cur_size = size();
-    const auto new_size = cur_size + 1;
-    reserve(new_size);
-    ComponentStorageIndex index = ComponentStorageIndex::make(cur_size);
-    incSize();
-    return index;
-}
-
 void NewComponentDataStorage::allocateBlock() {
     for (auto& component : components_) {
         component.allocate();

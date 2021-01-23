@@ -22,7 +22,7 @@ namespace mustache {
         virtual void* getDataUnsafe(ComponentIndex component_index, ComponentStorageIndex index) const noexcept = 0;
         [[nodiscard]] virtual uint32_t distToChunkEnd(ComponentStorageIndex index) const noexcept = 0;
 
-        virtual ComponentStorageIndex pushBack() = 0;
+        virtual void emplace(ComponentStorageIndex position);
 
         template<FunctionSafety _Safety = FunctionSafety::kDefault>
         MUSTACHE_INLINE void* getData(ComponentIndex component_index, ComponentStorageIndex index) const noexcept {
