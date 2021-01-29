@@ -19,10 +19,10 @@ void VersionStorage::emplace(WorldVersion version, ArchetypeEntityIndex index) n
 }
 
 void VersionStorage::setVersion(WorldVersion version, ChunkIndex chunk) noexcept {
-    WorldVersion* chunk_version = chunk_versions_.data() + numComponents() * chunk.toInt();
+    const auto begin = numComponents() * chunk.toInt();
     for (uint32_t i = 0; i < numComponents(); ++i) {
-        chunk_versions_[i] = version;
-        chunk_version[i] = version;
+        global_versions_[ComponentIndex::make(i)] = version;
+        chunk_versions_[begin + i] = version;
     }
 }
 
@@ -31,9 +31,9 @@ void VersionStorage::setVersion(WorldVersion version, ComponentIndex component_i
 }
 
 void VersionStorage::setVersion(WorldVersion version, ChunkIndex chunk, ComponentIndex component) noexcept {
-    WorldVersion* chunk_version = chunk_versions_.data() + numComponents() * chunk.toInt();
-    chunk_version[component.toInt()] = version;
-    setVersion(version, chunk);
+    const auto update_index = numComponents() * chunk.toInt() + component.toInt();
+    chunk_versions_[update_index] = version;
+    setVersion(version, component);
 }
 
 WorldVersion VersionStorage::getVersion(ComponentIndex component) const noexcept {
