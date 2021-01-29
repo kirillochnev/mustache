@@ -12,15 +12,11 @@ using namespace mustache;
 Archetype::Archetype(World& world, ArchetypeIndex id, const ComponentIdMask& mask, uint32_t chunk_size):
         world_{world},
         mask_{mask},
+        version_storage_{world.memoryManager(), mask.componentsCount(), chunk_size},
         operation_helper_{world.memoryManager(), mask},
         data_storage_{std::make_unique<DefaultComponentDataStorage>(mask, world_.memoryManager())},
         entities_{world.memoryManager()},
-        components_count_{mask.componentsCount()},
-        chunk_size_{chunk_size},
-        chunk_versions_{world.memoryManager()},
-        global_versions_{world.memoryManager()},
         id_{id} {
-    global_versions_.resize(components_count_, WorldVersion::null());
     Logger{}.debug("Archetype version chunk size: %d", chunk_size);
 }
 
@@ -31,11 +27,77 @@ Archetype::~Archetype() {
     data_storage_->clear(true);
 }
 
+ComponentStorageIndex Archetype::pushBack(Entity entity) {
+    const auto index = ComponentStorageIndex::make(entities_.size());
+    versionStorage().emplace(worldVersion(), index.toArchetypeIndex());
+    entities_.push_back(entity);
+    data_storage_->pushBack();
+    return index;
+}
+
+ElementView Archetype::getElementView(ArchetypeEntityIndex index) const noexcept {
+    return ElementView {
+            data_storage_->getIterator(ComponentStorageIndex::fromArchetypeIndex(index)),
+            *this
+    };
+}
+
+const ArrayWrapper<Entity, ArchetypeEntityIndex, true>& Archetype::entities() const noexcept {
+    return entities_;
+}
+
+WorldVersion Archetype::getComponentVersion(ArchetypeEntityIndex index, ComponentId id) const noexcept {
+    return versionStorage().getVersion(versionStorage().chunkAt(index),
+                                       getComponentIndex(id));
+}
+
+uint32_t Archetype::capacity() const noexcept {
+    return data_storage_->capacity();
+}
+
+ArchetypeIndex Archetype::id() const noexcept {
+    return id_;
+}
+
+uint32_t Archetype::chunkCount() const noexcept {
+    return static_cast<uint32_t>(entities_.size() / versionStorage().chunkSize());
+}
+
+ChunkCapacity Archetype::chunkCapacity() const noexcept {
+    return ChunkCapacity::make(versionStorage().chunkSize());
+}
+
+bool Archetype::isMatch(const ComponentIdMask& mask) const noexcept {
+    return mask_.isMatch(mask);
+}
+
+bool Archetype::hasComponent(ComponentId component_id) const noexcept {
+    return mask_.has(component_id);
+}
+
+void Archetype::popBack() {
+    entities_.pop_back();
+    data_storage_->decrSize();
+}
+
 void Archetype::callDestructor(const ElementView& view) {
     for (const auto &info : operation_helper_.destroy) {
         info.destructor(view.getData<FunctionSafety::kUnsafe>(info.component_index));
     }
     popBack();
+}
+
+bool Archetype::isEmpty() const noexcept {
+    return entities_.empty();
+}
+
+ChunkIndex Archetype::lastChunkIndex() const noexcept {
+    const auto entities_count = entities_.size();
+    ChunkIndex result;
+    if (entities_count > 0) {
+        result = ChunkIndex::make((entities_count - 1u) / versionStorage().chunkSize());
+    }
+    return result;
 }
 
 void Archetype::externalMove(Entity entity, Archetype& prev_archetype, ArchetypeEntityIndex prev_index,
@@ -59,8 +121,6 @@ void Archetype::externalMove(Entity entity, Archetype& prev_archetype, Archetype
     }
 
     prev_archetype.remove(*source_view.getEntity<FunctionSafety::kUnsafe>(), prev_index);
-
-    updateAllVersions(index.toArchetypeIndex(), worldVersion());
     world_.entities().updateLocation(entity, id_, index.toArchetypeIndex());
 }
 
@@ -79,7 +139,7 @@ ArchetypeEntityIndex Archetype::insert(Entity entity, const ComponentIdMask& ski
             }
         }
     }
-    updateAllVersions(index.toArchetypeIndex(), worldVersion());
+    versionStorage().emplace(worldVersion(), index.toArchetypeIndex());
     world_.entities().updateLocation(entity, id_, index.toArchetypeIndex());
     return index.toArchetypeIndex();
 }
@@ -100,8 +160,8 @@ void Archetype::internalMove(ArchetypeEntityIndex source_index, ArchetypeEntityI
     auto& dest_entity = *dest_view.getEntity<FunctionSafety::kUnsafe>();
 
     const auto world_version = worldVersion();
-    updateAllVersions(source_index, world_version);
-    updateAllVersions(destination_index, world_version);
+    versionStorage().setVersion(world_version, versionStorage().chunkAt(source_index));
+    versionStorage().setVersion(world_version, versionStorage().chunkAt(destination_index));
 
     world_.entities().updateLocation(dest_entity, ArchetypeIndex::null(), ArchetypeEntityIndex::null());
     world_.entities().updateLocation(source_entity, id_, destination_index);
@@ -109,6 +169,20 @@ void Archetype::internalMove(ArchetypeEntityIndex source_index, ArchetypeEntityI
     dest_entity = source_entity;
 
     callDestructor(source_view);
+}
+
+const ComponentIdMask& Archetype::componentMask() const noexcept {
+    return mask_;
+}
+
+ComponentIndexMask Archetype::makeComponentMask(const ComponentIdMask& mask) const noexcept {
+    ComponentIndexMask index_mask;
+    mask.forEachItem([&index_mask, this](ComponentId id) {
+        const auto index = getComponentIndex(id);
+        const auto value = index.isValid();
+        index_mask.set(index, value);
+    });
+    return index_mask;
 }
 
 void Archetype::remove(Entity entity_to_destroy, ArchetypeEntityIndex entity_index) {
@@ -121,7 +195,7 @@ void Archetype::remove(Entity entity_to_destroy, ArchetypeEntityIndex entity_ind
         } else {
             popBack();
         }
-        updateAllVersions(entity_index, worldVersion());
+        versionStorage().setVersion(worldVersion(), versionStorage().chunkAt(entity_index));
         world_.entities().updateLocation(entity_to_destroy, ArchetypeIndex::null(), ArchetypeEntityIndex::null());
     } else {
         internalMove(last_index, entity_index);
