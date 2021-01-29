@@ -91,7 +91,7 @@ namespace mustache {
             const auto location = locations_[entity.id()];
             const auto& archetype = archetypes_[location.archetype];
             const auto component_id = ComponentFactory::registerComponent<T>();
-            return archetype->getComponentVersion<_Safety>(location.index, component_id);
+            return archetype->getComponentVersion(location.index, component_id);
         }
 
         template<typename _F, typename... ARGS>
@@ -149,7 +149,9 @@ namespace mustache {
                            TupleType& tuple, std::index_sequence<_I...>&&) {
             if constexpr (std::tuple_size<TupleType>::value > 0 ||
                           !std::is_trivially_default_constructible<Component>::value) {
-                auto ptr = archetype.getComponent(ComponentFactory::registerComponent<Component>(), entity_index);
+                static const auto component_id = ComponentFactory::registerComponent<Component>();
+                const auto component_index = archetype.getComponentIndex<FunctionSafety::kUnsafe>(component_id);
+                auto ptr = archetype.getComponent<FunctionSafety::kUnsafe>(component_index, entity_index);
                 new(ptr) Component{std::get<_I>(tuple)...};
             }
         }
@@ -367,7 +369,8 @@ namespace mustache {
         const auto prev_index = location.index;
         const auto skip_init_mask = use_custom_constructor ? ComponentIdMask{component_id} : ComponentIdMask{};
         arch.externalMove(e, prev_arch, prev_index, skip_init_mask);
-        auto component_ptr = arch.getComponent<FunctionSafety::kUnsafe>(component_id, location.index);
+        const auto component_index = arch.getComponentIndex<FunctionSafety::kUnsafe>(component_id);
+        auto component_ptr = arch.getComponent<FunctionSafety::kUnsafe>(component_index, location.index);
         if constexpr (use_custom_constructor) {
             *new(component_ptr) T{std::forward<_ARGS>(args)...};
         }
@@ -387,7 +390,8 @@ namespace mustache {
             return false;
         }
         const auto& archetype = *archetypes_[location.archetype];
-        return archetype.hasComponent<T>();
+        static const auto component_id = ComponentFactory::registerComponent<T>();
+        return archetype.hasComponent(component_id);
     }
 
     template<typename TupleType>

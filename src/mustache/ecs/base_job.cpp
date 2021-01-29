@@ -19,7 +19,7 @@ namespace {
         for (auto chunk_index = ChunkIndex::make(0); chunk_index <= last_index; ++chunk_index) {
             const bool is_match =
                     job.extraChunkFilterCheck(archetype, chunk_index) &&
-                    archetype.updateChunkComponentVersions<FunctionSafety::kUnsafe>(check, set, chunk_index);
+                    archetype.versionStorage().checkAndSet(check, set, chunk_index);
 
             if (is_match) {
                 if (!is_prev_match) {
@@ -63,11 +63,11 @@ namespace {
                     job.extraArchetypeFilterCheck(arch);
 
             if (is_archetype_match) {
-                archetype_check.components = arch.makeComponentMask(check.mask).items();
+                archetype_check.mask = arch.makeComponentMask(check.mask).items();
                 ArchetypeFilterParam archetype_set;
                 archetype_set.version = set.version;
-                archetype_set.components = arch.makeComponentMask(set.mask).items();
-                if (arch.updateGlobalComponentVersion(archetype_check, archetype_set)) {
+                archetype_set.mask = arch.makeComponentMask(set.mask).items();
+                if (arch.versionStorage().checkAndSet(archetype_check, archetype_set)) {
                     filterArchetype(arch, archetype_check, archetype_set, result, job);
                 }
             }
