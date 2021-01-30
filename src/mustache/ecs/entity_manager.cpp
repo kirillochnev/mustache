@@ -169,3 +169,54 @@ std::shared_ptr<SharedComponentTag> EntityManager::getCreatedSharedComponent(con
     arr.push_back(ptr);
     return ptr;
 }
+
+bool EntityManager::removeComponent(Entity entity, ComponentId component) {
+    const auto& location = locations_[entity.id()];
+    if (location.archetype.isNull()) {
+        return false;
+    }
+
+    auto& prev_archetype = *archetypes_[location.archetype];
+    if (!prev_archetype.hasComponent(component)) {
+        return false;
+    }
+
+    auto mask = prev_archetype.mask_;
+    mask.set(component, false);
+
+    auto& archetype = getArchetype(mask, prev_archetype.sharedComponentInfo());
+    if (&archetype == &prev_archetype) {
+        return false;
+    }
+
+    const auto prev_index = location.index;
+    archetype.externalMove(entity, prev_archetype, prev_index, ComponentIdMask{});
+
+    return true;
+}
+
+bool EntityManager::removeSharedComponent(Entity entity, SharedComponentId component) {
+    const auto& location = locations_[entity.id()];
+    if (location.archetype.isNull()) {
+            return false;
+    }
+
+    auto& prev_archetype = *archetypes_[location.archetype];
+
+    if (!prev_archetype.hasComponent(component)) {
+        return false;
+    }
+
+    auto shared_components_info = prev_archetype.sharedComponentInfo();
+    shared_components_info.ids.set(component, false);
+
+    auto& archetype = getArchetype(prev_archetype.componentMask(), shared_components_info);
+    if (&archetype == &prev_archetype) {
+        return false;
+    }
+
+    const auto prev_index = location.index;
+    archetype.externalMove(entity, prev_archetype, prev_index, ComponentIdMask{});
+
+    return true;
+}

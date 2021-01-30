@@ -121,7 +121,7 @@ namespace mustache {
         }
 
         template<FunctionSafety _Safety = FunctionSafety::kSafe>
-        [[nodiscard]] MUSTACHE_INLINE void* getSharedComponent(SharedComponentIndex index) const noexcept;
+        [[nodiscard]] MUSTACHE_INLINE const void* getSharedComponent(SharedComponentIndex index) const noexcept;
 
         [[nodiscard]] MUSTACHE_INLINE SharedComponentIndex sharedComponentIndex(SharedComponentId id) const noexcept;
 
@@ -196,7 +196,7 @@ namespace mustache {
     }
 
     template<FunctionSafety _Safety>
-    void* Archetype::getSharedComponent(SharedComponentIndex index) const noexcept {
+    const void* Archetype::getSharedComponent(SharedComponentIndex index) const noexcept {
         if constexpr (isSafe(_Safety)) {
             if (!index.isValid() || shared_components_info_.data.size() < index.toInt()) {
                 return nullptr;

@@ -88,7 +88,7 @@ TEST(SharedComponent, AssignShared) {
     ASSERT_EQ(entities.getComponent<Component0>(e1)->src, "Component0: hello world");
     ASSERT_EQ(entities.getComponent<Component1>(e1)->src, "Component1: hello world");
 
-    ASSERT_EQ(entities.getComponent<SharedComponent0>(e), &ptr);
+    ASSERT_EQ(entities.getSharedComponent<SharedComponent0>(e), &ptr);
 
     uint32_t count = 0;
     bool is_ok = true;
@@ -108,7 +108,7 @@ TEST(SharedComponent, AssignShared) {
     value.bad_babe = 0;
     auto& ref2 = entities.assign<SharedComponent0>(e2, value);
 
-    ASSERT_EQ(&ref2, entities.getComponent<SharedComponent0>(e2));
+    ASSERT_EQ(&ref2, entities.getSharedComponent<SharedComponent0>(e2));
     ASSERT_EQ(ptr.dead_beef, 0xDEADBEEF);
     ASSERT_EQ(ptr.boobs, 0xB00B5);
     ASSERT_EQ(ptr.bad_babe, 0xBADBABE);

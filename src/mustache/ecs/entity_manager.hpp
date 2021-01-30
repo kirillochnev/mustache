@@ -71,8 +71,19 @@ namespace mustache {
         template<typename T>
         MUSTACHE_INLINE T* getComponent(Entity entity) const noexcept;
 
+        template<typename T>
+        MUSTACHE_INLINE const T* getSharedComponent(Entity entity) const noexcept;
+
         template<typename T, FunctionSafety _Safety = FunctionSafety::kSafe>
         MUSTACHE_INLINE bool removeComponent(Entity entity);
+
+        bool removeComponent(Entity entity, ComponentId component);
+
+        template<typename T, FunctionSafety _Safety = FunctionSafety::kSafe>
+        MUSTACHE_INLINE bool removeSharedComponent(Entity entity);
+
+        bool removeSharedComponent(Entity entity, SharedComponentId component);
+
 
         template<typename T, typename... _ARGS>
         MUSTACHE_INLINE T& assign(Entity e, _ARGS&&... args) ;
@@ -318,6 +329,7 @@ namespace mustache {
     T* EntityManager::getComponent(Entity entity) const noexcept {
         using ComponentType = ComponentType<T>;
         using Type = typename ComponentType::type;
+        static_assert(!isComponentShared<Type>(), "Component is shared, use getSharedComponent() function");
         static const auto component_id = ComponentFactory::registerComponent<Type>();
         const auto& location = locations_[entity.id()];
         if (!location.archetype.isValid()) {
@@ -325,25 +337,47 @@ namespace mustache {
         }
         const auto& arch = archetypes_[location.archetype];
 
-        if constexpr (isComponentShared<T>()) {
-            auto ptr = arch->getSharedComponent(arch->sharedComponentIndex<T>());
-            return static_cast<T*>(ptr);
-        } else {
-            const auto index = arch->getComponentIndex(component_id);
-            if (!index.isValid()) {
-                return nullptr;
-            }
+        const auto index = arch->getComponentIndex(component_id);
+        if (!index.isValid()) {
+            return nullptr;
+        }
 
-            if constexpr (std::is_const<T>::value) {
-                auto ptr = arch->getConstComponent<FunctionSafety::kUnsafe>(index, location.index);
-                auto typed_ptr = reinterpret_cast<T*>(ptr);
-                return typed_ptr;
-            } else {
-                auto ptr = arch->getComponent<FunctionSafety::kUnsafe>(index, location.index, worldVersion());
-                auto typed_ptr = reinterpret_cast<T*>(ptr);
-                return typed_ptr;
+        if constexpr (std::is_const<T>::value) {
+            auto ptr = arch->getConstComponent<FunctionSafety::kUnsafe>(index, location.index);
+            auto typed_ptr = reinterpret_cast<T*>(ptr);
+            return typed_ptr;
+        }
+
+        auto ptr = arch->getComponent<FunctionSafety::kUnsafe>(index, location.index, worldVersion());
+        auto typed_ptr = reinterpret_cast<T*>(ptr);
+        return typed_ptr;
+    }
+
+    template<typename T>
+    const T* EntityManager::getSharedComponent(Entity entity) const noexcept {
+        using ComponentType = ComponentType<T>;
+        using Type = typename ComponentType::type;
+        static_assert(isComponentShared<Type>(), "Component is not shared, use getComponent() function");
+        static const auto component_id = ComponentFactory::registerComponent<Type>();
+        const auto& location = locations_[entity.id()];
+        if (!location.archetype.isValid()) {
+            return nullptr;
+        }
+        const auto& arch = archetypes_[location.archetype];
+
+        auto ptr = arch->getSharedComponent(arch->sharedComponentIndex<T>());
+        return static_cast<const T*>(ptr);
+    }
+
+    template<typename T, FunctionSafety _Safety>
+    bool EntityManager::removeSharedComponent(Entity entity) {
+        static const auto component_id = ComponentFactory::registerSharedComponent<T>();
+        if constexpr (isSafe(_Safety)) {
+            if (!isEntityValid(entity)) {
+                return false;
             }
         }
+        return removeSharedComponent(entity, component_id);
     }
 
     template<typename T, FunctionSafety _Safety>
@@ -354,29 +388,8 @@ namespace mustache {
                 return false;
             }
         }
-        const auto& location = locations_[entity.id()];
-        if constexpr (isSafe(_Safety)) {
-            if (location.archetype.isNull()) {
-                return false;
-            }
-        }
-        auto& prev_archetype = *archetypes_[location.archetype];
-        auto mask = prev_archetype.mask_;
-        if constexpr (isSafe(_Safety)) {
-            if (!mask.has(component_id)) {
-                return false;
-            }
-        }
-        mask.set(component_id, false);
-        auto& archetype = getArchetype(mask, prev_archetype.sharedComponentInfo());
-        if (&archetype == &prev_archetype) {
-            return false;
-        }
-        const auto prev_index = location.index;
 
-        archetype.externalMove(entity, prev_archetype, prev_index, ComponentIdMask{});
-
-        return true;
+        return removeComponent(entity, component_id);
     }
 
     template<typename T, typename... _ARGS>
