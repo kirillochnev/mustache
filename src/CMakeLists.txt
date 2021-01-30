@@ -63,6 +63,8 @@ add_library(${PROJECT_NAME} STATIC
         mustache/ecs/entity_builder.hpp
         mustache/ecs/world_storage.cpp
         mustache/ecs/world_storage.hpp
+        mustache/ecs/component_version_storage.cpp
+        mustache/ecs/component_version_storage.hpp
 )
 
 target_include_directories(${PROJECT_NAME}

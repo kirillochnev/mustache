@@ -114,14 +114,14 @@ void EntityManager::update() {
 }
 
 void EntityManager::clearArchetype(Archetype& archetype) {
-    archetype.forEachEntity([this](Entity entity) {
+    for (const auto entity : archetype.entities()) {
         const auto id = entity.id();
         auto& location = locations_[id];
         location.archetype = ArchetypeIndex::null();
         entities_[id].reset(empty_slots_ ? next_slot_ : id.next(), entity.version().next());
         next_slot_ = id;
         ++empty_slots_;
-    });
+    }
     archetype.clear();
 }
 
