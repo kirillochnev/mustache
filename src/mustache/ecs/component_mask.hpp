@@ -1,6 +1,7 @@
 #pragma once
 
 #include <mustache/ecs/id_deff.hpp>
+#include <mustache/utils/invoke.hpp>
 
 #include <bitset>
 #include <vector>
@@ -137,11 +138,77 @@ namespace mustache {
 
     struct SharedComponentTag;
 
+    // TODO: add const
     using SharedComponentsData = std::vector<std::shared_ptr<SharedComponentTag> >;
 
     struct SharedComponentsInfo {
-        SharedComponentIdMask ids;
-        SharedComponentsData data;
+
+        void add(SharedComponentId id, const std::shared_ptr<SharedComponentTag>& value) {
+            // TODO: check me
+            ids_.set(id, true);
+            const auto index = indexOf(id);
+            if (index.toInt() >= data_.size()) {
+                data_.resize(index.next().toInt());
+            }
+            data_[index.toInt()] = value;
+        }
+
+        void remove(SharedComponentId id) {
+            if (has(id)) {
+                const auto index = indexOf(id);
+                if (index.toInt() == data_.size() - 1) {
+                    data_.pop_back();
+                } else {
+                    data_[indexOf(id).toInt()].reset();
+                }
+            }
+            ids_.set(id, false);
+        }
+
+        template <typename _F>
+        void forEach(_F&& function) const noexcept {
+            uint32_t index = 0;
+            ids_.forEachItem([&function, &index, this](SharedComponentId id) {
+                return invoke(function, id, data_[index++]);
+            });
+        }
+        [[nodiscard]] bool has(SharedComponentId id) const noexcept {
+            return ids_.has(id);
+        }
+
+        [[nodiscard]] bool isMatch(const SharedComponentIdMask& mask) const noexcept {
+            return ids_.isMatch(mask);
+        }
+        [[nodiscard]] const SharedComponentIdMask& ids() const noexcept {
+            return ids_;
+        }
+
+        [[nodiscard]] const SharedComponentsData& data() const noexcept {
+            return data_;
+        }
+
+        [[nodiscard]] SharedComponentIndex indexOf(SharedComponentId id) const noexcept {
+            SharedComponentIndex index;
+            if (has(id)) {
+                forEach([&index, id](SharedComponentId current_id) {
+                    if (id == current_id) {
+                        return false;
+                    }
+                    ++index;
+                    return true;
+                });
+            }
+            return index;
+        }
+
+        std::shared_ptr<const SharedComponentTag> get(SharedComponentIndex index) const noexcept {
+            return data_[index.toInt()];
+        }
+
+    private:
+        SharedComponentIdMask ids_;
+        SharedComponentsData data_;
+
     };
 
     struct ComponentIndexMask : public ComponentMask<ComponentIndex, 64> {

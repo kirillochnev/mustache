@@ -36,12 +36,33 @@ namespace mustache {
 
         template<typename _C>
         static void applyToMask(ComponentIdMask& mask) noexcept {
-            using Component = typename ComponentType<_C>::type;
-            if constexpr (IsComponentRequired<_C>::value) {
-                static const auto id = registerComponent<Component>();
-                mask.set(id, true);
+            if constexpr (!isComponentShared<_C>()) {
+                using Component = typename ComponentType<_C>::type;
+                if constexpr (IsComponentRequired<_C>::value) {
+                    static const auto id = registerComponent<Component>();
+                    mask.set(id, true);
+                }
             }
         }
+
+        template<typename _C>
+        static void applyToSharedInfo(SharedComponentsInfo& info) noexcept {
+            if constexpr (isComponentShared<_C>()) {
+                using Component = typename ComponentType<_C>::type;
+                if constexpr (IsComponentRequired<_C>::value) {
+                    static const auto id = registerComponent<Component>();
+                    info.add(id, std::make_shared<_C>());
+                }
+            }
+        }
+
+        template <typename... _C>
+        static SharedComponentsInfo makeSharedInfo() noexcept {
+            SharedComponentsInfo result;
+            (applyToSharedInfo<_C>(result), ...);
+            return result;
+        }
+
         template <typename... _C>
         static ComponentIdMask makeMask() noexcept {
             ComponentIdMask mask;

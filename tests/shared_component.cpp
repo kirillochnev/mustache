@@ -130,3 +130,13 @@ TEST(SharedComponent, AssignShared) {
     ASSERT_EQ(counts[&ptr], 2);
     ASSERT_EQ(counts[&ref2], 1);
 }
+
+TEST(SharedComponent, ReassignShared) {
+    struct SharedComponent1 : public mustache::TSharedComponentTag<SharedComponent1> {
+        std::string src = "ReassignShared::Component1: default value";
+    };
+    mustache::World world;
+    auto& entities = world.entities();
+
+    auto e0 = entities.create<SharedComponent0>();
+}

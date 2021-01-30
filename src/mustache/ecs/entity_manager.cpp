@@ -24,9 +24,9 @@ Archetype& EntityManager::getArchetype(const ComponentIdMask& mask, const Shared
     const ComponentIdMask arch_mask = mask.merge(getExtraComponents(mask));
     ArchetypeComponents archetype_components;
     archetype_components.unique = arch_mask;
-    archetype_components.shared = shared.ids;
+    archetype_components.shared = shared.ids();
     auto& map = mask_to_arch_[archetype_components];
-    auto& result = map[shared.data];
+    auto& result = map[shared.data()];
     if(result) {
         return *result;
     }
@@ -208,7 +208,7 @@ bool EntityManager::removeSharedComponent(Entity entity, SharedComponentId compo
     }
 
     auto shared_components_info = prev_archetype.sharedComponentInfo();
-    shared_components_info.ids.set(component, false);
+    shared_components_info.remove(component);
 
     auto& archetype = getArchetype(prev_archetype.componentMask(), shared_components_info);
     if (&archetype == &prev_archetype) {

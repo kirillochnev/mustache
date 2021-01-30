@@ -74,7 +74,7 @@ bool Archetype::isMatch(const ComponentIdMask& mask) const noexcept {
 }
 
 bool Archetype::isMatch(const SharedComponentIdMask& mask) const noexcept {
-    return shared_components_info_.ids.isMatch(mask);
+    return shared_components_info_.isMatch(mask);
 }
 
 bool Archetype::hasComponent(ComponentId component_id) const noexcept {
@@ -82,7 +82,7 @@ bool Archetype::hasComponent(ComponentId component_id) const noexcept {
 }
 
 bool Archetype::hasComponent(SharedComponentId component_id) const noexcept {
-    return shared_components_info_.ids.has(component_id);
+    return shared_components_info_.has(component_id);
 }
 
 void Archetype::popBack() {

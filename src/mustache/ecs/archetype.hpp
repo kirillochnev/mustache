@@ -36,7 +36,7 @@ namespace mustache {
 
 
         template<FunctionSafety _Safety = FunctionSafety::kSafe>
-        MUSTACHE_INLINE void* getSharedComponent(SharedComponentIndex index) const noexcept;
+        MUSTACHE_INLINE const SharedComponentTag* getSharedComponent(SharedComponentIndex index) const noexcept;
 
         const Archetype* archetype_ = nullptr;
     };
@@ -121,7 +121,7 @@ namespace mustache {
         }
 
         template<FunctionSafety _Safety = FunctionSafety::kSafe>
-        [[nodiscard]] MUSTACHE_INLINE const void* getSharedComponent(SharedComponentIndex index) const noexcept;
+        [[nodiscard]] MUSTACHE_INLINE const SharedComponentTag* getSharedComponent(SharedComponentIndex index) const noexcept;
 
         [[nodiscard]] MUSTACHE_INLINE SharedComponentIndex sharedComponentIndex(SharedComponentId id) const noexcept;
 
@@ -196,12 +196,12 @@ namespace mustache {
     }
 
     template<FunctionSafety _Safety>
-    const void* Archetype::getSharedComponent(SharedComponentIndex index) const noexcept {
+    const SharedComponentTag* Archetype::getSharedComponent(SharedComponentIndex index) const noexcept {
         if constexpr (isSafe(_Safety)) {
-            if (!index.isValid() || shared_components_info_.data.size() < index.toInt()) {
+            if (!index.isValid()) {
                 return nullptr;
             }
-            return shared_components_info_.data[index.template toInt()].get();
+            return shared_components_info_.get(index).get();
         }
         return nullptr;
     }
@@ -209,7 +209,7 @@ namespace mustache {
     SharedComponentIndex Archetype::sharedComponentIndex(SharedComponentId id) const noexcept {
         uint32_t i = 0u;
         SharedComponentIndex result = SharedComponentIndex::null();
-        shared_components_info_.ids.forEachItem([this, id, &i, &result](SharedComponentId current_id){
+        shared_components_info_.forEach([id, &i, &result](SharedComponentId current_id){
             if (current_id == id) {
                 result = SharedComponentIndex::make(i);
                 return false;
@@ -233,7 +233,7 @@ namespace mustache {
     }
 
     template<FunctionSafety _Safety>
-    MUSTACHE_INLINE void* ElementView::getSharedComponent(SharedComponentIndex index) const noexcept {
+    MUSTACHE_INLINE const SharedComponentTag* ElementView::getSharedComponent(SharedComponentIndex index) const noexcept {
         return archetype_->template getSharedComponent<_Safety>(index);
     }
 

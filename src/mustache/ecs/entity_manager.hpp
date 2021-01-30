@@ -421,22 +421,10 @@ namespace mustache {
 
         auto component_data = getCreatedSharedComponent(ptr, id);
         auto& prev_arch = *archetypes_[location.archetype];
-        SharedComponentsInfo shared_components_info = prev_arch.sharedComponentInfo();
 
-        if (shared_components_info.ids.has(id)) {
-            uint32_t index = 0u;
-            shared_components_info.ids.forEachItem([&index, id](SharedComponentId current_id) {
-                if (id == current_id) {
-                    return false;
-                }
-                ++index;
-                return true;
-            });
-            shared_components_info.data[index] = component_data;
-        } else {
-            shared_components_info.data.push_back(component_data);
-            shared_components_info.ids.set(id, true);
-        }
+        SharedComponentsInfo shared_components_info = prev_arch.sharedComponentInfo();
+        shared_components_info.add(id, component_data);
+
         auto& arch = getArchetype(prev_arch.componentMask(), shared_components_info);
         const auto prev_index = location.index;
         const ComponentIdMask skip_init_mask {};
