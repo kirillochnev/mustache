@@ -155,8 +155,7 @@ ComponentIdMask EntityManager::getExtraComponents(const ComponentIdMask& mask) c
     return result;
 }
 
-std::shared_ptr<SharedComponentTag> EntityManager::getCreatedSharedComponent(const std::shared_ptr<SharedComponentTag>& ptr,
-                                                                             SharedComponentId id) {
+SharedComponentPtr EntityManager::getCreatedSharedComponent(const SharedComponentPtr& ptr, SharedComponentId id) {
     if (!shared_components_.has(id)) {
         shared_components_.resize(id.next().toInt());
     }

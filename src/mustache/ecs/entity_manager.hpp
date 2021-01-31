@@ -86,7 +86,7 @@ namespace mustache {
 
 
         template<typename T, typename... _ARGS>
-        MUSTACHE_INLINE T& assign(Entity e, _ARGS&&... args) ;
+        MUSTACHE_INLINE decltype(auto) assign(Entity e, _ARGS&&... args) ;
 
         template<typename T, FunctionSafety _Safety = FunctionSafety::kDefault>
         [[nodiscard]] MUSTACHE_INLINE bool hasComponent(Entity entity) const noexcept;
@@ -156,17 +156,15 @@ namespace mustache {
         void setDefaultArchetypeVersionChunkSize(uint32_t value) noexcept;
 
         template<typename T, typename... _ARGS>
-        MUSTACHE_INLINE T& assignShared(Entity e, _ARGS&&... args);
+        MUSTACHE_INLINE const T& assignShared(Entity e, _ARGS&&... args);
 
         template<typename T, typename... _ARGS>
         MUSTACHE_INLINE T& assignUnique(Entity e, _ARGS&&... args);
 
-        MUSTACHE_INLINE std::shared_ptr<SharedComponentTag> assignShared(Entity e,
-                                                const std::shared_ptr<SharedComponentTag>&, SharedComponentId id);
+        MUSTACHE_INLINE SharedComponentPtr assignShared(Entity e, const SharedComponentPtr&, SharedComponentId id);
     private:
 
-        std::shared_ptr<SharedComponentTag> getCreatedSharedComponent(const std::shared_ptr<SharedComponentTag>& ptr,
-                                                                      SharedComponentId id);
+        SharedComponentPtr getCreatedSharedComponent(const SharedComponentPtr& ptr, SharedComponentId id);
 
         template<typename Component, typename TupleType, size_t... _I>
         void initComponent(Archetype& archetype, ArchetypeEntityIndex entity_index,
@@ -308,7 +306,7 @@ namespace mustache {
     }
     template<typename... ARGS>
     Archetype& EntityManager::getArchetype() {
-        return getArchetype(ComponentFactory::makeMask<ARGS...>(), SharedComponentsInfo{});
+        return getArchetype(ComponentFactory::makeMask<ARGS...>(), ComponentFactory::makeSharedInfo<ARGS...>());
     }
 
     size_t EntityManager::getArchetypesCount() const noexcept {
@@ -414,9 +412,7 @@ namespace mustache {
         return *reinterpret_cast<T*>(component_ptr);
     }
 
-    std::shared_ptr<SharedComponentTag> EntityManager::assignShared(Entity e,
-                                                                    const std::shared_ptr<SharedComponentTag>& ptr,
-                                                                    SharedComponentId id) {
+    SharedComponentPtr EntityManager::assignShared(Entity e, const SharedComponentPtr& ptr, SharedComponentId id) {
         const auto& location = locations_[e.id()];
 
         auto component_data = getCreatedSharedComponent(ptr, id);
@@ -433,14 +429,14 @@ namespace mustache {
     }
 
     template<typename T, typename... _ARGS>
-    T& EntityManager::assignShared(Entity e, _ARGS&&... args) {
+    const T& EntityManager::assignShared(Entity e, _ARGS&&... args) {
         auto ptr = std::make_shared<T>(std::forward<_ARGS>(args)...);
         auto result = assignShared(e, ptr, ComponentFactory::registerSharedComponent<T>());
-        return *static_cast<T*>(result.get());
+        return *static_cast<const T*>(result.get());
     }
 
     template<typename T, typename... _ARGS>
-    T& EntityManager::assign(Entity e, _ARGS&&... args) {
+    decltype(auto) EntityManager::assign(Entity e, _ARGS&&... args) {
         if constexpr (isComponentShared<T>()) {
             return assignShared<T>(e, std::forward<_ARGS>(args)...);
         } else {

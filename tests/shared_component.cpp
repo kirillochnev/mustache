@@ -53,7 +53,6 @@ struct SharedComponent0 : public mustache::TSharedComponentTag<SharedComponent0>
 
 TEST(SharedComponent, AssignShared) {
 
-
     struct Component0 {
         std::string src = "Component0: hello world";
     };
@@ -134,9 +133,43 @@ TEST(SharedComponent, AssignShared) {
 TEST(SharedComponent, ReassignShared) {
     struct SharedComponent1 : public mustache::TSharedComponentTag<SharedComponent1> {
         std::string src = "ReassignShared::Component1: default value";
+        bool operator==(const SharedComponent1& rhs) const noexcept {
+            return src == rhs.src;
+        }
     };
     mustache::World world;
     auto& entities = world.entities();
 
     auto e0 = entities.create<SharedComponent0>();
+    auto ptr0 = entities.getSharedComponent<SharedComponent0>(e0);
+
+    ASSERT_EQ(ptr0->dead_beef, 0xDEADBEEF);
+    ASSERT_EQ(ptr0->boobs, 0xB00B5);
+    ASSERT_EQ(ptr0->bad_babe, 0xBADBABE);
+
+    entities.assignShared<SharedComponent1>(e0);
+    auto ptr1 = entities.getSharedComponent<SharedComponent1>(e0);
+
+    ASSERT_EQ(ptr0->dead_beef, 0xDEADBEEF);
+    ASSERT_EQ(ptr0->boobs, 0xB00B5);
+    ASSERT_EQ(ptr0->bad_babe, 0xBADBABE);
+
+    ASSERT_EQ(ptr1->src, "ReassignShared::Component1: default value");
+
+    SharedComponent0 sh0;
+    for (uint32_t i = 0; i < 1000; ++i) {
+        sh0.bad_babe = static_cast<uint32_t>(rand());
+        sh0.dead_beef = static_cast<uint32_t>(rand());
+
+        entities.assign<SharedComponent0>(e0, sh0);
+        ptr0 = entities.getSharedComponent<SharedComponent0>(e0);
+
+        ASSERT_EQ(ptr0->dead_beef, sh0.dead_beef);
+        ASSERT_EQ(ptr0->bad_babe, sh0.bad_babe);
+        ASSERT_EQ(ptr0->boobs, 0xB00B5);
+
+        ptr1 = entities.getSharedComponent<SharedComponent1>(e0);
+        ASSERT_EQ(ptr1->src, "ReassignShared::Component1: default value");
+
+    }
 }

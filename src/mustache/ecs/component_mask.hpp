@@ -138,12 +138,13 @@ namespace mustache {
 
     struct SharedComponentTag;
 
-    // TODO: add const
-    using SharedComponentsData = std::vector<std::shared_ptr<SharedComponentTag> >;
+    using SharedComponentPtr = std::shared_ptr<const SharedComponentTag>;
+    
+    using SharedComponentsData = std::vector<SharedComponentPtr>;
 
     struct SharedComponentsInfo {
 
-        void add(SharedComponentId id, const std::shared_ptr<SharedComponentTag>& value) {
+        void add(SharedComponentId id, const SharedComponentPtr& value) {
             // TODO: check me
             ids_.set(id, true);
             const auto index = indexOf(id);
@@ -190,6 +191,7 @@ namespace mustache {
         [[nodiscard]] SharedComponentIndex indexOf(SharedComponentId id) const noexcept {
             SharedComponentIndex index;
             if (has(id)) {
+                index = SharedComponentIndex::make(0);
                 forEach([&index, id](SharedComponentId current_id) {
                     if (id == current_id) {
                         return false;

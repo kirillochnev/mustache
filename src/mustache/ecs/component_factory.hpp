@@ -50,7 +50,7 @@ namespace mustache {
             if constexpr (isComponentShared<_C>()) {
                 using Component = typename ComponentType<_C>::type;
                 if constexpr (IsComponentRequired<_C>::value) {
-                    static const auto id = registerComponent<Component>();
+                    static const auto id = registerSharedComponent<Component>();
                     info.add(id, std::make_shared<_C>());
                 }
             }
