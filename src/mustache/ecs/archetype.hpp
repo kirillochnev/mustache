@@ -129,7 +129,7 @@ namespace mustache {
         [[nodiscard]] MUSTACHE_INLINE SharedComponentIndex sharedComponentIndex() const noexcept;
 
         template<typename... ARGS>
-        MUSTACHE_INLINE bool getSharedComponents(std::tuple<ARGS...>& out);
+        MUSTACHE_INLINE bool getSharedComponents(std::tuple<ARGS...>& out) const;
 
         [[nodiscard]] const SharedComponentsInfo& sharedComponentInfo() const noexcept {
             return shared_components_info_;
@@ -227,7 +227,7 @@ namespace mustache {
     }
 
     template<typename... ARGS>
-    bool Archetype::getSharedComponents(std::tuple<ARGS...>& out) {
+    bool Archetype::getSharedComponents(std::tuple<ARGS...>& out) const {
         out = std::make_tuple(static_cast<ARGS>(getSharedComponent(sharedComponentIndex<ARGS>()))...);
         return true;
     }

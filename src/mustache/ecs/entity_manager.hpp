@@ -456,8 +456,13 @@ namespace mustache {
             return false;
         }
         const auto& archetype = *archetypes_[location.archetype];
-        static const auto component_id = ComponentFactory::registerComponent<T>();
-        return archetype.hasComponent(component_id);
+        if constexpr (isComponentShared<T>()) {
+            static const auto component_id = ComponentFactory::registerSharedComponent<T>();
+            return archetype.hasComponent(component_id);
+        } else {
+            static const auto component_id = ComponentFactory::registerComponent<T>();
+            return archetype.hasComponent(component_id);
+        }
     }
 
     template<typename TupleType>
