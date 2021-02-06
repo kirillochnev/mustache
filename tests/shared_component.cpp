@@ -173,3 +173,20 @@ TEST(SharedComponent, ReassignShared) {
 
     }
 }
+
+TEST(SharedComponent, RemoveSharedComponent) {
+    mustache::World world;
+    auto& entities = world.entities();
+
+    auto e0 = entities.create<SharedComponent0>();
+    auto ptr0 = entities.getSharedComponent<SharedComponent0>(e0);
+
+    ASSERT_TRUE(entities.hasComponent<SharedComponent0>(e0));
+    ASSERT_EQ(ptr0->dead_beef, 0xDEADBEEF);
+    ASSERT_EQ(ptr0->boobs, 0xB00B5);
+    ASSERT_EQ(ptr0->bad_babe, 0xBADBABE);
+
+    entities.removeSharedComponent<SharedComponent0>(e0);
+    ASSERT_FALSE(entities.hasComponent<SharedComponent0>(e0));
+    ASSERT_EQ(entities.getSharedComponent<SharedComponent0>(e0), nullptr);
+}
