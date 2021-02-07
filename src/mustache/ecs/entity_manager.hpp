@@ -60,6 +60,8 @@ namespace mustache {
 
         Archetype& getArchetype(const ComponentIdMask&, const SharedComponentsInfo& shared_component_mask);
 
+        Archetype* getArchetypeOf(Entity entity) const noexcept;
+
         template<typename... ARGS>
         MUSTACHE_INLINE Archetype& getArchetype();
 

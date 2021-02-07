@@ -106,6 +106,8 @@ TEST(SharedComponent, AssignShared) {
     SharedComponent0 value;
     value.bad_babe = 0;
     auto& ref2 = entities.assign<SharedComponent0>(e2, value);
+    entities.assign<Component0>(e2);
+    entities.assign<Component1>(e2);
 
     ASSERT_EQ(&ref2, entities.getSharedComponent<SharedComponent0>(e2));
     ASSERT_EQ(ptr.dead_beef, 0xDEADBEEF);
@@ -128,6 +130,14 @@ TEST(SharedComponent, AssignShared) {
     ASSERT_EQ(count, 3);
     ASSERT_EQ(counts[&ptr], 2);
     ASSERT_EQ(counts[&ref2], 1);
+
+    const auto arch1 = entities.getArchetypeOf(e1);
+    const auto arch2 = entities.getArchetypeOf(e2);
+
+    ASSERT_NE(arch1, arch2);
+    ASSERT_EQ(arch1->componentMask(), arch2->componentMask());
+    ASSERT_EQ(arch1->sharedComponentInfo().ids(), arch2->sharedComponentInfo().ids());
+    ASSERT_NE(arch1->sharedComponentInfo().data(), arch2->sharedComponentInfo().data());
 }
 
 TEST(SharedComponent, ReassignShared) {

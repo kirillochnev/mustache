@@ -219,3 +219,11 @@ bool EntityManager::removeSharedComponent(Entity entity, SharedComponentId compo
 
     return true;
 }
+
+Archetype* EntityManager::getArchetypeOf(Entity entity) const noexcept {
+    if (!isEntityValid(entity)) {
+        return nullptr;
+    }
+    const auto archetype_index = locations_[entity.id()].archetype;
+    return archetypes_[archetype_index].get();
+}
