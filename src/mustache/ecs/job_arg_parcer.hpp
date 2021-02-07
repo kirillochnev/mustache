@@ -240,6 +240,15 @@ namespace mustache {
         static constexpr bool testForEachArray(...) noexcept {
             return false;
         }
+        template<typename C>
+        static constexpr bool testCallOperator(decltype(&C::operator())) noexcept {
+            return true;
+        }
+
+        template<typename C>
+        static constexpr bool testCallOperator(...) noexcept {
+            return false;
+        }
 
         static constexpr auto getJobFunctionInfo() noexcept {
             if constexpr (testForEachArray<T>(nullptr)) {
@@ -252,6 +261,9 @@ namespace mustache {
     public:
         JobInfo() = delete;
         ~JobInfo() = delete;
+
+        static_assert(testForEachArray<T>(nullptr) || testCallOperator<T>(nullptr),
+                "T is not a job type, operator() or method forEachArray does not found");
         using FunctionInfo = decltype(getJobFunctionInfo());
         static constexpr bool has_for_each_array = testForEachArray<T>(nullptr);
 

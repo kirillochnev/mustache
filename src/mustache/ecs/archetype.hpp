@@ -123,6 +123,9 @@ namespace mustache {
         template<FunctionSafety _Safety = FunctionSafety::kSafe>
         [[nodiscard]] MUSTACHE_INLINE const SharedComponentTag* getSharedComponent(SharedComponentIndex index) const noexcept;
 
+        template<typename T>
+        [[nodiscard]] MUSTACHE_INLINE const T* getSharedComponent() const noexcept;
+
         [[nodiscard]] MUSTACHE_INLINE SharedComponentIndex sharedComponentIndex(SharedComponentId id) const noexcept;
 
         template<typename T>
@@ -204,6 +207,13 @@ namespace mustache {
             return shared_components_info_.get(index).get();
         }
         return nullptr;
+    }
+    template<typename T>
+    const T* Archetype::getSharedComponent() const noexcept {
+        using Type = typename ComponentType<T>::type;
+        const auto index = sharedComponentIndex<Type>();
+        const auto ptr = getSharedComponent(index);
+        return static_cast<const T*>(ptr);
     }
 
     SharedComponentIndex Archetype::sharedComponentIndex(SharedComponentId id) const noexcept {
