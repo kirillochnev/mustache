@@ -471,3 +471,23 @@ TEST(Job, iterate_and_check_value) {
         ASSERT_EQ(static_data.count, 0);
     }
 }
+
+TEST(Job, compilation) {
+    mustache::World world;
+    struct TestComponent0 {};
+    struct TestComponent1 {};
+    struct TestTask : public mustache::PerEntityJob<TestTask> {
+        void operator() (mustache::Entity, const TestComponent0&, TestComponent1&, mustache::JobInvocationIndex) {
+        }
+    };
+    TestTask task;
+    task.run(world);
+
+    using Info = mustache::JobInfo<TestTask>::FunctionInfo;
+    static_assert(Info::any_components_count == 2);
+    static_assert(Info::components_count == 2);
+    static_assert(Info::shared_components_count == 0);
+    static_assert(Info::args_count == 4);
+    static_assert(std::is_same<Info::UniqueComponentType<0>::type, const TestComponent0&>::value);
+    static_assert(std::is_same<Info::UniqueComponentType<1>::type, TestComponent1&>::value);
+}

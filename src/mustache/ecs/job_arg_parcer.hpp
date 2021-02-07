@@ -272,7 +272,7 @@ namespace mustache {
             return ComponentFactory::makeMask<typename FunctionInfo::template UniqueComponentType<_I> ::type...>();
         }
         static ComponentIdMask componentMask() noexcept {
-            return componentMask(FunctionInfo::unique_components_indexes);
+            return componentMask(std::make_index_sequence<FunctionInfo::components_count>());
         }
 
         template<typename _C>
