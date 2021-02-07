@@ -83,6 +83,10 @@ uint32_t BaseJob::taskCount(World& world, uint32_t entity_count) const noexcept 
 
 void BaseJob::run(World& world, JobRunMode mode) {
     const auto entities_count = applyFilter(world);
+    if (entities_count < 1u) {
+        return;
+    }
+
     const auto task_count = (mode == JobRunMode::kParallel) ? std::max(1u, taskCount(world, entities_count)) : 1u;
     if (task_count > 0u) {
         world.incrementVersion();
