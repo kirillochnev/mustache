@@ -37,11 +37,17 @@ namespace mustache {
             static constexpr auto unique_components = std::make_index_sequence<Info::FunctionInfo::components_count>();
             static constexpr auto shared_components = std::make_index_sequence<Info::FunctionInfo::shared_components_count>();
             auto& dispatcher = world.dispatcher();
-            PerEntityJobTaskId task_id = PerEntityJobTaskId::make(0);
+
+            JobInvocationIndex invocation_index;
+            invocation_index.task_index = PerEntityJobTaskId::make(0);
+            invocation_index.thread_id = dispatcher.currentThreadId();
+            invocation_index.entity_index_in_task = PerEntityJobEntityIndexInTask::make(0);
+            invocation_index.entity_index = PerEntityJobEntityIndex::make(0);
+
             const auto thread_id = dispatcher.currentThreadId();
             for (auto task : JobView::make(filter_result_, 1)) {
-                singleTask(task, task_id, thread_id, unique_components, shared_components);
-                ++task_id;
+                singleTask(task, invocation_index, unique_components, shared_components);
+                ++invocation_index.task_index;
             }
         }
 
@@ -49,13 +55,18 @@ namespace mustache {
             static constexpr auto unique_components = std::make_index_sequence<Info::FunctionInfo::components_count>();
             static constexpr auto shared_components = std::make_index_sequence<Info::FunctionInfo::shared_components_count>();
 
-            PerEntityJobTaskId task_id = PerEntityJobTaskId::make(0);
             auto& dispatcher = world.dispatcher();
-            for (auto task : JobView::make(filter_result_, task_count)) {
-                dispatcher.addParallelTask([task, this, task_id](ThreadId thread_id) {
-                    singleTask(task, task_id, thread_id, unique_components, shared_components);
+            JobInvocationIndex invocation_index;
+            invocation_index.entity_index = PerEntityJobEntityIndex::make(0);
+            invocation_index.entity_index_in_task = PerEntityJobEntityIndexInTask::make(0);
+            invocation_index.task_index = PerEntityJobTaskId::make(0);
+            for (TaskView task : JobView::make(filter_result_, task_count)) {
+                dispatcher.addParallelTask([task, this, invocation_index](ThreadId thread_id) mutable {
+                    invocation_index.thread_id = thread_id;
+                    singleTask(task, invocation_index, unique_components, shared_components);
                 });
-                ++task_id;
+                ++invocation_index.task_index;
+                invocation_index.entity_index = PerEntityJobEntityIndex::make(invocation_index.entity_index.toInt() + task.dist_to_end);
             }
             dispatcher.waitForParallelFinish();
         }
@@ -107,12 +118,8 @@ namespace mustache {
         }
 
         template<size_t... _I, size_t... _SI>
-        MUSTACHE_INLINE void singleTask(TaskView task_view, PerEntityJobTaskId task_id, ThreadId thread_id,
+        MUSTACHE_INLINE void singleTask(TaskView task_view, JobInvocationIndex invocation_index,
                                         const std::index_sequence<_I...>&, const std::index_sequence<_SI...>&) {
-            JobInvocationIndex invocation_index;
-            invocation_index.task_index = task_id;
-            invocation_index.entity_index_in_task = PerEntityJobEntityIndexInTask::make(0);
-            invocation_index.thread_id = thread_id;
             auto shared_components = std::make_tuple(
                     getNullptr<_SI>()...
             );

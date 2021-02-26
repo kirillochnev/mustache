@@ -19,6 +19,7 @@ namespace mustache {
     struct JobInvocationIndex {
         PerEntityJobTaskId task_index;
         PerEntityJobEntityIndexInTask entity_index_in_task;
+        PerEntityJobEntityIndex entity_index;
         ThreadId thread_id;
     };
 
