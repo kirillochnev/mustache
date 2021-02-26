@@ -136,7 +136,7 @@ TEST(SharedComponent, AssignShared) {
 
     ASSERT_NE(arch1, arch2);
     ASSERT_EQ(arch1->componentMask(), arch2->componentMask());
-    ASSERT_EQ(arch1->sharedComponentInfo().ids(), arch2->sharedComponentInfo().ids());
+    ASSERT_EQ(arch1->sharedComponentInfo().mask(), arch2->sharedComponentInfo().mask());
     ASSERT_NE(arch1->sharedComponentInfo().data(), arch2->sharedComponentInfo().data());
 }
 

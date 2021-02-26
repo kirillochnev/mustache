@@ -158,6 +158,7 @@ namespace mustache {
             if (has(id)) {
                 const auto index = indexOf(id);
                 data_.erase(data_.begin() + index.toInt());
+                ids_.erase(ids_.begin() + index.toInt());
             }
             mask_.set(id, false);
         }
