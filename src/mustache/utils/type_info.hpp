@@ -12,6 +12,15 @@
 namespace mustache {
     namespace detail {
         std::string make_type_name_from_func_name(const char* func_name) noexcept;
+        template<typename C>
+        inline constexpr bool testOperatorEq(decltype(&C::operator==)) noexcept {
+            return true;
+        }
+
+        template<typename C>
+        inline constexpr bool testOperatorEq(...) noexcept {
+            return false;
+        }
     }
 
     template <typename T>
@@ -27,6 +36,7 @@ namespace mustache {
         using CopyFunction = Functor<void (void*, const void*) >;
         using MoveFunction = Functor<void (void*, void*) >;
         using Destructor = Functor<void (void*) >;
+        using IsEqual = Functor<bool (const void*, const void*)>;
 
         size_t size{0};
         size_t align{0};
@@ -38,7 +48,7 @@ namespace mustache {
             MoveFunction move;
             MoveFunction move_constructor;
             Destructor destroy;
-
+            IsEqual compare;
         } functions;
     };
 
@@ -82,6 +92,13 @@ namespace mustache {
                         std::is_trivially_destructible<T>::value ? TypeInfo::Destructor{} : [](void *ptr) {
                             static_cast<T *>(ptr)->~T();
                         },
+                        [](const void* lhs, const void* rhs)-> bool {
+                            if constexpr (detail::testOperatorEq<T>(nullptr)) {
+                                return *static_cast<const T*>(lhs) == *static_cast<const T*>(rhs);
+                            } else {
+                                throw std::runtime_error("Not implemented");
+                            }
+                        }
                 }
         };
         return result;

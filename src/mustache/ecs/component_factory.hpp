@@ -14,6 +14,8 @@ namespace mustache {
         ComponentFactory() = delete;
         ~ComponentFactory() = delete;
 
+        static bool isEq(const SharedComponentTag* c0,const SharedComponentTag* c1, SharedComponentId id);
+
         template <typename T>
         static SharedComponentId registerSharedComponent() noexcept {
             static const auto info = makeTypeInfo<T>();
@@ -54,6 +56,23 @@ namespace mustache {
                     info.add(id, std::make_shared<_C>());
                 }
             }
+        }
+        template<typename _C>
+        static void applyToSharedMask(SharedComponentIdMask& mask) noexcept {
+            if constexpr (isComponentShared<_C>()) {
+                using Component = typename ComponentType<_C>::type;
+                if constexpr (IsComponentRequired<_C>::value) {
+                    static const auto id = registerSharedComponent<Component>();
+                    mask.add(id);
+                }
+            }
+        }
+
+        template <typename... _C>
+        static SharedComponentIdMask makeSharedMask() noexcept {
+            SharedComponentIdMask result;
+            (applyToSharedMask<_C>(result), ...);
+            return result;
         }
 
         template <typename... _C>

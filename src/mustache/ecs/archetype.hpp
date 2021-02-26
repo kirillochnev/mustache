@@ -92,11 +92,6 @@ namespace mustache {
         MUSTACHE_INLINE Entity* entityAt(ArchetypeEntityIndex index);
 
         template<FunctionSafety _Safety = FunctionSafety::kDefault>
-        void* getComponent(ComponentIndex component, ArchetypeEntityIndex index) const noexcept {
-            return data_storage_->getData<_Safety>(component, ComponentStorageIndex::fromArchetypeIndex(index));
-        }
-
-        template<FunctionSafety _Safety = FunctionSafety::kDefault>
         const void* getConstComponent(ComponentIndex component_index, ArchetypeEntityIndex index) const noexcept {
             return data_storage_->getData<_Safety>(component_index, ComponentStorageIndex::fromArchetypeIndex(index));
         }
@@ -141,6 +136,18 @@ namespace mustache {
         [[nodiscard]] const ArrayWrapper<Entity, ArchetypeEntityIndex, true>& entities() const noexcept;
 
     private:
+
+        MUSTACHE_INLINE void markComponentDirty(ComponentIndex component, ArchetypeEntityIndex index,
+                                                WorldVersion version) noexcept {
+            const auto chunk = versionStorage().chunkAt(index);
+            versionStorage().setVersion(version, chunk, component);
+        }
+
+        template<FunctionSafety _Safety = FunctionSafety::kDefault>
+        void* getComponent(ComponentIndex component, ArchetypeEntityIndex index) const noexcept {
+            return data_storage_->getData<_Safety>(component, ComponentStorageIndex::fromArchetypeIndex(index));
+        }
+
         friend ElementView;
         friend EntityManager;
 
@@ -181,8 +188,7 @@ namespace mustache {
                                   WorldVersion version) noexcept {
         auto res = data_storage_->getData<_Safety>(component_index, ComponentStorageIndex::fromArchetypeIndex(index));
         if (res != nullptr) {
-            const auto chunk = versionStorage().chunkAt(index);
-            versionStorage().setVersion(version, chunk, component_index);
+            markComponentDirty(component_index, index, version);
         }
 
         return res;
@@ -217,16 +223,7 @@ namespace mustache {
     }
 
     SharedComponentIndex Archetype::sharedComponentIndex(SharedComponentId id) const noexcept {
-        uint32_t i = 0u;
-        SharedComponentIndex result = SharedComponentIndex::null();
-        shared_components_info_.forEach([id, &i, &result](SharedComponentId current_id){
-            if (current_id == id) {
-                result = SharedComponentIndex::make(i);
-                return false;
-            }
-            ++i;
-            return true;
-        });
+        SharedComponentIndex result = shared_components_info_.indexOf(id);
         return result;
     }
 

@@ -57,10 +57,10 @@ void ASystem::resume(World& world) {
 
 void ASystem::destroy(World& world) {
     if (state_ == SystemState::kActive) {
-        onPause(world);
+        pause(world);
     }
     if (state_ == SystemState::kPaused) {
-        onStop(world);
+        stop(world);
     }
     onDestroy(world);
     state_ = SystemState::kUninit;

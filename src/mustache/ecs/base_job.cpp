@@ -1,6 +1,7 @@
 #include "base_job.hpp"
 #include <mustache/ecs/world.hpp>
 #include <mustache/ecs/world_filter.hpp>
+#include <mustache/utils/benchmark.hpp>
 
 using namespace mustache;
 
@@ -77,6 +78,8 @@ namespace {
     }
 }
 
+BaseJob::~BaseJob() = default;
+
 uint32_t BaseJob::taskCount(World& world, uint32_t entity_count) const noexcept {
     return std::min(entity_count, world.dispatcher().threadCount() + 1);
 }
@@ -92,10 +95,17 @@ void BaseJob::run(World& world, JobRunMode mode) {
         world.incrementVersion();
 
         onJobBegin(world, TasksCount::make(task_count), JobSize::make(entities_count), mode);
-        if (mode == JobRunMode::kCurrentThread) {
-            runCurrentThread(world);
+        const auto do_job = [this, mode, &world, task_count] {
+            if (mode == JobRunMode::kCurrentThread) {
+                runCurrentThread(world);
+            } else {
+                runParallel(world, task_count);
+            }
+        };
+        if (benchmark_) {
+            benchmark_->add(do_job);
         } else {
-            runParallel(world, task_count);
+            do_job();
         }
         onJobEnd(world, TasksCount::make(task_count), JobSize::make(entities_count), mode);
     }
@@ -127,4 +137,21 @@ void BaseJob::onJobBegin(World&, TasksCount, JobSize, JobRunMode) noexcept {
 
 void BaseJob::onJobEnd(World&, TasksCount, JobSize, JobRunMode) noexcept {
 
+}
+
+void BaseJob::enableBenchmark() {
+    if (!benchmark_) {
+        benchmark_ = std::make_shared<Benchmark>();
+    }
+}
+
+void BaseJob::disableBenchmark() {
+    benchmark_.reset();
+}
+
+void BaseJob::showBenchmark() {
+    if (!benchmark_) {
+        return;
+    }
+    benchmark_->show();
 }

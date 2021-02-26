@@ -82,3 +82,7 @@ void ComponentFactory::destroyComponents(const TypeInfo& info, void* data, size_
 ComponentId ComponentFactory::nextComponentId() noexcept {
     return component_id_storage.next_component_id;
 }
+
+bool ComponentFactory::isEq(const SharedComponentTag* c0,const SharedComponentTag* c1, SharedComponentId id) {
+    return shared_component_id_storage.componentInfo(id).functions.compare(c0, c1);
+}

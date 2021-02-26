@@ -110,16 +110,14 @@ namespace mustache {
     public:
         using Position = decltype(buildPositionsOf(args_indexes));
 
-        template<size_t... _I>
-        static constexpr size_t sharedComponentsCount(const std::index_sequence<_I...>&) noexcept {
-            const auto count_of = [](bool v) {
-                return v ? 1 : 0;
-            };
-            return (count_of(isComponentShared<typename FC::template arg<_I>::type>()) + ... + 0);
-        }
-
         static constexpr size_t sharedComponentsCount() noexcept {
-            return sharedComponentsCount(args_indexes);
+            size_t result = 0;
+            for (const auto& info : args_info) {
+                if (info.type == ArgInfo::kSharedComponent) {
+                    ++result;
+                }
+            }
+            return result;
         }
 
         static constexpr size_t anyComponentsCount() noexcept {
@@ -133,7 +131,13 @@ namespace mustache {
         }
 
         static constexpr size_t componentsCount() noexcept {
-            return anyComponentsCount() - sharedComponentsCount();
+            size_t result = 0;
+            for (const auto& info : args_info) {
+                if (info.type == ArgInfo::kComponent) {
+                    ++result;
+                }
+            }
+            return result;
         }
 
         static constexpr size_t any_components_count = anyComponentsCount();
@@ -192,7 +196,7 @@ namespace mustache {
         }
         template<size_t... _I>
         static constexpr auto buildUniqueComponentIndexes(const std::index_sequence<_I...>&) {
-            return std::index_sequence<componentPosition(_I)...>{};
+            return std::index_sequence<uniqueComponentPosition(_I)...>{};
         }
 
         template<size_t... _I>
@@ -273,6 +277,14 @@ namespace mustache {
         }
         static ComponentIdMask componentMask() noexcept {
             return componentMask(std::make_index_sequence<FunctionInfo::components_count>());
+        }
+
+        template<size_t... _I>
+        static SharedComponentIdMask sharedComponentMask(const std::index_sequence<_I...>&) noexcept {
+            return ComponentFactory::makeSharedMask<typename FunctionInfo::template SharedComponentType<_I> ::type...>();
+        }
+        static SharedComponentIdMask sharedComponentMask() noexcept {
+            return sharedComponentMask(std::make_index_sequence<FunctionInfo::shared_components_count>());
         }
 
         template<typename _C>

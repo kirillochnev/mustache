@@ -22,6 +22,7 @@ namespace mustache {
 
         PerEntityJob() {
             filter_result_.mask = Info::componentMask();
+            filter_result_.shared_component_mask = Info::sharedComponentMask();
         }
 
         ComponentIdMask checkMask() const noexcept override {
@@ -66,7 +67,7 @@ namespace mustache {
 
         template<typename... _ARGS>
         MUSTACHE_INLINE void forEachArrayGenerated(ComponentArraySize count, JobInvocationIndex& invocation_index,
-                                   _ARGS MUSTACHE_RESTRICT_PTR ... pointers) {
+                                                   _ARGS MUSTACHE_RESTRICT_PTR ... pointers) {
             T& self = *static_cast<T*>(this);
             if constexpr (Info::has_for_each_array) {
                 invokeMethod(self, &T::forEachArray, count, invocation_index, pointers...);
@@ -101,8 +102,8 @@ namespace mustache {
         template<size_t _ComponentIndex>
         static constexpr auto getNullptr() noexcept {
             using Type = typename Info::FunctionInfo::template SharedComponentType<_ComponentIndex>::type;
-            using ResultType = typename std::remove_reference<Type>::type*;
-            return static_cast<ResultType>(nullptr);
+            using ResultType = typename ComponentType<Type>::type;
+            return static_cast<const ResultType*>(nullptr);
         }
 
         template<size_t... _I, size_t... _SI>
@@ -126,7 +127,7 @@ namespace mustache {
                         archetype.getComponentIndex(ids[_I])...
                 };
                 for (auto& array : ArchetypeView{filter_result_, info.archetype_index,
-                                                      info.first_entity, info.current_size}) {
+                                                 info.first_entity, info.current_size}) {
                     if constexpr (Info::FunctionInfo::Position::entity >= 0) {
                         forEachArrayGenerated(ComponentArraySize::make(array.arraySize()), invocation_index,
                                               RequiredComponent<Entity>(array.getEntity<FunctionSafety::kUnsafe>()),

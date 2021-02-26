@@ -164,6 +164,12 @@ namespace mustache {
         MUSTACHE_INLINE T& assignUnique(Entity e, _ARGS&&... args);
 
         MUSTACHE_INLINE SharedComponentPtr assignShared(Entity e, const SharedComponentPtr&, SharedComponentId id);
+
+        template<typename T>
+        void markDirty(Entity entity) noexcept {
+            markDirty<ComponentFactory::registerComponent<T>()>(entity);
+        }
+        void markDirty(Entity entity, ComponentId component_id) noexcept;
     private:
 
         SharedComponentPtr getCreatedSharedComponent(const SharedComponentPtr& ptr, SharedComponentId id);
@@ -193,9 +199,6 @@ namespace mustache {
         friend Archetype;
         void updateLocation(Entity e, ArchetypeIndex archetype, ArchetypeEntityIndex index) noexcept {
             if (e.id().isValid()) {
-                if (!locations_.has(e.id())) {
-                    locations_.resize(e.id().next().toInt());
-                }
                 auto& location = locations_[e.id()];
                 location.archetype = archetype;
                 location.index = index;
@@ -263,6 +266,7 @@ namespace mustache {
         if(!empty_slots_) {
             entity.reset(EntityId::make(entities_.size()), EntityVersion::make(0), this_world_id_);
             entities_.push_back(entity);
+            locations_.emplace_back();
             updateLocation(entity, archetype.id(), archetype.insert(entity));
         } else {
             const auto id = next_slot_;
@@ -424,9 +428,12 @@ namespace mustache {
         shared_components_info.add(id, component_data);
 
         auto& arch = getArchetype(prev_arch.componentMask(), shared_components_info);
-        const auto prev_index = location.index;
-        const ComponentIdMask skip_init_mask {};
-        arch.externalMove(e, prev_arch, prev_index, skip_init_mask);
+        if (&arch != &prev_arch) {
+            const auto prev_index = location.index;
+            const ComponentIdMask skip_init_mask{};
+            arch.externalMove(e, prev_arch, prev_index, skip_init_mask);
+        }
+
         return component_data;
     }
 

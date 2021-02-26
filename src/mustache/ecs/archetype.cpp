@@ -189,8 +189,9 @@ ComponentIndexMask Archetype::makeComponentMask(const ComponentIdMask& mask) con
     ComponentIndexMask index_mask;
     mask.forEachItem([&index_mask, this](ComponentId id) {
         const auto index = getComponentIndex(id);
-        const auto value = index.isValid();
-        index_mask.set(index, value);
+        if (index.isValid()) {
+            index_mask.set(index, true);
+        }
     });
     return index_mask;
 }

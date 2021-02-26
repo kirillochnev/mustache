@@ -25,8 +25,8 @@ void Benchmark::show() {
         variance += (avr - x) * (avr - x) / static_cast<double>(times_.size());
     }
 
-    Logger{}.hideContext().info("Avr: %fms, med: %fms, min: %fms,"
-        " max: %fms, variance: %fms, sigma: %fms\n",
+    Logger{}.hideContext().info("Call count: %d, Avr: %fms, med: %fms, min: %fms,"
+        " max: %fms, variance: %fms, sigma: %fms\n", static_cast<uint32_t>(times_.size()),
         avr, med, times_.front(), times_.back(), variance, sqrt(variance));
 
 }

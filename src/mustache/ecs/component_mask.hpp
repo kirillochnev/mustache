@@ -145,13 +145,13 @@ namespace mustache {
     struct SharedComponentsInfo {
 
         void add(SharedComponentId id, const SharedComponentPtr& value) {
-            // TODO: check me
-            ids_.set(id, true);
-            const auto index = indexOf(id);
-            if (index.toInt() >= data_.size()) {
-                data_.resize(index.next().toInt());
+            if (!mask_.has(id)) {
+                mask_.set(id, true);
+                ids_.push_back(id);
+                data_.push_back(value);
+            } else {
+                data_[indexOf(id).toInt()] = value;
             }
-            data_[index.toInt()] = value;
         }
 
         void remove(SharedComponentId id) {
@@ -159,25 +159,25 @@ namespace mustache {
                 const auto index = indexOf(id);
                 data_.erase(data_.begin() + index.toInt());
             }
-            ids_.set(id, false);
+            mask_.set(id, false);
         }
 
         template <typename _F>
         void forEach(_F&& function) const noexcept {
             uint32_t index = 0;
-            ids_.forEachItem([&function, &index, this](SharedComponentId id) {
+            for (auto id : ids_) {
                 return invoke(function, id, data_[index++]);
-            });
+            }
         }
         [[nodiscard]] bool has(SharedComponentId id) const noexcept {
-            return ids_.has(id);
+            return mask_.has(id);
         }
 
         [[nodiscard]] bool isMatch(const SharedComponentIdMask& mask) const noexcept {
-            return ids_.isMatch(mask);
+            return mask_.isMatch(mask);
         }
-        [[nodiscard]] const SharedComponentIdMask& ids() const noexcept {
-            return ids_;
+        [[nodiscard]] const SharedComponentIdMask& mask() const noexcept {
+            return mask_;
         }
 
         [[nodiscard]] const SharedComponentsData& data() const noexcept {
@@ -185,18 +185,12 @@ namespace mustache {
         }
 
         [[nodiscard]] SharedComponentIndex indexOf(SharedComponentId id) const noexcept {
-            SharedComponentIndex index;
-            if (has(id)) {
-                index = SharedComponentIndex::make(0);
-                forEach([&index, id](SharedComponentId current_id) {
-                    if (id == current_id) {
-                        return false;
-                    }
-                    ++index;
-                    return true;
-                });
+            for (uint32_t i = 0; i < ids_.size(); ++i) {
+                if (ids_[i] == id) {
+                    return SharedComponentIndex::make(i);
+                }
             }
-            return index;
+            return SharedComponentIndex::null();
         }
 
         std::shared_ptr<const SharedComponentTag> get(SharedComponentIndex index) const noexcept {
@@ -204,7 +198,8 @@ namespace mustache {
         }
 
     private:
-        SharedComponentIdMask ids_;
+        SharedComponentIdMask mask_;
+        std::vector<SharedComponentId> ids_;
         SharedComponentsData data_;
 
     };

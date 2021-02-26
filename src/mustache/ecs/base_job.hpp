@@ -18,9 +18,11 @@ namespace mustache {
     struct TasksCount : public IndexLike<uint32_t, TasksCount>{};
     struct JobSize : public IndexLike<uint32_t, JobSize>{};
 
+    class Benchmark;
+
     class BaseJob {
     public:
-        virtual ~BaseJob() = default;
+        virtual ~BaseJob();
 
         void run(World& world, JobRunMode mode = JobRunMode::kDefault);
 
@@ -42,8 +44,13 @@ namespace mustache {
 
         virtual void onJobBegin(World&, TasksCount, JobSize total_entity_count, JobRunMode mode) noexcept;
         virtual void onJobEnd(World&, TasksCount, JobSize total_entity_count, JobRunMode mode) noexcept;
+
+        void enableBenchmark();
+        void disableBenchmark();
+        void showBenchmark();
     protected:
         WorldVersion last_update_version_;
         WorldFilterResult filter_result_;
+        std::shared_ptr<Benchmark> benchmark_;
     };
 }

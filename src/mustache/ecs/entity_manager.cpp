@@ -24,7 +24,7 @@ Archetype& EntityManager::getArchetype(const ComponentIdMask& mask, const Shared
     const ComponentIdMask arch_mask = mask.merge(getExtraComponents(mask));
     ArchetypeComponents archetype_components;
     archetype_components.unique = arch_mask;
-    archetype_components.shared = shared.ids();
+    archetype_components.shared = shared.mask();
     auto& map = mask_to_arch_[archetype_components];
     auto& result = map[shared.data()];
     if(result) {
@@ -161,7 +161,7 @@ SharedComponentPtr EntityManager::getCreatedSharedComponent(const SharedComponen
     }
     auto& arr = shared_components_[id];
     for (const auto& v : arr) {
-        if (v.get() == ptr.get() || v->isEq(*ptr)) {
+        if (v.get() == ptr.get() || ComponentFactory::isEq(v.get(), ptr.get(), id)) {
             return v;
         }
     }
@@ -226,4 +226,15 @@ Archetype* EntityManager::getArchetypeOf(Entity entity) const noexcept {
     }
     const auto archetype_index = locations_[entity.id()].archetype;
     return archetypes_[archetype_index].get();
+}
+
+void EntityManager::markDirty(Entity entity, ComponentId component_id) noexcept {
+    if (isEntityValid(entity)) {
+        const auto location = locations_[entity.id()];
+        const auto arch = archetypes_[location.archetype];
+        const auto component_index = arch->getComponentIndex(component_id);
+        if (component_index.isValid()) {
+            arch->markComponentDirty(component_index, location.index, worldVersion());
+        }
+    }
 }
