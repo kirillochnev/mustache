@@ -66,6 +66,7 @@ void DefaultComponentDataStorage::clear(bool free_chunks) {
             freeChunk(chunk);
         }
         chunks_.clear();
+        chunks_.shrink_to_fit();
     }
     size_ = 0;
 }

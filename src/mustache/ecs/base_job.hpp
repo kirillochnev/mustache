@@ -22,6 +22,7 @@ namespace mustache {
 
     class BaseJob {
     public:
+        BaseJob();
         virtual ~BaseJob();
 
         void run(World& world, JobRunMode mode = JobRunMode::kDefault);
@@ -51,6 +52,7 @@ namespace mustache {
     protected:
         WorldVersion last_update_version_;
         WorldFilterResult filter_result_;
-        std::shared_ptr<Benchmark> benchmark_;
+        std::string name_;
+//        std::shared_ptr<Benchmark> benchmark_;
     };
 }

@@ -81,18 +81,19 @@ void mustache::SystemManager::init() {
 }
 
 void mustache::SystemManager::addSystem(SystemManager::SystemPtr system) {
-    auto& info = data_->systems_info.emplace_back();
+    const auto index = data_->systems_info.size();
+    data_->systems_info.emplace_back();
 
-    info.system = std::move(system);
+    data_->systems_info[index].system = std::move(system);
 
-    if (info.system->state() == SystemState::kUninit) {
-        info.system->create(data_->world);
+    if (data_->systems_info[index].system->state() == SystemState::kUninit) {
+        data_->systems_info[index].system->create(data_->world);
     }
 
-    data_->system_by_name[info.system->name()] = info.system;
+    data_->system_by_name[data_->systems_info[index].system->name()] = data_->systems_info[index].system;
 
     if (data_->was_init) {
-        info.system->configure(data_->world, info.config);
+        data_->systems_info[index].system->configure(data_->world, data_->systems_info[index].config);
         reorderSystems();
     }
 }

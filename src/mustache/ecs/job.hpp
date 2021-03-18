@@ -86,6 +86,7 @@ namespace mustache {
                 for(ComponentArraySize i = ComponentArraySize::make(0); i < count; ++i) {
                     invoke(self, invocation_index, pointers++...);
                     ++invocation_index.entity_index_in_task;
+                    ++invocation_index.entity_index;
                 }
             }
         }
@@ -165,7 +166,7 @@ namespace mustache {
         struct TmpJob : public PerEntityJob<TmpJob> {
             TmpJob(_F&& f):
                     func{std::forward<_F>(f)} {
-
+                this->disableBenchmark();
             }
             _F&& func;
             void operator() (ARGS... args) {
@@ -176,7 +177,7 @@ namespace mustache {
                 return job_name;
             }
         };
-        TmpJob job{std::forward<_F>(function)};
+        TmpJob job = std::forward<_F>(function);
         job.run(world_, mode);
     }
 }

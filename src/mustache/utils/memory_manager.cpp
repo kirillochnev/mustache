@@ -72,8 +72,8 @@ void mustache::MemoryManager::showStatistic() const noexcept {
 #if MEMORY_MANAGER_COLLECT_STATISTICS
     for (const auto& pair : file_to_size) {
         if (pair.second > 0) {
-            const auto kbytes = pair.second / 1024.0f;
-            std::cout << "File: " << pair.first << ", size: " << kbytes << "KB" << std::endl;
+            const auto mbytes = static_cast<float>(pair.second) / 1024.0f / 1024.f;
+            std::cout << "File: " << pair.first << ", size: " << mbytes << "MB" << std::endl;
         }
     }
 #else

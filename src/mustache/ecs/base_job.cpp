@@ -77,14 +77,24 @@ namespace {
         return result.total_entity_count > 0u;
     }
 }
+BaseJob::BaseJob() {
+    enableBenchmark();
+}
 
-BaseJob::~BaseJob() = default;
+BaseJob::~BaseJob() {
+//    if (!benchmark_) {
+//        return;
+//    }
+//    std::cout << "-------------  " << name_ << "-------------  " << "\n";
+//    benchmark_->show();
+}
 
 uint32_t BaseJob::taskCount(World& world, uint32_t entity_count) const noexcept {
     return std::min(entity_count, world.dispatcher().threadCount() + 1);
 }
 
 void BaseJob::run(World& world, JobRunMode mode) {
+    name_ = name();
     const auto entities_count = applyFilter(world);
     if (entities_count < 1u) {
         return;
@@ -102,11 +112,11 @@ void BaseJob::run(World& world, JobRunMode mode) {
                 runParallel(world, task_count);
             }
         };
-        if (benchmark_) {
-            benchmark_->add(do_job);
-        } else {
+//        if (benchmark_) {
+//            benchmark_->add(do_job);
+//        } else {
             do_job();
-        }
+//        }
         onJobEnd(world, TasksCount::make(task_count), JobSize::make(entities_count), mode);
     }
 }
@@ -140,18 +150,19 @@ void BaseJob::onJobEnd(World&, TasksCount, JobSize, JobRunMode) noexcept {
 }
 
 void BaseJob::enableBenchmark() {
-    if (!benchmark_) {
-        benchmark_ = std::make_shared<Benchmark>();
-    }
+//    if (!benchmark_) {
+//        benchmark_ = std::make_shared<Benchmark>();
+//    }
 }
 
 void BaseJob::disableBenchmark() {
-    benchmark_.reset();
+//    benchmark_.reset();
 }
 
 void BaseJob::showBenchmark() {
-    if (!benchmark_) {
+    /*if (!benchmark_) {
         return;
     }
-    benchmark_->show();
+    std::cout << "-------------  " << name_ << "-------------  " << "\n";
+    benchmark_->show();*/
 }

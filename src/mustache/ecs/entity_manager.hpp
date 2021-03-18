@@ -135,6 +135,7 @@ namespace mustache {
 
         template<typename _Master, typename... DEPENDENT>
         void addDependency() noexcept {
+            static_assert(!IsOneOfTypes<_Master, DEPENDENT...>::value, "Self dependency is not allowed");
             const auto component_id = ComponentFactory::registerComponent<_Master>();
             const auto depend_on_mask = ComponentFactory::makeMask<DEPENDENT...>();
             addDependency(component_id, depend_on_mask);

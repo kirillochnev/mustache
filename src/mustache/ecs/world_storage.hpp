@@ -48,16 +48,16 @@ namespace mustache {
 
         [[nodiscard]] static SingletonId getSingletonId(const TypeInfo& info) noexcept;
 
-        [[nodiscard]] void* getInstanceOf(SingletonId id) const noexcept {
+        [[nodiscard]] std::shared_ptr<void> getInstanceOf(SingletonId id) const noexcept {
             if (!singletons_.has(id)) {
                 return nullptr;
             }
-            return singletons_[id].get();
+            return singletons_[id];
         }
 
         template<typename _Singleton>
-        [[nodiscard]] _Singleton* getInstanceOf() const {
-            return static_cast<_Singleton*>(getInstanceOf(registerSingleton<_Singleton>()));
+        [[nodiscard]] std::shared_ptr<_Singleton> getInstanceOf() const {
+            return std::static_pointer_cast<_Singleton>(getInstanceOf(registerSingleton<_Singleton>()));
         }
 
         template<typename _Singleton>
