@@ -53,6 +53,6 @@ namespace mustache {
         WorldVersion last_update_version_;
         WorldFilterResult filter_result_;
         std::string name_;
-//        std::shared_ptr<Benchmark> benchmark_;
+        std::shared_ptr<Benchmark> benchmark_;
     };
 }

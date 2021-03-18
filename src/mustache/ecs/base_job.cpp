@@ -82,11 +82,11 @@ BaseJob::BaseJob() {
 }
 
 BaseJob::~BaseJob() {
-//    if (!benchmark_) {
-//        return;
-//    }
-//    std::cout << "-------------  " << name_ << "-------------  " << "\n";
-//    benchmark_->show();
+    if (!benchmark_) {
+        return;
+    }
+    std::cout << "-------------  " << name_ << "-------------  " << "\n";
+    benchmark_->show();
 }
 
 uint32_t BaseJob::taskCount(World& world, uint32_t entity_count) const noexcept {
@@ -112,11 +112,11 @@ void BaseJob::run(World& world, JobRunMode mode) {
                 runParallel(world, task_count);
             }
         };
-//        if (benchmark_) {
-//            benchmark_->add(do_job);
-//        } else {
+        if (benchmark_) {
+            benchmark_->add(do_job);
+        } else {
             do_job();
-//        }
+        }
         onJobEnd(world, TasksCount::make(task_count), JobSize::make(entities_count), mode);
     }
 }
@@ -150,13 +150,13 @@ void BaseJob::onJobEnd(World&, TasksCount, JobSize, JobRunMode) noexcept {
 }
 
 void BaseJob::enableBenchmark() {
-//    if (!benchmark_) {
-//        benchmark_ = std::make_shared<Benchmark>();
-//    }
+    if (!benchmark_) {
+        benchmark_ = std::make_shared<Benchmark>();
+    }
 }
 
 void BaseJob::disableBenchmark() {
-//    benchmark_.reset();
+    benchmark_.reset();
 }
 
 void BaseJob::showBenchmark() {

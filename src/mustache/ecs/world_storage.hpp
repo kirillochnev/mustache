@@ -100,7 +100,7 @@ namespace mustache {
             if (find_res == objects_with_tag_.end()) {
                 return nullptr;
             }
-            return std::static_pointer_cast<T*>(find_res->second);
+            return std::static_pointer_cast<T>(find_res->second);
         }
     private:
         ArrayWrapper<std::shared_ptr<void>, SingletonId, true > singletons_;
