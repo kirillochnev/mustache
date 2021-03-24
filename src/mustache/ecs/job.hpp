@@ -45,7 +45,7 @@ namespace mustache {
             invocation_index.entity_index = ParallelTaskGlobalItemIndex::make(0);
 
             const auto thread_id = dispatcher.currentThreadId();
-            for (auto task : JobView::make(filter_result_, 1)) {
+            for (auto task : TaskGroup::make(filter_result_, 1)) {
                 singleTask(task, invocation_index, unique_components, shared_components);
                 ++invocation_index.task_index;
             }
@@ -60,7 +60,7 @@ namespace mustache {
             invocation_index.entity_index = ParallelTaskGlobalItemIndex::make(0);
             invocation_index.entity_index_in_task = ParallelTaskItemIndexInTask::make(0);
             invocation_index.task_index = ParallelTaskId::make(0);
-            for (TaskView task : JobView::make(filter_result_, task_count)) {
+            for (TaskView task : TaskGroup::make(filter_result_, task_count)) {
                 dispatcher.addParallelTask([task, this, invocation_index](ThreadId thread_id) mutable {
                     invocation_index.thread_id = thread_id;
                     singleTask(task, invocation_index, unique_components, shared_components);
@@ -134,8 +134,8 @@ namespace mustache {
                 std::array<ComponentIndex, sizeof...(_I)> component_indexes {
                         archetype.getComponentIndex(ids[_I])...
                 };
-                for (auto& array : ArchetypeView{filter_result_, info.archetype_index,
-                                                 info.first_entity, info.current_size}) {
+                for (auto& array : ArrayView{filter_result_, info.archetype_index,
+                                             info.first_entity, info.current_size}) {
                     if constexpr (Info::FunctionInfo::Position::entity >= 0) {
                         forEachArrayGenerated(ComponentArraySize::make(array.arraySize()), invocation_index,
                                               RequiredComponent<Entity>(array.getEntity<FunctionSafety::kUnsafe>()),
