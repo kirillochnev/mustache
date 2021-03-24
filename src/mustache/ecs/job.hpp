@@ -39,10 +39,10 @@ namespace mustache {
             auto& dispatcher = world.dispatcher();
 
             JobInvocationIndex invocation_index;
-            invocation_index.task_index = PerEntityJobTaskId::make(0);
+            invocation_index.task_index = ParallelTaskId::make(0);
             invocation_index.thread_id = dispatcher.currentThreadId();
-            invocation_index.entity_index_in_task = PerEntityJobEntityIndexInTask::make(0);
-            invocation_index.entity_index = PerEntityJobEntityIndex::make(0);
+            invocation_index.entity_index_in_task = ParallelTaskItemIndexInTask::make(0);
+            invocation_index.entity_index = ParallelTaskGlobalItemIndex::make(0);
 
             const auto thread_id = dispatcher.currentThreadId();
             for (auto task : JobView::make(filter_result_, 1)) {
@@ -57,16 +57,16 @@ namespace mustache {
 
             auto& dispatcher = world.dispatcher();
             JobInvocationIndex invocation_index;
-            invocation_index.entity_index = PerEntityJobEntityIndex::make(0);
-            invocation_index.entity_index_in_task = PerEntityJobEntityIndexInTask::make(0);
-            invocation_index.task_index = PerEntityJobTaskId::make(0);
+            invocation_index.entity_index = ParallelTaskGlobalItemIndex::make(0);
+            invocation_index.entity_index_in_task = ParallelTaskItemIndexInTask::make(0);
+            invocation_index.task_index = ParallelTaskId::make(0);
             for (TaskView task : JobView::make(filter_result_, task_count)) {
                 dispatcher.addParallelTask([task, this, invocation_index](ThreadId thread_id) mutable {
                     invocation_index.thread_id = thread_id;
                     singleTask(task, invocation_index, unique_components, shared_components);
                 });
                 ++invocation_index.task_index;
-                invocation_index.entity_index = PerEntityJobEntityIndex::make(invocation_index.entity_index.toInt() + task.dist_to_end);
+                invocation_index.entity_index = ParallelTaskGlobalItemIndex::make(invocation_index.entity_index.toInt() + task.dist_to_end);
             }
             dispatcher.waitForParallelFinish();
         }

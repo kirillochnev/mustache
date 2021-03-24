@@ -37,6 +37,10 @@ namespace mustache {
         QueueId id_{static_cast<QueueId>(-1)};
     };
 
+    struct ParallelTaskId : public IndexLike<uint32_t , ParallelTaskId> {};
+    struct ParallelTaskItemIndexInTask : public IndexLike<uint32_t , ParallelTaskItemIndexInTask> {};
+    struct ParallelTaskGlobalItemIndex : public IndexLike<uint32_t , ParallelTaskGlobalItemIndex> {};
+
     class Dispatcher : public Uncopiable {
     public:
         uint32_t threadCount() const noexcept;
@@ -59,6 +63,30 @@ namespace mustache {
 
         // blocks calling thread until job queue is empty
         void waitForParallelFinish() const noexcept;
+
+        template<typename _F>
+        void parallelFor(_F&& function, size_t begin, size_t end, uint32_t task_count = 0u) {
+            const size_t size = end - begin;
+            if (task_count < 1u) {
+                task_count = size < threadCount() ? size : threadCount();
+            }
+            const size_t ept = size / task_count;
+            const size_t tasks_with_extra_item = size - task_count * ept;
+
+            size_t task_begin = begin;
+            for (uint32_t task = 0; task < task_count; ++task) {
+                const auto task_size = task < tasks_with_extra_item ? ept + 1 : ept;
+                const auto task_id = ParallelTaskId::make(task);
+                addParallelTask([task_id, &function, task_end = task_begin + task_size, task_begin]{
+                    for (size_t i = task_begin; i < task_end; ++i) {
+                        invoke(function, i, task_id);
+                    }
+                });
+
+                task_begin += task_size;
+            }
+            waitForParallelFinish();
+        }
 
         void addParallelTask(Job&& job) {
             addJob(std::move(job));

@@ -7,7 +7,7 @@ namespace mustache {
 
     struct TaskInfo {
         uint32_t size;
-        PerEntityJobTaskId id = PerEntityJobTaskId::make(0u);
+        ParallelTaskId id = ParallelTaskId::make(0u);
         TaskArchetypeIndex first_archetype = TaskArchetypeIndex::make(0u);
         ArchetypeEntityIndex first_entity = ArchetypeEntityIndex::make(0u);
     };
@@ -118,7 +118,7 @@ namespace mustache {
     struct JobView {
     public:
         struct End {
-            PerEntityJobTaskId task_id_;
+            ParallelTaskId task_id_;
         };
 
         bool operator!=(const End& end) const noexcept {
@@ -163,7 +163,7 @@ namespace mustache {
             struct Result {
                 Result(WorldFilterResult &filter_result, uint32_t num_tasks) :
                         begin_{filter_result, num_tasks},
-                        end_{PerEntityJobTaskId::make(num_tasks)} {
+                        end_{ParallelTaskId::make(num_tasks)} {
 
                 }
 

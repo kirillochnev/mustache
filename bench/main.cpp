@@ -116,7 +116,7 @@ void create1mBuilder() {
 void iterate500k() {
     enum : uint32_t {
         kNumObjects = 500000,
-        kNumIteration = 100,
+        kNumIteration = 10000,
     };
     mustache::World world{mustache::WorldId::make(0)};
     auto& entities = world.entities();
