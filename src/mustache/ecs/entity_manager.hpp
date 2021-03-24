@@ -331,7 +331,11 @@ namespace mustache {
     }
 
     template<typename T>
-    T* EntityManager::getComponent(Entity entity) const noexcept {
+    T* EntityManager::getComponent(Entity entity) const noexcept {  // TODO: make not template version and call it
+        if (!isEntityValid(entity)) {
+            return nullptr;
+        }
+
         using ComponentType = ComponentType<T>;
         using Type = typename ComponentType::type;
         static_assert(!isComponentShared<Type>(), "Component is shared, use getSharedComponent() function");
