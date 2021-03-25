@@ -59,7 +59,7 @@ namespace mustache {
             invocation_index.entity_index = ParallelTaskGlobalItemIndex::make(0);
             invocation_index.entity_index_in_task = ParallelTaskItemIndexInTask::make(0);
             invocation_index.task_index = ParallelTaskId::make(0);
-            for (TaskView task : TaskGroup::make(filter_result_, task_count)) {
+            for (ArchetypeGroup task : TaskGroup::make(filter_result_, task_count)) {
                 dispatcher.addParallelTask([task, this, invocation_index](ThreadId thread_id) mutable {
                     invocation_index.thread_id = thread_id;
                     singleTask(task, invocation_index, unique_components, shared_components);
@@ -118,12 +118,12 @@ namespace mustache {
         }
 
         template<size_t... _I, size_t... _SI>
-        MUSTACHE_INLINE void singleTask(TaskView task_view, JobInvocationIndex invocation_index,
+        MUSTACHE_INLINE void singleTask(ArchetypeGroup archetype_group, JobInvocationIndex invocation_index,
                                         const std::index_sequence<_I...>&, const std::index_sequence<_SI...>&) {
             auto shared_components = std::make_tuple(
                     getNullptr<_SI>()...
             );
-            for (const auto& info : task_view) {
+            for (const auto& info : archetype_group) {
                 auto& archetype = *info.archetype();
                 archetype.getSharedComponents(shared_components);
                 static const std::array<ComponentId, sizeof...(_I)> ids {
@@ -133,11 +133,12 @@ namespace mustache {
                 std::array<ComponentIndex, sizeof...(_I)> component_indexes {
                         archetype.getComponentIndex(ids[_I])...
                 };
-                for (auto array : info/*ArrayView{filter_result_, info.archetype_index,
-                                             info.first_entity, info.current_size}*/) {
+                for (auto array : ArrayView::make(filter_result_, info.archetype_index,
+                                                  info.first_entity, info.current_size)) {
+
                     if constexpr (Info::FunctionInfo::Position::entity >= 0) {
                         forEachArrayGenerated(ComponentArraySize::make(array.arraySize()), invocation_index,
-                                              RequiredComponent<Entity>(array.getEntity<FunctionSafety::kUnsafe>()),
+                                              RequiredComponent<Entity>(array.template getEntity<FunctionSafety::kUnsafe>()),
                                               getComponentHandler<_I>(array, component_indexes[_I])...,
                                               makeShared(std::get<_SI>(shared_components))...);
                     } else {

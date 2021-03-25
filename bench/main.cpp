@@ -119,6 +119,7 @@ void iterate500k() {
         kNumIteration = 100,
     };
     mustache::World world{mustache::WorldId::make(0)};
+//    world.dispatcher().setSingleThreadMode(true);
     auto& entities = world.entities();
     auto& archetype = entities.getArchetype<Position, Velocity, Rotation>();
     for (uint32_t i = 0; i < kNumObjects; ++i) {
