@@ -12,7 +12,7 @@ namespace mustache {
         ArchetypeEntityIndex first_entity = ArchetypeEntityIndex::make(0u);
     };
 
-#if 1
+#if 0
     struct ArrayView : private ElementView {
         using FilrerResult = WorldFilterResult::ArchetypeFilterResult;
 
@@ -196,19 +196,19 @@ namespace mustache {
     public:
         ArrayView(const ElementView& element_view, uint32_t entities_to_update):
                 ElementView{element_view},
-                entities_to_update_{entities_to_update} {
+                array_size_{std::min(entities_to_update, distToChunkEnd())} {
 
         }
 
         [[nodiscard]] uint32_t arraySize() const noexcept {
-            return std::min(entities_to_update_, distToChunkEnd());
+            return array_size_;
         }
 
         using ElementView::getData;
         using ElementView::getEntity;
     private:
         friend class MemoryArrayIterator;
-        uint32_t entities_to_update_ = 0u;
+        uint32_t array_size_ = 0u;
     };
 
     class MemoryArrayIterator {
@@ -233,8 +233,9 @@ namespace mustache {
 
         MemoryArrayIterator& operator++() noexcept {
             // TODO: impl me
-            distance_to_end_ -= array_view_.entities_to_update_;
+            distance_to_end_ -= array_view_.arraySize();
             if (distance_to_end_ > 0) {
+                position_in_block_ += array_view_.arraySize();
                 array_view_ = getArrayView(filter_result_, distance_to_end_,
                                            archetype_index_, block_index_, position_in_block_);
             }
@@ -250,12 +251,11 @@ namespace mustache {
                                       uint32_t position_in_block) {
             const auto& archetype_info = filter_result->filtered_archetypes[archetype_index.toInt()];
             const auto block = archetype_info.blocks[block_index];
-            const auto dist_to_block_end = block.block_end.toInt() - block.block_begin.toInt() - position_in_block;
-            const auto entity_index = ArchetypeEntityIndex::make(block.block_begin.toInt() + position_in_block);
+            const auto dist_to_block_end = block.end.toInt() - block.begin.toInt() - position_in_block;
+            const auto entity_index = ArchetypeEntityIndex::make(block.begin.toInt() + position_in_block);
             const uint32_t array_size = std::min(distance_to_end, dist_to_block_end);
             return ArrayView{archetype_info.archetype->getElementView(entity_index), array_size};
         }
-        friend class MemoryArraysInArchetype;
         WorldFilterResult* filter_result_ = nullptr;
         uint32_t distance_to_end_ = 0u;
         TaskArchetypeIndex archetype_index_ = TaskArchetypeIndex::make(0u);
@@ -304,7 +304,7 @@ namespace mustache {
             uint32_t count = updated_in_archetype_;
             while (count != 0) {
                 const WorldFilterResult::EntityBlock& block = archetype_info.blocks[result.block_index_];
-                const auto block_size = block.block_end.toInt() - block.block_begin.toInt();
+                const auto block_size = block.end.toInt() - block.begin.toInt();
                 if (block_size > count) {
                     result.position_in_block_ = count;
                     break;
