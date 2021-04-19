@@ -128,5 +128,8 @@ namespace mustache {
         bool empty() const noexcept {
             return array_.empty();
         }
+        void shrink_to_fit() noexcept {
+            array_.shrink_to_fit();
+        }
     };
 }

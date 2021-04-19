@@ -15,10 +15,6 @@ namespace mustache {
     struct ComponentId : public IndexLike<uint32_t, ComponentId>{};
     struct SharedComponentId : public IndexLike<uint32_t, SharedComponentId>{};
 
-    struct PerEntityJobTaskId : public IndexLike<uint32_t , PerEntityJobTaskId> {};
-    struct PerEntityJobEntityIndexInTask : public IndexLike<uint32_t , PerEntityJobEntityIndexInTask> {};
-    struct PerEntityJobEntityIndex : public IndexLike<uint32_t , PerEntityJobEntityIndex> {};
-
     /// Index archetype in entity manager
     struct ArchetypeIndex : public IndexLike<uint32_t , ArchetypeIndex> {};
 

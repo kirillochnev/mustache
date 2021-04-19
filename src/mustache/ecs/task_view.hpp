@@ -7,51 +7,49 @@ namespace mustache {
 
     struct TaskInfo {
         uint32_t size;
-        PerEntityJobTaskId id = PerEntityJobTaskId::make(0u);
+        ParallelTaskId id = ParallelTaskId::make(0u);
         TaskArchetypeIndex first_archetype = TaskArchetypeIndex::make(0u);
         ArchetypeEntityIndex first_entity = ArchetypeEntityIndex::make(0u);
     };
 
-
-    struct ArchetypeView : private ElementView {
+    struct ArrayView : private ElementView {
         using FilrerResult = WorldFilterResult::ArchetypeFilterResult;
 
-        ArchetypeView(WorldFilterResult& filter_result, TaskArchetypeIndex archetype_index,
-                      ArchetypeEntityIndex first_entity, uint32_t size):
-                ElementView{filter_result.filtered_archetypes[archetype_index.toInt()].archetype->getElementView(first_entity)},
-                dist_to_end_ {std::min(size, archetype_->size() - first_entity.toInt())},
-                filter_result_ {&filter_result.filtered_archetypes[archetype_index.toInt()]} {
+
+
+        void updateBlock() {
             if (dist_to_end_ > 0) {
                 const auto index_in_archetype = globalIndex().toInt();
 
-                auto dist_to_block_end = filter_result_->blocks[current_block_].end.toInt() - index_in_archetype;
-                if (dist_to_block_end == 0u) {
+                dist_to_block_end_ = filter_result_->blocks[current_block_].end.toInt() - index_in_archetype;
+                if (dist_to_block_end_ == 0u) {
                     ++current_block_;
-                    dist_to_block_end = filter_result_->blocks[current_block_].end.toInt() - index_in_archetype;
+                    const auto& block = filter_result_->blocks[current_block_];
+                    *this += block.begin.toInt() - index_in_archetype;
+                    dist_to_block_end_ = block.end.toInt() - block.begin.toInt();
                 }
-                array_size_ = std::min(dist_to_block_end, std::min(distToChunkEnd(), dist_to_end_));
+                array_size_ = std::min(dist_to_block_end_, std::min(distToChunkEnd(), dist_to_end_));
             }
         }
 
-        ArchetypeView& begin() { return *this; }
+        ArrayView(WorldFilterResult& filter_result, TaskArchetypeIndex archetype_index,
+                  ArchetypeEntityIndex first_entity, uint32_t size, WorldFilterResult::BlockIndex block_index):
+                ElementView{filter_result.filtered_archetypes[archetype_index.toInt()].archetype->getElementView(first_entity)},
+                current_block_{block_index},
+                dist_to_end_ {std::min(size, archetype_->size() - first_entity.toInt())},
+                filter_result_ {&filter_result.filtered_archetypes[archetype_index.toInt()]} {
+            updateBlock();
+        }
+
+        ArrayView& begin() { return *this; }
         std::nullptr_t end() const noexcept { return nullptr; }
         bool operator != (std::nullptr_t) const noexcept { return dist_to_end_ != 0u; }
-        const ArchetypeView& operator*() const noexcept { return *this; }
+        const ArrayView& operator*() const noexcept { return *this; }
 
-        ArchetypeView& operator++() noexcept {
+        ArrayView& operator++() noexcept {
             dist_to_end_ -= array_size_;
             *this += array_size_;
-            if (dist_to_end_ > 0) {
-                const auto index_in_archetype = globalIndex().toInt();
-
-                auto dist_to_block_end = filter_result_->blocks[current_block_].end.toInt() - index_in_archetype;
-                if (dist_to_block_end == 0u) {
-                    ++current_block_;
-                    dist_to_block_end = filter_result_->blocks[current_block_].end.toInt() - index_in_archetype;
-                }
-                array_size_ = std::min(dist_to_block_end, std::min(distToChunkEnd(), dist_to_end_));
-            }
-
+            updateBlock();
             return *this;
         }
 
@@ -63,21 +61,41 @@ namespace mustache {
         [[nodiscard]] uint32_t arraySize() const noexcept {
             return array_size_;
         }
+
+        static ArrayView make(WorldFilterResult& filter_result, TaskArchetypeIndex archetype_index,
+                              ArchetypeEntityIndex first_entity, uint32_t size) noexcept {
+            int32_t count = first_entity.toInt<int32_t >();
+            auto block_index = WorldFilterResult::BlockIndex::make(0u);
+            while (count > 0) {
+                const auto block = filter_result.filtered_archetypes[archetype_index.toInt()].blocks[block_index];
+                const int32_t block_size = block.end.toInt<int32_t >() - block.begin.toInt<int32_t >();
+                if (count > block_size) {
+                    count -= block_size;
+                    ++block_index;
+                } else {
+                    break;
+                }
+            }
+            const auto block_begin = filter_result.filtered_archetypes[archetype_index.toInt()].blocks[block_index].begin;
+            first_entity = ArchetypeEntityIndex::make(block_begin.toInt<int32_t >() + count);
+            return ArrayView{filter_result, archetype_index, first_entity, size, block_index};
+        }
     private:
         WorldFilterResult::BlockIndex current_block_ = WorldFilterResult::BlockIndex::make(0u);
         uint32_t array_size_ = 0u;
         uint32_t dist_to_end_ = 0u;
         FilrerResult* filter_result_ = nullptr;
+        uint32_t dist_to_block_end_ = 0;
     };
 
-    struct TaskView {
-        TaskView(const TaskInfo& info, WorldFilterResult& fr):
+    struct ArchetypeGroup {
+        ArchetypeGroup(const TaskInfo& info, WorldFilterResult& fr):
                 dist_to_end{info.size},
                 archetype_index{info.first_archetype},
                 filtered_archetypes{&fr.filtered_archetypes},
                 first_entity{info.first_entity} {
             if (!filtered_archetypes->empty()) {
-                const auto &archetype_info = (*filtered_archetypes)[archetype_index.toInt()];
+                const auto& archetype_info = (*filtered_archetypes)[archetype_index.toInt()];
                 const uint32_t num_free_entities_in_arch = archetype_info.entities_count - info.first_entity.toInt();
                 current_size = std::min(dist_to_end, num_free_entities_in_arch);
             }
@@ -86,7 +104,7 @@ namespace mustache {
             dist_to_end -= current_size;
             if (dist_to_end > 0) {
                 ++archetype_index;
-                const auto &archetype_info = (*filtered_archetypes)[archetype_index.toInt()];
+                const auto& archetype_info = (*filtered_archetypes)[archetype_index.toInt()];
                 const uint32_t num_free_entities_in_arch = archetype_info.entities_count;
                 current_size = std::min(dist_to_end, num_free_entities_in_arch);
                 first_entity = ArchetypeEntityIndex::make(0);
@@ -94,8 +112,11 @@ namespace mustache {
                 current_size = 0;
             }
         }
+        [[nodiscard]]  uint32_t taskSize() const noexcept {
+            return dist_to_end;
+        }
 
-        TaskView& operator++() noexcept {
+        ArchetypeGroup& operator++() noexcept {
             incrementArchetype();
             return *this;
         }
@@ -103,9 +124,10 @@ namespace mustache {
         Archetype* archetype() const noexcept {
             return (*filtered_archetypes)[archetype_index.toInt()].archetype;
         }
-        const TaskView& operator*() const noexcept { return *this; }
+
+        const ArchetypeGroup& operator*() const noexcept { return *this; }
         bool operator != (std::nullptr_t) const noexcept {  return dist_to_end != 0u; }
-        TaskView begin() const noexcept { return *this; }
+        ArchetypeGroup begin() const noexcept { return *this; }
         std::nullptr_t end() const noexcept { return nullptr; }
 
         uint32_t current_size {0u};
@@ -115,10 +137,10 @@ namespace mustache {
         ArchetypeEntityIndex first_entity = ArchetypeEntityIndex::make(0u);
     };
 
-    struct JobView {
+    struct TaskGroup {
     public:
         struct End {
-            PerEntityJobTaskId task_id_;
+            ParallelTaskId task_id_;
         };
 
         bool operator!=(const End& end) const noexcept {
@@ -129,7 +151,7 @@ namespace mustache {
             task_info_.size = task_info_.id.toInt() < tasks_with_extra_item_ ? ept_ + 1 : ept_;
         }
 
-        JobView& operator++() noexcept {
+        TaskGroup& operator++() noexcept {
             uint32_t num_entities_to_iterate = task_info_.size;
             while (num_entities_to_iterate != 0) {
                 const auto& archetype_info = filter_result_->filtered_archetypes[task_info_.first_archetype.toInt()];
@@ -148,11 +170,11 @@ namespace mustache {
             return *this;
         }
 
-        TaskView operator*() const noexcept {
-            return TaskView{task_info_, *filter_result_};
+        ArchetypeGroup operator*() const noexcept {
+            return ArchetypeGroup{task_info_, *filter_result_};
         }
 
-        JobView(WorldFilterResult& filter_result, uint32_t num_tasks):
+        TaskGroup(WorldFilterResult& filter_result, uint32_t num_tasks):
                 filter_result_{&filter_result},
                 ept_{filter_result.total_entity_count / num_tasks},
                 tasks_with_extra_item_ {filter_result.total_entity_count - num_tasks * ept_} {
@@ -163,21 +185,21 @@ namespace mustache {
             struct Result {
                 Result(WorldFilterResult &filter_result, uint32_t num_tasks) :
                         begin_{filter_result, num_tasks},
-                        end_{PerEntityJobTaskId::make(num_tasks)} {
+                        end_{ParallelTaskId::make(num_tasks)} {
 
                 }
 
-                JobView begin() noexcept {
+                TaskGroup begin() noexcept {
                     return begin_;
                 }
 
-                JobView::End end() const noexcept {
+                TaskGroup::End end() const noexcept {
                     return end_;
                 }
 
             private:
-                JobView begin_;
-                JobView::End end_;
+                TaskGroup begin_;
+                TaskGroup::End end_;
             };
 
             return Result{filter_result, num_tasks};

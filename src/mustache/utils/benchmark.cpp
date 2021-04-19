@@ -1,7 +1,10 @@
 #include "benchmark.hpp"
-#include <algorithm>
-#include <cmath>
 #include <mustache/utils/logger.hpp>
+
+#include <cmath>
+#include <numeric>
+#include <iostream>
+#include <algorithm>
 
 using namespace mustache;
 

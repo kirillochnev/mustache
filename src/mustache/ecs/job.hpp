@@ -39,13 +39,12 @@ namespace mustache {
             auto& dispatcher = world.dispatcher();
 
             JobInvocationIndex invocation_index;
-            invocation_index.task_index = PerEntityJobTaskId::make(0);
+            invocation_index.task_index = ParallelTaskId::make(0);
             invocation_index.thread_id = dispatcher.currentThreadId();
-            invocation_index.entity_index_in_task = PerEntityJobEntityIndexInTask::make(0);
-            invocation_index.entity_index = PerEntityJobEntityIndex::make(0);
+            invocation_index.entity_index_in_task = ParallelTaskItemIndexInTask::make(0);
+            invocation_index.entity_index = ParallelTaskGlobalItemIndex::make(0);
 
-            const auto thread_id = dispatcher.currentThreadId();
-            for (auto task : JobView::make(filter_result_, 1)) {
+            for (auto task : TaskGroup::make(filter_result_, 1)) {
                 singleTask(task, invocation_index, unique_components, shared_components);
                 ++invocation_index.task_index;
             }
@@ -57,16 +56,17 @@ namespace mustache {
 
             auto& dispatcher = world.dispatcher();
             JobInvocationIndex invocation_index;
-            invocation_index.entity_index = PerEntityJobEntityIndex::make(0);
-            invocation_index.entity_index_in_task = PerEntityJobEntityIndexInTask::make(0);
-            invocation_index.task_index = PerEntityJobTaskId::make(0);
-            for (TaskView task : JobView::make(filter_result_, task_count)) {
+            invocation_index.entity_index = ParallelTaskGlobalItemIndex::make(0);
+            invocation_index.entity_index_in_task = ParallelTaskItemIndexInTask::make(0);
+            invocation_index.task_index = ParallelTaskId::make(0);
+
+            for (ArchetypeGroup task : TaskGroup::make(filter_result_, task_count)) {
                 dispatcher.addParallelTask([task, this, invocation_index](ThreadId thread_id) mutable {
                     invocation_index.thread_id = thread_id;
                     singleTask(task, invocation_index, unique_components, shared_components);
                 });
                 ++invocation_index.task_index;
-                invocation_index.entity_index = PerEntityJobEntityIndex::make(invocation_index.entity_index.toInt() + task.dist_to_end);
+                invocation_index.entity_index = ParallelTaskGlobalItemIndex::make(invocation_index.entity_index.toInt() + task.taskSize());
             }
             dispatcher.waitForParallelFinish();
         }
@@ -86,6 +86,7 @@ namespace mustache {
                 for(ComponentArraySize i = ComponentArraySize::make(0); i < count; ++i) {
                     invoke(self, invocation_index, pointers++...);
                     ++invocation_index.entity_index_in_task;
+                    ++invocation_index.entity_index;
                 }
             }
         }
@@ -118,12 +119,12 @@ namespace mustache {
         }
 
         template<size_t... _I, size_t... _SI>
-        MUSTACHE_INLINE void singleTask(TaskView task_view, JobInvocationIndex invocation_index,
+        MUSTACHE_INLINE void singleTask(ArchetypeGroup archetype_group, JobInvocationIndex invocation_index,
                                         const std::index_sequence<_I...>&, const std::index_sequence<_SI...>&) {
             auto shared_components = std::make_tuple(
                     getNullptr<_SI>()...
             );
-            for (const auto& info : task_view) {
+            for (const auto& info : archetype_group) {
                 auto& archetype = *info.archetype();
                 archetype.getSharedComponents(shared_components);
                 static const std::array<ComponentId, sizeof...(_I)> ids {
@@ -133,11 +134,13 @@ namespace mustache {
                 std::array<ComponentIndex, sizeof...(_I)> component_indexes {
                         archetype.getComponentIndex(ids[_I])...
                 };
-                for (auto& array : ArchetypeView{filter_result_, info.archetype_index,
-                                                 info.first_entity, info.current_size}) {
+
+                for (auto array : ArrayView::make(filter_result_, info.archetype_index,
+                                                  info.first_entity, info.current_size)) {
+
                     if constexpr (Info::FunctionInfo::Position::entity >= 0) {
                         forEachArrayGenerated(ComponentArraySize::make(array.arraySize()), invocation_index,
-                                              RequiredComponent<Entity>(array.getEntity<FunctionSafety::kUnsafe>()),
+                                              RequiredComponent<Entity>(array.template getEntity<FunctionSafety::kUnsafe>()),
                                               getComponentHandler<_I>(array, component_indexes[_I])...,
                                               makeShared(std::get<_SI>(shared_components))...);
                     } else {
@@ -165,8 +168,8 @@ namespace mustache {
         struct TmpJob : public PerEntityJob<TmpJob> {
             TmpJob(_F&& f):
                     func{std::forward<_F>(f)} {
-
             }
+
             _F&& func;
             void operator() (ARGS... args) {
                 func(std::forward<ARGS>(args)...);
@@ -176,7 +179,7 @@ namespace mustache {
                 return job_name;
             }
         };
-        TmpJob job{std::forward<_F>(function)};
+        TmpJob job = std::forward<_F>(function);
         job.run(world_, mode);
     }
 }

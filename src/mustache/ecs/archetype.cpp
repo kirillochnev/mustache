@@ -211,6 +211,12 @@ void Archetype::remove(Entity entity_to_destroy, ArchetypeEntityIndex entity_ind
     } else {
         internalMove(last_index, entity_index);
     }
+
+    if (isEmpty()) {
+        entities_.clear();
+        entities_.shrink_to_fit();
+        data_storage_->clear(true);
+    }
 }
 
 WorldVersion Archetype::worldVersion() const noexcept {

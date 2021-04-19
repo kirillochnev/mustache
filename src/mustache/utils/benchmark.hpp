@@ -1,9 +1,7 @@
 #pragma once
 
 #include <mustache/utils/timer.hpp>
-#include <iostream>
-#include <vector>
-#include <numeric>
+#include <deque>
 
 namespace mustache {
     class Benchmark {
@@ -15,7 +13,6 @@ namespace mustache {
 
         template <typename T>
         void add(T&& func, uint32_t count = 1) {
-            times_.reserve(times_.size() + count);
             for (uint32_t i = 0; i < count; ++i) {
                 timer_.reset();
                 func();
@@ -23,7 +20,7 @@ namespace mustache {
             }
         }
     private:
-        std::vector<double > times_;
+        std::deque<double > times_;
         Timer timer_;
     };
 }

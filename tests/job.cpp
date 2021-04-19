@@ -491,3 +491,78 @@ TEST(Job, compilation) {
     static_assert(std::is_same<Info::UniqueComponentType<0>::type, const TestComponent0&>::value);
     static_assert(std::is_same<Info::UniqueComponentType<1>::type, TestComponent1&>::value);
 }
+
+TEST(Job, UpdateSingleChunk) {
+    struct Component0 {
+        uint32_t value = 0;
+    };
+
+    struct UpdateJob : public mustache::PerEntityJob<UpdateJob> {
+        void operator()(Component0& component_0, mustache::JobInvocationIndex index, mustache::Entity e) {
+            if (show_up) {
+                std::cout << "Task: " << index.task_index.toInt() << "  |  Entity: " << e.id().toInt() << std::endl;
+            }
+            ++component_0.value;
+            ++count;
+        }
+
+        mustache::ComponentIdMask checkMask() const noexcept override {
+            return mustache::ComponentFactory::makeMask<Component0>();
+        }
+        uint32_t count = 0;
+        bool show_up = false;
+    };
+    std::vector<mustache::Entity> entities_created;
+    mustache::World world;
+    world.dispatcher().setSingleThreadMode(true);
+    auto& entities = world.entities();
+
+    uint32_t expected_count = 0u;
+    const auto& update = [&entities_created, &entities, &expected_count](uint32_t first, uint32_t count) {
+        for (uint32_t i = first; i < first + count; ++i) {
+            entities.getComponent<Component0>(entities_created[i])->value = 0;
+        }
+        expected_count += count;
+    };
+
+    entities.addChunkSizeFunction<Component0>(16, 16);
+
+    for (uint32_t i = 0; i < kNumObjects * 10; ++i) {
+        entities_created.push_back(entities.create<Component0>());
+    }
+
+    UpdateJob update_job;
+    update_job.run(world, mustache::JobRunMode::kParallel);
+    for (auto e : entities_created) {
+        auto ptr = entities.getComponent<const Component0>(e);
+        ASSERT_NE(ptr, nullptr);
+        ASSERT_EQ(ptr->value, 1);
+    }
+
+    ASSERT_EQ(update_job.count, entities_created.size());
+    update_job.count = 0u;
+    world.update();
+    update_job.run(world, mustache::JobRunMode::kParallel);
+    ASSERT_EQ(update_job.count, 0u);
+
+
+
+    update(64, 16);
+
+    update(256, 16);
+//
+    update(1024, 16);
+//
+    update(2048, 64);
+
+    update_job.show_up = true;
+    update_job.run(world, mustache::JobRunMode::kParallel);
+    ASSERT_EQ(update_job.count, expected_count);
+    for (auto e : entities_created) {
+        auto ptr = entities.getComponent<const Component0>(e);
+        ASSERT_NE(ptr, nullptr);
+        if (ptr->value != 1) {
+            ASSERT_EQ(ptr->value, 1);
+        }
+    }
+}

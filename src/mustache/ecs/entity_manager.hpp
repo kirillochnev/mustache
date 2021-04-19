@@ -135,6 +135,7 @@ namespace mustache {
 
         template<typename _Master, typename... DEPENDENT>
         void addDependency() noexcept {
+            static_assert(!IsOneOfTypes<_Master, DEPENDENT...>::value, "Self dependency is not allowed");
             const auto component_id = ComponentFactory::registerComponent<_Master>();
             const auto depend_on_mask = ComponentFactory::makeMask<DEPENDENT...>();
             addDependency(component_id, depend_on_mask);
@@ -330,7 +331,11 @@ namespace mustache {
     }
 
     template<typename T>
-    T* EntityManager::getComponent(Entity entity) const noexcept {
+    T* EntityManager::getComponent(Entity entity) const noexcept {  // TODO: make not template version and call it
+        if (!isEntityValid(entity)) {
+            return nullptr;
+        }
+
         using ComponentType = ComponentType<T>;
         using Type = typename ComponentType::type;
         static_assert(!isComponentShared<Type>(), "Component is shared, use getSharedComponent() function");
