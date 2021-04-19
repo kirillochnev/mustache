@@ -741,3 +741,44 @@ TEST(EntityManager, dependency) {
     }
 
 }
+
+TEST(EntityManager, indirect_dependency) {
+    struct MainComponent {
+        uint32_t value = 0xDEADBEEF;
+    };
+    struct Component0 {
+        uint32_t value = 0xDEADBEEF;
+    };
+    struct Component1 {
+        uint32_t value = 0xDEADBEEF;
+    };
+
+    mustache::World world;
+    auto& entities = world.entities();
+
+    auto e = entities.begin().assign<MainComponent>().end();
+    ASSERT_TRUE(entities.hasComponent<MainComponent>(e));
+    ASSERT_FALSE(entities.hasComponent<Component0>(e));
+    ASSERT_FALSE(entities.hasComponent<Component1>(e));
+    ASSERT_FALSE(entities.hasComponent<UnusedComponent>(e));
+
+    entities.addDependency<MainComponent, Component0>();
+    e = entities.begin().assign<MainComponent>().end();
+    ASSERT_TRUE(entities.hasComponent<MainComponent>(e));
+    ASSERT_TRUE(entities.hasComponent<Component0>(e));
+    ASSERT_FALSE(entities.hasComponent<Component1>(e));
+    ASSERT_FALSE(entities.hasComponent<UnusedComponent>(e));
+
+    entities.addDependency<Component0, Component1>();
+    e = entities.begin().assign<Component0>().end();
+    ASSERT_FALSE(entities.hasComponent<MainComponent>(e));
+    ASSERT_TRUE(entities.hasComponent<Component0>(e));
+    ASSERT_TRUE(entities.hasComponent<Component1>(e));
+    ASSERT_FALSE(entities.hasComponent<UnusedComponent>(e));
+
+    e = entities.begin().assign<MainComponent>().end();
+    ASSERT_TRUE(entities.hasComponent<MainComponent>(e));
+    ASSERT_TRUE(entities.hasComponent<Component0>(e));
+    ASSERT_TRUE(entities.hasComponent<Component1>(e));
+    ASSERT_FALSE(entities.hasComponent<UnusedComponent>(e));
+}

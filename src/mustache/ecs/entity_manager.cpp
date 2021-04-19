@@ -144,13 +144,19 @@ void EntityManager::setDefaultArchetypeVersionChunkSize(uint32_t value) noexcept
 
 ComponentIdMask EntityManager::getExtraComponents(const ComponentIdMask& mask) const noexcept {
     ComponentIdMask result;
+    auto cur_mask = mask;
     if (!dependencies_.empty()) {
-        mask.forEachItem([&result, this](ComponentId id) {
-            const auto find_res = dependencies_.find(id);
-            if (find_res != dependencies_.end()) {
-                result = result.merge(find_res->second);
-            }
-        });
+        ComponentIdMask prev_mask;
+        do {
+            prev_mask = result;
+            cur_mask.forEachItem([&result, this](ComponentId id) {
+                const auto find_res = dependencies_.find(id);
+                if (find_res != dependencies_.end()) {
+                    result = result.merge(find_res->second);
+                }
+            });
+            cur_mask = result;
+        } while (prev_mask != result);
     }
     return result;
 }
