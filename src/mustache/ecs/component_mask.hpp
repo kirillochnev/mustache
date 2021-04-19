@@ -94,7 +94,7 @@ namespace mustache {
         }
 
         [[nodiscard]] bool operator!=(const ComponentMask& rhs) const noexcept {
-            return value_ == rhs.value_;
+            return value_ != rhs.value_;
         }
 
         [[nodiscard]] bool operator<(const ComponentMask& rhs) const noexcept {
