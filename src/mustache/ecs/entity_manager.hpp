@@ -70,7 +70,7 @@ namespace mustache {
         template<FunctionSafety _Safety = FunctionSafety::kDefault>
         [[nodiscard]] MUSTACHE_INLINE  Archetype& getArchetype(ArchetypeIndex index) noexcept (!isSafe(_Safety));
 
-        template<typename T>
+        template<typename T, FunctionSafety _Safety = FunctionSafety::kSafe>
         MUSTACHE_INLINE T* getComponent(Entity entity) const noexcept;
 
         template<typename T>
@@ -170,6 +170,7 @@ namespace mustache {
         void markDirty(Entity entity) noexcept {
             markDirty<ComponentFactory::registerComponent<T>()>(entity);
         }
+
         void markDirty(Entity entity, ComponentId component_id) noexcept;
     private:
 
@@ -236,7 +237,7 @@ namespace mustache {
         // NOTE: must be the last field(for correct default destructor).
         ArrayWrapper<std::shared_ptr<Archetype>, ArchetypeIndex, true> archetypes_;
 
-        // archetype stores component version for every  default_archetype_component_version_chunk_size entities
+        // archetype stores component version for every  default_archetype_component_version_chunk_size created_entities
         struct ArchetypeVersionChunkSize {
             uint32_t default_size = 1024u;
             uint32_t min_size = 0u;
@@ -330,10 +331,12 @@ namespace mustache {
         return *archetypes_[index];
     }
 
-    template<typename T>
+    template<typename T, FunctionSafety _Safety>
     T* EntityManager::getComponent(Entity entity) const noexcept {  // TODO: make not template version and call it
-        if (!isEntityValid(entity)) {
-            return nullptr;
+        if constexpr(isSafe(_Safety)) {
+            if (!isEntityValid(entity)) {
+                return nullptr;
+            }
         }
 
         using ComponentType = ComponentType<T>;
@@ -341,14 +344,17 @@ namespace mustache {
         static_assert(!isComponentShared<Type>(), "Component is shared, use getSharedComponent() function");
         static const auto component_id = ComponentFactory::registerComponent<Type>();
         const auto& location = locations_[entity.id()];
-        if (!location.archetype.isValid()) {
-            return nullptr;
+        if constexpr(isSafe(_Safety)) {
+            if (!location.archetype.isValid()) {
+                return nullptr;
+            }
         }
         const auto& arch = archetypes_[location.archetype];
-
         const auto index = arch->getComponentIndex(component_id);
-        if (!index.isValid()) {
-            return nullptr;
+        if constexpr(isSafe(_Safety)) {
+            if (!index.isValid()) {
+                return nullptr;
+            }
         }
 
         if constexpr (std::is_const<T>::value) {

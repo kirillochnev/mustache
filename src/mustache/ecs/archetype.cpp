@@ -16,7 +16,7 @@ Archetype::Archetype(World& world, ArchetypeIndex id, const ComponentIdMask& mas
         shared_components_info_ {shared_components_info},
         version_storage_{world.memoryManager(), mask.componentsCount(), chunk_size},
         operation_helper_{world.memoryManager(), mask},
-        data_storage_{std::make_unique<DefaultComponentDataStorage>(mask, world_.memoryManager())},
+        data_storage_{std::make_unique<NewComponentDataStorage>(mask, world_.memoryManager())},
         entities_{world.memoryManager()},
         id_{id} {
     Logger{}.debug("Archetype version chunk size: %d", chunk_size);
@@ -212,11 +212,12 @@ void Archetype::remove(Entity entity_to_destroy, ArchetypeEntityIndex entity_ind
         internalMove(last_index, entity_index);
     }
 
-    if (isEmpty()) {
+    /// TODO: fix for NewComponentDataStorage
+    /*if (isEmpty()) {
         entities_.clear();
         entities_.shrink_to_fit();
         data_storage_->clear(true);
-    }
+    }*/
 }
 
 WorldVersion Archetype::worldVersion() const noexcept {

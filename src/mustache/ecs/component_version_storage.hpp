@@ -24,6 +24,9 @@ namespace mustache {
 
         [[nodiscard]] WorldVersion getVersion(ComponentIndex component) const noexcept;
         [[nodiscard]] WorldVersion getVersion(ChunkIndex chunk, ComponentIndex component) const noexcept;
+        [[nodiscard]] WorldVersion getVersion(ArchetypeEntityIndex entity_index, ComponentIndex component) const noexcept {
+            return getVersion(ChunkIndex::make(entity_index.toInt() / chunkSize()), component);
+        }
 
         bool checkAndSet(const MaskAndVersion& check, const MaskAndVersion& set) noexcept;
         bool checkAndSet(const MaskAndVersion& check, const MaskAndVersion& set, ChunkIndex chunk) noexcept;
