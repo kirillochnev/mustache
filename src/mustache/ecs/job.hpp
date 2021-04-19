@@ -59,6 +59,7 @@ namespace mustache {
             invocation_index.entity_index = ParallelTaskGlobalItemIndex::make(0);
             invocation_index.entity_index_in_task = ParallelTaskItemIndexInTask::make(0);
             invocation_index.task_index = ParallelTaskId::make(0);
+
             for (ArchetypeGroup task : TaskGroup::make(filter_result_, task_count)) {
                 dispatcher.addParallelTask([task, this, invocation_index](ThreadId thread_id) mutable {
                     invocation_index.thread_id = thread_id;
@@ -133,6 +134,7 @@ namespace mustache {
                 std::array<ComponentIndex, sizeof...(_I)> component_indexes {
                         archetype.getComponentIndex(ids[_I])...
                 };
+
                 for (auto array : ArrayView::make(filter_result_, info.archetype_index,
                                                   info.first_entity, info.current_size)) {
 
@@ -166,8 +168,8 @@ namespace mustache {
         struct TmpJob : public PerEntityJob<TmpJob> {
             TmpJob(_F&& f):
                     func{std::forward<_F>(f)} {
-                this->disableBenchmark();
             }
+
             _F&& func;
             void operator() (ARGS... args) {
                 func(std::forward<ARGS>(args)...);

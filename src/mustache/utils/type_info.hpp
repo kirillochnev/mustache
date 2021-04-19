@@ -96,6 +96,8 @@ namespace mustache {
                             if constexpr (detail::testOperatorEq<T>(nullptr)) {
                                 return *static_cast<const T*>(lhs) == *static_cast<const T*>(rhs);
                             } else {
+                                (void) lhs;
+                                (void) rhs;
                                 throw std::runtime_error("Not implemented");
                             }
                         }
