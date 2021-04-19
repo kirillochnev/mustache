@@ -1,9 +1,6 @@
 #pragma once
 
 #include <mustache/utils/timer.hpp>
-#include <iostream>
-#include <vector>
-#include <numeric>
 #include <deque>
 
 namespace mustache {
