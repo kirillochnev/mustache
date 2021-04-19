@@ -64,11 +64,11 @@ namespace mustache {
 
         static ArrayView make(WorldFilterResult& filter_result, TaskArchetypeIndex archetype_index,
                               ArchetypeEntityIndex first_entity, uint32_t size) noexcept {
-            int32_t count = first_entity.toInt();
+            int32_t count = first_entity.toInt<int32_t >();
             auto block_index = WorldFilterResult::BlockIndex::make(0u);
             while (count > 0) {
                 const auto block = filter_result.filtered_archetypes[archetype_index.toInt()].blocks[block_index];
-                const int32_t block_size = block.end.toInt() - block.begin.toInt();
+                const int32_t block_size = block.end.toInt<int32_t >() - block.begin.toInt<int32_t >();
                 if (count > block_size) {
                     count -= block_size;
                     ++block_index;
@@ -77,7 +77,7 @@ namespace mustache {
                 }
             }
             const auto block_begin = filter_result.filtered_archetypes[archetype_index.toInt()].blocks[block_index].begin;
-            first_entity = ArchetypeEntityIndex::make(block_begin.toInt() + count);
+            first_entity = ArchetypeEntityIndex::make(block_begin.toInt<int32_t >() + count);
             return ArrayView{filter_result, archetype_index, first_entity, size, block_index};
         }
     private:

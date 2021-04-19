@@ -68,7 +68,7 @@ namespace mustache {
         void parallelFor(_F&& function, size_t begin, size_t end, uint32_t task_count = 0u) {
             const size_t size = end - begin;
             if (task_count < 1u) {
-                task_count = size < threadCount() ? size : threadCount();
+                task_count = size < threadCount() ? static_cast<uint32_t>(size) : threadCount();
             }
             const size_t ept = size / task_count;
             const size_t tasks_with_extra_item = size - task_count * ept;
