@@ -61,7 +61,9 @@ namespace mustache {
                 typeid(T).hash_code(),
                 TypeInfo::FunctionSet {
                         std::is_trivially_default_constructible<T>::value ? TypeInfo::Constructor{} : [](void *ptr) {
-                            new(ptr) T;
+                            if constexpr(!std::is_abstract<T>::value) {
+                                new(ptr) T;
+                            }
                         },
                         [](void* dest, const void* source) {
                             if constexpr (std::is_copy_constructible_v<T>) {
