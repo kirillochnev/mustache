@@ -103,10 +103,3 @@ void* DefaultComponentDataStorage::getDataUnsafe(ComponentIndex component_index,
     auto chunk = chunks_[index / chunk_capacity_];
     return dataPointerWithOffset(chunk, offset);
 }
-
-ComponentStorageIndex DefaultComponentDataStorage::pushBack() {
-    reserve(size_ + 1);
-    ComponentStorageIndex index = ComponentStorageIndex::make(size_);
-    incSize();
-    return index;
-}

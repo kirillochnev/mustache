@@ -42,6 +42,7 @@ namespace mustache {
 
         virtual void onJobBegin(World&, TasksCount, JobSize total_entity_count, JobRunMode mode) noexcept;
         virtual void onJobEnd(World&, TasksCount, JobSize total_entity_count, JobRunMode mode) noexcept;
+
     protected:
         WorldVersion last_update_version_;
         WorldFilterResult filter_result_;

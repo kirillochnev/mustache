@@ -14,11 +14,23 @@ namespace mustache {
         ComponentFactory() = delete;
         ~ComponentFactory() = delete;
 
+        static bool isEq(const SharedComponentTag* c0,const SharedComponentTag* c1, SharedComponentId id);
+
+        template <typename T>
+        static SharedComponentId registerSharedComponent() noexcept {
+            static const auto info = makeTypeInfo<T>();
+            static SharedComponentId result = sharedComponentId(info);
+            if (!result.isValid()) {
+                result = sharedComponentId(info);
+            }
+            return result;
+        }
+
         template <typename T>
         static ComponentId registerComponent() {
             static const auto info = makeTypeInfo<T>();
             static ComponentId result = componentId(info);
-            if(!result.isValid()) {
+            if (!result.isValid()) {
                 result = componentId(info);
             }
             return result;
@@ -26,12 +38,50 @@ namespace mustache {
 
         template<typename _C>
         static void applyToMask(ComponentIdMask& mask) noexcept {
-            using Component = typename ComponentType<_C>::type;
-            if constexpr (IsComponentRequired<_C>::value) {
-                static const auto id = registerComponent< typename ComponentType<_C>::type >();
-                mask.set(id, true);
+            if constexpr (!isComponentShared<_C>()) {
+                using Component = typename ComponentType<_C>::type;
+                if constexpr (IsComponentRequired<_C>::value) {
+                    static const auto id = registerComponent<Component>();
+                    mask.set(id, true);
+                }
             }
         }
+
+        template<typename _C>
+        static void applyToSharedInfo(SharedComponentsInfo& info) noexcept {
+            if constexpr (isComponentShared<_C>()) {
+                using Component = typename ComponentType<_C>::type;
+                if constexpr (IsComponentRequired<_C>::value) {
+                    static const auto id = registerSharedComponent<Component>();
+                    info.add(id, std::make_shared<_C>());
+                }
+            }
+        }
+        template<typename _C>
+        static void applyToSharedMask(SharedComponentIdMask& mask) noexcept {
+            if constexpr (isComponentShared<_C>()) {
+                using Component = typename ComponentType<_C>::type;
+                if constexpr (IsComponentRequired<_C>::value) {
+                    static const auto id = registerSharedComponent<Component>();
+                    mask.add(id);
+                }
+            }
+        }
+
+        template <typename... _C>
+        static SharedComponentIdMask makeSharedMask() noexcept {
+            SharedComponentIdMask result;
+            (applyToSharedMask<_C>(result), ...);
+            return result;
+        }
+
+        template <typename... _C>
+        static SharedComponentsInfo makeSharedInfo() noexcept {
+            SharedComponentsInfo result;
+            (applyToSharedInfo<_C>(result), ...);
+            return result;
+        }
+
         template <typename... _C>
         static ComponentIdMask makeMask() noexcept {
             ComponentIdMask mask;
@@ -61,6 +111,7 @@ namespace mustache {
 
         static const TypeInfo& componentInfo(ComponentId id);
         static ComponentId componentId(const TypeInfo& info);
+        static SharedComponentId sharedComponentId(const TypeInfo& info);
 
     };
 

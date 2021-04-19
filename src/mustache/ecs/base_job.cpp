@@ -44,13 +44,12 @@ namespace {
         }
     }
 
-    bool apply(World& world, const WorldFilterParam& check, const WorldFilterParam& set,
+    bool apply(World& world, const FilterCheckParam& check, const FilterSetParam& set,
                WorldFilterResult& result, BaseJob& job) {
 
         auto& entities = world.entities();
         const auto num_archetypes = entities.getArchetypesCount();
         result.filtered_archetypes.reserve(num_archetypes);
-
 
         ArchetypeFilterParam archetype_check;
         archetype_check.version = check.version;
@@ -60,6 +59,7 @@ namespace {
             const bool is_archetype_match =
                     arch.size() > 0u &&
                     arch.isMatch(result.mask) &&
+                    arch.isMatch(result.shared_component_mask) &&
                     job.extraArchetypeFilterCheck(arch);
 
             if (is_archetype_match) {
@@ -83,16 +83,22 @@ uint32_t BaseJob::taskCount(World& world, uint32_t entity_count) const noexcept 
 
 void BaseJob::run(World& world, JobRunMode mode) {
     const auto entities_count = applyFilter(world);
+    if (entities_count < 1u) {
+        return;
+    }
+
     const auto task_count = (mode == JobRunMode::kParallel) ? std::max(1u, taskCount(world, entities_count)) : 1u;
     if (task_count > 0u) {
         world.incrementVersion();
 
         onJobBegin(world, TasksCount::make(task_count), JobSize::make(entities_count), mode);
+
         if (mode == JobRunMode::kCurrentThread) {
             runCurrentThread(world);
         } else {
             runParallel(world, task_count);
         }
+
         onJobEnd(world, TasksCount::make(task_count), JobSize::make(entities_count), mode);
     }
 }
@@ -101,11 +107,11 @@ uint32_t BaseJob::applyFilter(World& world) noexcept {
     filter_result_.clear();
 
     const auto cur_world_version = world.version();
-    const WorldFilterParam check {
+    const FilterCheckParam check {
             checkMask(),
             last_update_version_
     };
-    const WorldFilterParam set {
+    const FilterSetParam set {
             updateMask(),
             cur_world_version
     };

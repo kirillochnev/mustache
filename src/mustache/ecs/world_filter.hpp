@@ -9,8 +9,20 @@ namespace mustache {
     class Archetype;
 
     struct WorldFilterParam {
+        WorldFilterParam() = default;
+        WorldFilterParam(const ComponentIdMask& m, const WorldVersion v):
+            mask{m},
+            version{v} {
+
+        }
         ComponentIdMask mask;
         WorldVersion version;
+    };
+    struct FilterCheckParam : public WorldFilterParam {
+        using WorldFilterParam::WorldFilterParam;
+    };
+    struct FilterSetParam : public WorldFilterParam {
+        using WorldFilterParam::WorldFilterParam;
     };
 
     /**
@@ -35,6 +47,7 @@ namespace mustache {
 
         std::vector<ArchetypeFilterResult> filtered_archetypes;
         ComponentIdMask mask;
+        SharedComponentIdMask shared_component_mask;
         uint32_t total_entity_count{0u};
     };
 }

@@ -9,9 +9,11 @@
 
 using namespace mustache;
 
-Archetype::Archetype(World& world, ArchetypeIndex id, const ComponentIdMask& mask, uint32_t chunk_size):
+Archetype::Archetype(World& world, ArchetypeIndex id, const ComponentIdMask& mask,
+                     const SharedComponentsInfo& shared_components_info, uint32_t chunk_size):
         world_{world},
         mask_{mask},
+        shared_components_info_ {shared_components_info},
         version_storage_{world.memoryManager(), mask.componentsCount(), chunk_size},
         operation_helper_{world.memoryManager(), mask},
         data_storage_{std::make_unique<DefaultComponentDataStorage>(mask, world_.memoryManager())},
@@ -31,7 +33,7 @@ ComponentStorageIndex Archetype::pushBack(Entity entity) {
     const auto index = ComponentStorageIndex::make(entities_.size());
     versionStorage().emplace(worldVersion(), index.toArchetypeIndex());
     entities_.push_back(entity);
-    data_storage_->pushBack();
+    data_storage_->emplace(index);
     return index;
 }
 
@@ -71,8 +73,16 @@ bool Archetype::isMatch(const ComponentIdMask& mask) const noexcept {
     return mask_.isMatch(mask);
 }
 
+bool Archetype::isMatch(const SharedComponentIdMask& mask) const noexcept {
+    return shared_components_info_.isMatch(mask);
+}
+
 bool Archetype::hasComponent(ComponentId component_id) const noexcept {
     return mask_.has(component_id);
+}
+
+bool Archetype::hasComponent(SharedComponentId component_id) const noexcept {
+    return shared_components_info_.has(component_id);
 }
 
 void Archetype::popBack() {
@@ -179,8 +189,9 @@ ComponentIndexMask Archetype::makeComponentMask(const ComponentIdMask& mask) con
     ComponentIndexMask index_mask;
     mask.forEachItem([&index_mask, this](ComponentId id) {
         const auto index = getComponentIndex(id);
-        const auto value = index.isValid();
-        index_mask.set(index, value);
+        if (index.isValid()) {
+            index_mask.set(index, true);
+        }
     });
     return index_mask;
 }

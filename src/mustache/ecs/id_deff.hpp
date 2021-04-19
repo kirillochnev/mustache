@@ -13,9 +13,11 @@ namespace mustache {
     struct WorldVersion : public IndexLike<uint32_t, WorldVersion>{};
 
     struct ComponentId : public IndexLike<uint32_t, ComponentId>{};
+    struct SharedComponentId : public IndexLike<uint32_t, SharedComponentId>{};
 
     struct PerEntityJobTaskId : public IndexLike<uint32_t , PerEntityJobTaskId> {};
     struct PerEntityJobEntityIndexInTask : public IndexLike<uint32_t , PerEntityJobEntityIndexInTask> {};
+    struct PerEntityJobEntityIndex : public IndexLike<uint32_t , PerEntityJobEntityIndex> {};
 
     /// Index archetype in entity manager
     struct ArchetypeIndex : public IndexLike<uint32_t , ArchetypeIndex> {};
@@ -65,6 +67,8 @@ namespace mustache {
 
     /// index(position) of component in archetype
     struct ComponentIndex : public IndexLike<uint32_t, ComponentIndex>{};
+
+    struct SharedComponentIndex : public IndexLike<uint32_t, SharedComponentIndex>{};
 
     // size of component array for Job::forEachArray function, this allows to use int-types as components
     struct ComponentArraySize : public IndexLike<uint32_t, ComponentArraySize>{};

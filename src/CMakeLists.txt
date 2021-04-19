@@ -21,6 +21,7 @@ add_library(${PROJECT_NAME} STATIC
         mustache/utils/dispatch.hpp
         mustache/utils/index_like.hpp
         mustache/utils/array_wrapper.hpp
+        mustache/utils/invoke.hpp
         mustache/utils/crc32.hpp
 
         mustache/ecs/entity.cpp

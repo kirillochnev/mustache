@@ -22,6 +22,7 @@ namespace mustache {
 
         PerEntityJob() {
             filter_result_.mask = Info::componentMask();
+            filter_result_.shared_component_mask = Info::sharedComponentMask();
         }
 
         ComponentIdMask checkMask() const noexcept override {
@@ -33,25 +34,39 @@ namespace mustache {
         }
 
         MUSTACHE_INLINE void runCurrentThread(World& world) override {
-            static constexpr auto index_sequence = std::make_index_sequence<Info::FunctionInfo::components_count>();
+            static constexpr auto unique_components = std::make_index_sequence<Info::FunctionInfo::components_count>();
+            static constexpr auto shared_components = std::make_index_sequence<Info::FunctionInfo::shared_components_count>();
             auto& dispatcher = world.dispatcher();
-            PerEntityJobTaskId task_id = PerEntityJobTaskId::make(0);
+
+            JobInvocationIndex invocation_index;
+            invocation_index.task_index = PerEntityJobTaskId::make(0);
+            invocation_index.thread_id = dispatcher.currentThreadId();
+            invocation_index.entity_index_in_task = PerEntityJobEntityIndexInTask::make(0);
+            invocation_index.entity_index = PerEntityJobEntityIndex::make(0);
+
             const auto thread_id = dispatcher.currentThreadId();
             for (auto task : JobView::make(filter_result_, 1)) {
-                singleTask(task, task_id, thread_id, index_sequence);
-                ++task_id;
+                singleTask(task, invocation_index, unique_components, shared_components);
+                ++invocation_index.task_index;
             }
         }
 
         MUSTACHE_INLINE void runParallel(World& world, uint32_t task_count) override {
-            static constexpr auto index_sequence = std::make_index_sequence<Info::FunctionInfo::components_count>();
-            PerEntityJobTaskId task_id = PerEntityJobTaskId::make(0);
+            static constexpr auto unique_components = std::make_index_sequence<Info::FunctionInfo::components_count>();
+            static constexpr auto shared_components = std::make_index_sequence<Info::FunctionInfo::shared_components_count>();
+
             auto& dispatcher = world.dispatcher();
-            for (auto task : JobView::make(filter_result_, task_count)) {
-                dispatcher.addParallelTask([task, this, task_id](ThreadId thread_id) {
-                    singleTask(task, task_id, thread_id, index_sequence);
+            JobInvocationIndex invocation_index;
+            invocation_index.entity_index = PerEntityJobEntityIndex::make(0);
+            invocation_index.entity_index_in_task = PerEntityJobEntityIndexInTask::make(0);
+            invocation_index.task_index = PerEntityJobTaskId::make(0);
+            for (TaskView task : JobView::make(filter_result_, task_count)) {
+                dispatcher.addParallelTask([task, this, invocation_index](ThreadId thread_id) mutable {
+                    invocation_index.thread_id = thread_id;
+                    singleTask(task, invocation_index, unique_components, shared_components);
                 });
-                ++task_id;
+                ++invocation_index.task_index;
+                invocation_index.entity_index = PerEntityJobEntityIndex::make(invocation_index.entity_index.toInt() + task.dist_to_end);
             }
             dispatcher.waitForParallelFinish();
         }
@@ -63,7 +78,7 @@ namespace mustache {
 
         template<typename... _ARGS>
         MUSTACHE_INLINE void forEachArrayGenerated(ComponentArraySize count, JobInvocationIndex& invocation_index,
-                                   _ARGS MUSTACHE_RESTRICT_PTR ... pointers) {
+                                                   _ARGS MUSTACHE_RESTRICT_PTR ... pointers) {
             T& self = *static_cast<T*>(this);
             if constexpr (Info::has_for_each_array) {
                 invokeMethod(self, &T::forEachArray, count, invocation_index, pointers...);
@@ -75,9 +90,15 @@ namespace mustache {
             }
         }
 
+        template <typename _C>
+        static constexpr SharedComponent<_C> makeShared(_C* ptr) noexcept {
+            static_assert(isComponentShared<_C>(), "Component is not shared");
+            return SharedComponent<_C>{ptr};
+        }
+
         template<size_t _I, typename _ViewType>
         MUSTACHE_INLINE auto getComponentHandler(const _ViewType& view, ComponentIndex index) noexcept {
-            using RequiredType = typename Info::FunctionInfo::template Component<_I>::type;
+            using RequiredType = typename Info::FunctionInfo::template UniqueComponentType<_I>::type;
             using Component = typename ComponentType<RequiredType>::type;
             if constexpr (IsComponentRequired<RequiredType>::value) {
                 auto ptr = view.template getData<FunctionSafety::kUnsafe>(index);
@@ -89,31 +110,40 @@ namespace mustache {
             }
         }
 
-        template<size_t... _I>
-        MUSTACHE_INLINE void singleTask(TaskView task_view, PerEntityJobTaskId task_id, ThreadId thread_id,
-                const std::index_sequence<_I...>&) {
-            JobInvocationIndex invocation_index;
-            invocation_index.task_index = task_id;
-            invocation_index.entity_index_in_task = PerEntityJobEntityIndexInTask::make(0);
-            invocation_index.thread_id = thread_id;
+        template<size_t _ComponentIndex>
+        static constexpr auto getNullptr() noexcept {
+            using Type = typename Info::FunctionInfo::template SharedComponentType<_ComponentIndex>::type;
+            using ResultType = typename ComponentType<Type>::type;
+            return static_cast<const ResultType*>(nullptr);
+        }
+
+        template<size_t... _I, size_t... _SI>
+        MUSTACHE_INLINE void singleTask(TaskView task_view, JobInvocationIndex invocation_index,
+                                        const std::index_sequence<_I...>&, const std::index_sequence<_SI...>&) {
+            auto shared_components = std::make_tuple(
+                    getNullptr<_SI>()...
+            );
             for (const auto& info : task_view) {
                 auto& archetype = *info.archetype();
+                archetype.getSharedComponents(shared_components);
                 static const std::array<ComponentId, sizeof...(_I)> ids {
                         ComponentFactory::registerComponent<typename ComponentType<typename Info::FunctionInfo::
-                        template Component<_I>::type>::type>()...
+                        template UniqueComponentType<_I>::type>::type>()...
                 };
                 std::array<ComponentIndex, sizeof...(_I)> component_indexes {
                         archetype.getComponentIndex(ids[_I])...
                 };
                 for (auto& array : ArchetypeView{filter_result_, info.archetype_index,
-                                                      info.first_entity, info.current_size}) {
+                                                 info.first_entity, info.current_size}) {
                     if constexpr (Info::FunctionInfo::Position::entity >= 0) {
                         forEachArrayGenerated(ComponentArraySize::make(array.arraySize()), invocation_index,
                                               RequiredComponent<Entity>(array.getEntity<FunctionSafety::kUnsafe>()),
-                                              getComponentHandler<_I>(array, component_indexes[_I])...);
+                                              getComponentHandler<_I>(array, component_indexes[_I])...,
+                                              makeShared(std::get<_SI>(shared_components))...);
                     } else {
                         forEachArrayGenerated(ComponentArraySize::make(array.arraySize()), invocation_index,
-                                              getComponentHandler<_I>(array, component_indexes[_I])...);
+                                              getComponentHandler<_I>(array, component_indexes[_I])...,
+                                              makeShared(std::get<_SI>(shared_components))...);
                     }
                 }
             }

@@ -203,7 +203,7 @@ void testComponent() {
 
     const auto mask = mustache::ComponentFactory::makeMask<TestComponent_0, TestComponent_1>();
     mustache::World world{mustache::WorldId::make(0)};
-    auto& archetype = world.entities().getArchetype(mask);
+    auto& archetype = world.entities().getArchetype(mask, mustache::SharedComponentsInfo{});
     auto e0 = world.entities().create(archetype);
     auto e1 = world.entities().create(archetype);
 

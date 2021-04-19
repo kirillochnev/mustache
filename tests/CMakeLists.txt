@@ -23,6 +23,7 @@ add_executable(${PROJECT_NAME}
         system.cpp
         event_manager.cpp
         world_storage.cpp
+        shared_component.cpp
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE mustache)

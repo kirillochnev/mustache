@@ -3,6 +3,12 @@
 
 using namespace mustache;
 
+namespace mustache {
+    bool operator<(const ArchetypeComponents& lhs, const ArchetypeComponents& rhs) noexcept {
+        return lhs.unique < rhs.unique;
+    }
+}
+
 EntityManager::EntityManager(World& world):
         world_{world},
         entities_{world.memoryManager()},
@@ -14,9 +20,13 @@ EntityManager::EntityManager(World& world):
 
 }
 
-Archetype& EntityManager::getArchetype(const ComponentIdMask& mask) {
+Archetype& EntityManager::getArchetype(const ComponentIdMask& mask, const SharedComponentsInfo& shared) {
     const ComponentIdMask arch_mask = mask.merge(getExtraComponents(mask));
-    auto& result = mask_to_arch_[arch_mask];
+    ArchetypeComponents archetype_components;
+    archetype_components.unique = arch_mask;
+    archetype_components.shared = shared.mask();
+    auto& map = mask_to_arch_[archetype_components];
+    auto& result = map[shared.data()];
     if(result) {
         return *result;
     }
@@ -52,7 +62,7 @@ Archetype& EntityManager::getArchetype(const ComponentIdMask& mask) {
         chunk_size = max;
     }
 
-    result = new Archetype(world_, archetypes_.back_index().next(), arch_mask, chunk_size);
+    result = new Archetype(world_, archetypes_.back_index().next(), arch_mask, shared, chunk_size);
     archetypes_.emplace_back(result, deleter);
     return *result;
 }
@@ -143,4 +153,88 @@ ComponentIdMask EntityManager::getExtraComponents(const ComponentIdMask& mask) c
         });
     }
     return result;
+}
+
+SharedComponentPtr EntityManager::getCreatedSharedComponent(const SharedComponentPtr& ptr, SharedComponentId id) {
+    if (!shared_components_.has(id)) {
+        shared_components_.resize(id.next().toInt());
+    }
+    auto& arr = shared_components_[id];
+    for (const auto& v : arr) {
+        if (v.get() == ptr.get() || ComponentFactory::isEq(v.get(), ptr.get(), id)) {
+            return v;
+        }
+    }
+    arr.push_back(ptr);
+    return ptr;
+}
+
+bool EntityManager::removeComponent(Entity entity, ComponentId component) {
+    const auto& location = locations_[entity.id()];
+    if (location.archetype.isNull()) {
+        return false;
+    }
+
+    auto& prev_archetype = *archetypes_[location.archetype];
+    if (!prev_archetype.hasComponent(component)) {
+        return false;
+    }
+
+    auto mask = prev_archetype.mask_;
+    mask.set(component, false);
+
+    auto& archetype = getArchetype(mask, prev_archetype.sharedComponentInfo());
+    if (&archetype == &prev_archetype) {
+        return false;
+    }
+
+    const auto prev_index = location.index;
+    archetype.externalMove(entity, prev_archetype, prev_index, ComponentIdMask{});
+
+    return true;
+}
+
+bool EntityManager::removeSharedComponent(Entity entity, SharedComponentId component) {
+    const auto& location = locations_[entity.id()];
+    if (location.archetype.isNull()) {
+            return false;
+    }
+
+    auto& prev_archetype = *archetypes_[location.archetype];
+
+    if (!prev_archetype.hasComponent(component)) {
+        return false;
+    }
+
+    auto shared_components_info = prev_archetype.sharedComponentInfo();
+    shared_components_info.remove(component);
+
+    auto& archetype = getArchetype(prev_archetype.componentMask(), shared_components_info);
+    if (&archetype == &prev_archetype) {
+        return false;
+    }
+
+    const auto prev_index = location.index;
+    archetype.externalMove(entity, prev_archetype, prev_index, ComponentIdMask{});
+
+    return true;
+}
+
+Archetype* EntityManager::getArchetypeOf(Entity entity) const noexcept {
+    if (!isEntityValid(entity)) {
+        return nullptr;
+    }
+    const auto archetype_index = locations_[entity.id()].archetype;
+    return archetypes_[archetype_index].get();
+}
+
+void EntityManager::markDirty(Entity entity, ComponentId component_id) noexcept {
+    if (isEntityValid(entity)) {
+        const auto location = locations_[entity.id()];
+        const auto arch = archetypes_[location.archetype];
+        const auto component_index = arch->getComponentIndex(component_id);
+        if (component_index.isValid()) {
+            arch->markComponentDirty(component_index, location.index, worldVersion());
+        }
+    }
 }

@@ -34,18 +34,27 @@ namespace mustache {
         template<FunctionSafety _Safety = FunctionSafety::kSafe>
         MUSTACHE_INLINE Entity* getEntity() const;
 
+
+        template<FunctionSafety _Safety = FunctionSafety::kSafe>
+        MUSTACHE_INLINE const SharedComponentTag* getSharedComponent(SharedComponentIndex index) const noexcept;
+
         const Archetype* archetype_ = nullptr;
     };
 
     using ArchetypeFilterParam = MaskAndVersion;
 
+    struct ArchetypeComponents {
+        ComponentIdMask unique;
+        SharedComponentIdMask shared;
+    };
     /**
      * Stores Entities with same component set
      * NOTE: It is has no information about entity manager, so Archetype's methods don't effects entity location.
      */
     class Archetype : public Uncopiable {
     public:
-        Archetype(World& world, ArchetypeIndex id, const ComponentIdMask& mask, uint32_t chunk_size);
+        Archetype(World& world, ArchetypeIndex id, const ComponentIdMask& mask,
+                  const SharedComponentsInfo& shared_components_info, uint32_t chunk_size);
         ~Archetype();
 
         [[nodiscard]] EntityGroup createGroup(size_t count);
@@ -64,7 +73,11 @@ namespace mustache {
 
         [[nodiscard]] bool isMatch(const ComponentIdMask& mask) const noexcept;
 
+        [[nodiscard]] bool isMatch(const SharedComponentIdMask& mask) const noexcept;
+
         [[nodiscard]] bool hasComponent(ComponentId component_id) const noexcept;
+
+        [[nodiscard]] bool hasComponent(SharedComponentId component_id) const noexcept;
 
         WorldVersion worldVersion() const noexcept;
 
@@ -77,11 +90,6 @@ namespace mustache {
 
         template<FunctionSafety _Safety = FunctionSafety::kDefault>
         MUSTACHE_INLINE Entity* entityAt(ArchetypeEntityIndex index);
-
-        template<FunctionSafety _Safety = FunctionSafety::kDefault>
-        void* getComponent(ComponentIndex component, ArchetypeEntityIndex index) const noexcept {
-            return data_storage_->getData<_Safety>(component, ComponentStorageIndex::fromArchetypeIndex(index));
-        }
 
         template<FunctionSafety _Safety = FunctionSafety::kDefault>
         const void* getConstComponent(ComponentIndex component_index, ArchetypeEntityIndex index) const noexcept {
@@ -107,8 +115,39 @@ namespace mustache {
             return version_storage_;
         }
 
+        template<FunctionSafety _Safety = FunctionSafety::kSafe>
+        [[nodiscard]] MUSTACHE_INLINE const SharedComponentTag* getSharedComponent(SharedComponentIndex index) const noexcept;
+
+        template<typename T>
+        [[nodiscard]] MUSTACHE_INLINE const T* getSharedComponent() const noexcept;
+
+        [[nodiscard]] MUSTACHE_INLINE SharedComponentIndex sharedComponentIndex(SharedComponentId id) const noexcept;
+
+        template<typename T>
+        [[nodiscard]] MUSTACHE_INLINE SharedComponentIndex sharedComponentIndex() const noexcept;
+
+        template<typename... ARGS>
+        MUSTACHE_INLINE bool getSharedComponents(std::tuple<ARGS...>& out) const;
+
+        [[nodiscard]] const SharedComponentsInfo& sharedComponentInfo() const noexcept {
+            return shared_components_info_;
+        }
+
         [[nodiscard]] const ArrayWrapper<Entity, ArchetypeEntityIndex, true>& entities() const noexcept;
+
     private:
+
+        MUSTACHE_INLINE void markComponentDirty(ComponentIndex component, ArchetypeEntityIndex index,
+                                                WorldVersion version) noexcept {
+            const auto chunk = versionStorage().chunkAt(index);
+            versionStorage().setVersion(version, chunk, component);
+        }
+
+        template<FunctionSafety _Safety = FunctionSafety::kDefault>
+        void* getComponent(ComponentIndex component, ArchetypeEntityIndex index) const noexcept {
+            return data_storage_->getData<_Safety>(component, ComponentStorageIndex::fromArchetypeIndex(index));
+        }
+
         friend ElementView;
         friend EntityManager;
 
@@ -136,11 +175,11 @@ namespace mustache {
 
         World& world_;
         const ComponentIdMask mask_;
+        const SharedComponentsInfo shared_components_info_;
         VersionStorage version_storage_;
         ArchetypeOperationHelper operation_helper_;
         std::unique_ptr<BaseComponentDataStorage> data_storage_;
         ArrayWrapper<Entity, ArchetypeEntityIndex, true> entities_;
-
         const ArchetypeIndex id_;
     };
 
@@ -149,8 +188,7 @@ namespace mustache {
                                   WorldVersion version) noexcept {
         auto res = data_storage_->getData<_Safety>(component_index, ComponentStorageIndex::fromArchetypeIndex(index));
         if (res != nullptr) {
-            const auto chunk = versionStorage().chunkAt(index);
-            versionStorage().setVersion(version, chunk, component_index);
+            markComponentDirty(component_index, index, version);
         }
 
         return res;
@@ -164,6 +202,46 @@ namespace mustache {
             }
         }
         return entities_.data() + index.toInt();
+    }
+
+    template<FunctionSafety _Safety>
+    const SharedComponentTag* Archetype::getSharedComponent(SharedComponentIndex index) const noexcept {
+        if constexpr (isSafe(_Safety)) {
+            if (!index.isValid()) {
+                return nullptr;
+            }
+            return shared_components_info_.get(index).get();
+        }
+        return nullptr;
+    }
+    template<typename T>
+    const T* Archetype::getSharedComponent() const noexcept {
+        using Type = typename ComponentType<T>::type;
+        const auto index = sharedComponentIndex<Type>();
+        const auto ptr = getSharedComponent(index);
+        return static_cast<const T*>(ptr);
+    }
+
+    SharedComponentIndex Archetype::sharedComponentIndex(SharedComponentId id) const noexcept {
+        SharedComponentIndex result = shared_components_info_.indexOf(id);
+        return result;
+    }
+
+    template<typename T>
+    SharedComponentIndex Archetype::sharedComponentIndex() const noexcept {
+        using Component = typename ComponentType<T>::type;
+        return sharedComponentIndex(ComponentFactory::registerSharedComponent<Component>());
+    }
+
+    template<typename... ARGS>
+    bool Archetype::getSharedComponents(std::tuple<ARGS...>& out) const {
+        out = std::make_tuple(static_cast<ARGS>(getSharedComponent(sharedComponentIndex<ARGS>()))...);
+        return true;
+    }
+
+    template<FunctionSafety _Safety>
+    MUSTACHE_INLINE const SharedComponentTag* ElementView::getSharedComponent(SharedComponentIndex index) const noexcept {
+        return archetype_->template getSharedComponent<_Safety>(index);
     }
 
     template<FunctionSafety _Safety>

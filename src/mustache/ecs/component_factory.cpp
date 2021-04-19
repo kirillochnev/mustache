@@ -5,13 +5,47 @@
 using namespace mustache;
 
 namespace {
-    struct Element {
-        TypeInfo info{};
-        ComponentId id{ComponentId::make(-1)};
+
+    template <typename IdType>
+    struct ComponentIdStorage {
+        struct Element {
+            TypeInfo info{};
+            IdType id = IdType::null();
+        };
+        std::map<size_t, Element> type_map;
+        IdType next_component_id{IdType::make(0)};
+        std::vector<TypeInfo> components_info;
+        IdType getId(const TypeInfo& info) {
+            const auto find_res = type_map.find(info.type_id_hash_code);
+
+            if (find_res != type_map.end()) {
+                if(components_info.size() <= find_res->second.id.toInt()) {
+                    components_info.resize(find_res->second.id.toInt() + 1);
+                }
+                components_info[find_res->second.id.toInt()] = find_res->second.info;
+                return find_res->second.id;
+            }
+            type_map[info.type_id_hash_code] = {
+                    info,
+                    next_component_id
+            };
+            if (components_info.size() <= next_component_id.toInt()) {
+                components_info.resize(next_component_id.toInt() + 1);
+            }
+            components_info[next_component_id.toInt()] = info;
+            Logger{}.debug("New component: %s, id: %d", info.name, next_component_id.toInt());
+            IdType return_value = next_component_id;
+            ++next_component_id;
+            return return_value;
+        }
+        const TypeInfo& componentInfo(IdType id) const noexcept {
+            return components_info[id.toInt()];
+        }
+
     };
-    std::map<size_t, Element> type_map;
-    ComponentId next_component_id{ComponentId::make(0)};
-    std::vector<TypeInfo> components_info;
+
+    ComponentIdStorage<ComponentId> component_id_storage;
+    ComponentIdStorage<SharedComponentId> shared_component_id_storage;
 
     template<typename _F>
     static void applyFunction(void* data, _F&& f, size_t count, size_t size) {
@@ -25,31 +59,16 @@ namespace {
     }
 }
 
+SharedComponentId ComponentFactory::sharedComponentId(const TypeInfo& info) {
+    return shared_component_id_storage.getId(info);
+}
+
 ComponentId ComponentFactory::componentId(const TypeInfo& info) {
-    const auto find_res = type_map.find(info.type_id_hash_code);
-    if(find_res != type_map.end()) {
-        if(components_info.size() <= find_res->second.id.toInt()) {
-            components_info.resize(find_res->second.id.toInt() + 1);
-        }
-        components_info[find_res->second.id.toInt()] = find_res->second.info;
-        return find_res->second.id;
-    }
-    type_map[info.type_id_hash_code] = {
-            info,
-            next_component_id
-    };
-    if(components_info.size() <= next_component_id.toInt()) {
-        components_info.resize(next_component_id.toInt() + 1);
-    }
-    components_info[next_component_id.toInt()] = info;
-    Logger{}.debug("New component: %s, id: %d", info.name, next_component_id.toInt());
-    ComponentId return_value = next_component_id;
-    next_component_id = ComponentId::make(next_component_id.toInt() + 1);
-    return return_value;
+    return component_id_storage.getId(info);
 }
 
 const TypeInfo& ComponentFactory::componentInfo(ComponentId id) {
-    return components_info[id.toInt()];
+    return component_id_storage.componentInfo(id);
 }
 
 void ComponentFactory::initComponents(const TypeInfo& info, void* data, size_t count) {
@@ -61,5 +80,9 @@ void ComponentFactory::destroyComponents(const TypeInfo& info, void* data, size_
 }
 
 ComponentId ComponentFactory::nextComponentId() noexcept {
-    return next_component_id;
+    return component_id_storage.next_component_id;
+}
+
+bool ComponentFactory::isEq(const SharedComponentTag* c0,const SharedComponentTag* c1, SharedComponentId id) {
+    return shared_component_id_storage.componentInfo(id).functions.compare(c0, c1);
 }
