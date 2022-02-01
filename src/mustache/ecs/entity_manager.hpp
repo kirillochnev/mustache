@@ -39,7 +39,16 @@ namespace mustache {
         void update();
 
         // Checks if entity is valid for this World
-        [[nodiscard]] MUSTACHE_INLINE bool isEntityValid(Entity entity) const noexcept;
+        [[nodiscard]] MUSTACHE_INLINE bool isEntityValid(Entity entity) const noexcept {
+            const auto id = entity.id();  // it is ok to get id for no-valid entity, null id will be returned
+            if (entity.isNull() || entity.worldId() != this_world_id_ ||
+                !entities_.has(id) || entities_[id].version() != entity.version()) {
+                return false;
+            }
+
+            return true;
+        }
+
 
         template<typename _F>
         MUSTACHE_INLINE void forEachArchetype(_F&& func) MUSTACHE_COPY_NOEXCEPT (func);
@@ -69,6 +78,9 @@ namespace mustache {
 
         template<FunctionSafety _Safety = FunctionSafety::kDefault>
         [[nodiscard]] MUSTACHE_INLINE  Archetype& getArchetype(ArchetypeIndex index) noexcept (!isSafe(_Safety));
+
+        template<bool _Const = false, FunctionSafety _Safety = FunctionSafety::kSafe>
+        MUSTACHE_INLINE auto getComponent(Entity entity, ComponentId) const noexcept;
 
         template<typename T, FunctionSafety _Safety = FunctionSafety::kSafe>
         MUSTACHE_INLINE T* getComponent(Entity entity) const noexcept;
@@ -174,6 +186,8 @@ namespace mustache {
         void markDirty(Entity entity, ComponentId component_id) noexcept;
     private:
 
+        [[nodiscard]] MUSTACHE_INLINE Entity createWithOutInit() noexcept;
+
         SharedComponentPtr getCreatedSharedComponent(const SharedComponentPtr& ptr, SharedComponentId id);
 
         template<typename Component, typename TupleType, size_t... _I>
@@ -247,15 +261,6 @@ namespace mustache {
         std::vector<ArchetypeChunkSizeFunction> get_chunk_size_functions_;
     };
 
-    bool EntityManager::isEntityValid(Entity entity) const noexcept {
-        const auto id = entity.id();  // it is ok to get id for no-valid entity, null id will be returned
-        if (entity.isNull() || entity.worldId() != this_world_id_ ||
-            !entities_.has(id) || entities_[id].version() != entity.version()) {
-            return false;
-        }
-        return true;
-    }
-
     template<typename _F>
     void EntityManager::forEachArchetype(_F&& func) MUSTACHE_COPY_NOEXCEPT(func) {
         for (auto& arh : archetypes_) {
@@ -263,22 +268,26 @@ namespace mustache {
         }
     }
 
-    Entity EntityManager::create(Archetype& archetype) {
+    Entity EntityManager::createWithOutInit() noexcept {
         Entity entity;
         if(!empty_slots_) {
             entity.reset(EntityId::make(entities_.size()), EntityVersion::make(0), this_world_id_);
             entities_.push_back(entity);
             locations_.emplace_back();
-            updateLocation(entity, archetype.id(), archetype.insert(entity));
         } else {
             const auto id = next_slot_;
             const auto version = entities_[id].version();
             next_slot_ = entities_[id].id();
             entity.reset(id, version, this_world_id_);
             entities_[id] = entity;
-            updateLocation(entity, archetype.id(), archetype.insert(entity));
             --empty_slots_;
         }
+        return entity;
+    }
+
+    Entity EntityManager::create(Archetype& archetype) {
+        const Entity entity = createWithOutInit();
+        updateLocation(entity, archetype.id(), archetype.insert(entity));
         return entity;
     }
 
@@ -331,41 +340,45 @@ namespace mustache {
         return *archetypes_[index];
     }
 
-    template<typename T, FunctionSafety _Safety>
-    T* EntityManager::getComponent(Entity entity) const noexcept {  // TODO: make not template version and call it
+    template<bool _Const, FunctionSafety _Safety>
+    auto EntityManager::getComponent(Entity entity, ComponentId component_id) const noexcept {
+        using ResultType = typename std::conditional<_Const, const void*, void*>::type;
         if constexpr(isSafe(_Safety)) {
             if (!isEntityValid(entity)) {
-                return nullptr;
+                return static_cast<ResultType>(nullptr);
             }
         }
 
-        using ComponentType = ComponentType<T>;
-        using Type = typename ComponentType::type;
-        static_assert(!isComponentShared<Type>(), "Component is shared, use getSharedComponent() function");
-        static const auto component_id = ComponentFactory::registerComponent<Type>();
         const auto& location = locations_[entity.id()];
         if constexpr(isSafe(_Safety)) {
             if (!location.archetype.isValid()) {
-                return nullptr;
+                return static_cast<ResultType>(nullptr);
             }
         }
         const auto& arch = archetypes_[location.archetype];
         const auto index = arch->getComponentIndex(component_id);
         if constexpr(isSafe(_Safety)) {
             if (!index.isValid()) {
-                return nullptr;
+                return static_cast<ResultType>(nullptr);
             }
         }
 
-        if constexpr (std::is_const<T>::value) {
-            auto ptr = arch->getConstComponent<FunctionSafety::kUnsafe>(index, location.index);
-            auto typed_ptr = reinterpret_cast<T*>(ptr);
-            return typed_ptr;
+        if constexpr (_Const) {
+            return arch->getConstComponent<FunctionSafety::kUnsafe>(index, location.index);
+        } else {
+            return arch->getComponent<FunctionSafety::kUnsafe>(index, location.index, worldVersion());
         }
 
-        auto ptr = arch->getComponent<FunctionSafety::kUnsafe>(index, location.index, worldVersion());
-        auto typed_ptr = reinterpret_cast<T*>(ptr);
-        return typed_ptr;
+    }
+
+    template<typename T, FunctionSafety _Safety>
+    T* EntityManager::getComponent(Entity entity) const noexcept {
+        using ComponentType = ComponentType<T>;
+        using Type = typename ComponentType::type;
+        static_assert(!isComponentShared<Type>(), "Component is shared, use getSharedComponent() function");
+        static const auto component_id = ComponentFactory::registerComponent<Type>();
+        auto ptr = getComponent<std::is_const<T>::value, _Safety>(entity, component_id);
+        return static_cast<T*>(ptr);
     }
 
     template<typename T>
@@ -525,7 +538,7 @@ namespace mustache {
 
     template<typename TupleType>
     Entity EntityManager::create(EntityBuilder<TupleType>& args_pack) {
-        Entity entity = create();
+        Entity entity = createWithOutInit();
         constexpr size_t num_components = std::tuple_size<TupleType>();
         const SharedComponentsInfo shared; // TODO: fill me
         initComponents<TupleType>(entity, args_pack.getArgs(), shared, std::make_index_sequence<num_components>());
