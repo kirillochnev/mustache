@@ -9,6 +9,7 @@ used mostly in game development. For further details:
 * [Evolve Your Hierarchy](http://cowboyprogramming.com/2007/01/05/evolve-your-heirachy/)
 * [ECS on Wikipedia](https://en.wikipedia.org/wiki/Entity%E2%80%93component%E2%80%93system)
 * [About ECS on github](https://github.com/SanderMertens/ecs-faq)
+* [Telegram channel about ECS] (https://t.me/ecscomrade)
 
 
 ## Code Example
