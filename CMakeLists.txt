@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.7)
 project("")
 set(CMAKE_CXX_STANDARD 17)
 
@@ -25,6 +25,6 @@ if (MUSTACHE_BUILD_TESTS)
     add_subdirectory(tests)
 endif()
 
-if (MUSTACHE_BUILD_BENCHMARK)
-    add_subdirectory(bench)
+if (MUSTACHE_BUILD_EXAMPLES)
+    add_subdirectory(example)
 endif()
