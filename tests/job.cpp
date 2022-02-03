@@ -1,6 +1,7 @@
 #include <mustache/ecs/entity_manager.hpp>
 #include <mustache/ecs/world.hpp>
 #include <mustache/ecs/job.hpp>
+#include <mustache/ecs/non_template_job.hpp>
 #include <gtest/gtest.h>
 #include <map>
 
@@ -146,7 +147,6 @@ TEST(Job, iterate_singlethread) {
         }
     }
 }
-
 
 TEST(Job, iterate_singlethread_with_required_componen) {
     static_data.reset();
@@ -564,5 +564,70 @@ TEST(Job, UpdateSingleChunk) {
         if (ptr->value != 1) {
             ASSERT_EQ(ptr->value, 1);
         }
+    }
+}
+
+TEST(Job, NonTemplate) {
+
+    mustache::NonTemplateJob job;
+    job.job_name = "Move job";
+    job.component_requests = {
+            {mustache::ComponentFactory::registerComponent<Position>(), false, true},
+            {mustache::ComponentFactory::registerComponent<Velocity>(), true, true},
+            {mustache::ComponentFactory::registerComponent<Orientation>(), true, true},
+    };
+    uint32_t call_count = 0;
+    job.callback = [&call_count](const mustache::NonTemplateJob::ForEachArrayArgs& args) {
+        auto* position = static_cast<Position*>(args.components[0]);
+        const auto* velocity = static_cast<const Velocity*>(args.components[1]);
+        const auto* orientation = static_cast<const Orientation*>(args.components[2]);
+
+        ASSERT_NE(position, nullptr);
+        ASSERT_NE(velocity, nullptr);
+        ASSERT_NE(orientation, nullptr);
+
+        for (uint32_t i = 0; i < args.count.toInt(); ++i) {
+            ASSERT_EQ(orientation[i].x, 1);
+            ASSERT_EQ(orientation[i].y, 2);
+            ASSERT_EQ(orientation[i].z, 3);
+
+            position[i].x += velocity[i].value * orientation[i].x;
+            position[i].y += velocity[i].value * orientation[i].y;
+            position[i].z += velocity[i].value * orientation[i].z;
+            ++call_count;
+        }
+    };
+
+    std::vector<mustache::Entity> entities;
+    entities.resize(100);
+    mustache::World world;
+    for (uint32_t i = 0; i < entities.size(); ++i) {
+        entities[i] = world.entities().begin()
+                .assign<Position>(0u, 0u, 0u)
+                .assign<Velocity>(i)
+                .assign<Orientation>(1u, 2u, 3u)
+        .end();
+    }
+
+
+    job.run(world);
+
+    ASSERT_EQ(call_count, entities.size());
+    
+    for (uint32_t i = 0; i < entities.size(); ++i) {
+        const auto& pos = *world.entities().getComponent<const Position>(entities[i]);
+        const auto& vel = *world.entities().getComponent<const Velocity>(entities[i]);
+        const auto& orientation = *world.entities().getComponent<const Orientation>(entities[i]);
+        ASSERT_EQ(pos.x, i);
+        ASSERT_EQ(pos.y, i * 2);
+        ASSERT_EQ(pos.z, i * 3);
+
+
+        ASSERT_EQ(orientation.x, 1);
+        ASSERT_EQ(orientation.y, 2);
+        ASSERT_EQ(orientation.z, 3);
+
+        ASSERT_EQ(vel.value, i);
+
     }
 }

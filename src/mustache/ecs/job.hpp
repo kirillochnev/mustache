@@ -7,7 +7,6 @@
 #include <mustache/ecs/world_filter.hpp>
 #include <mustache//ecs/task_view.hpp>
 #include <mustache/ecs/base_job.hpp>
-#include <mustache/utils/dispatch.hpp>
 
 namespace mustache {
 
@@ -33,47 +32,16 @@ namespace mustache {
             return Info::updateMask();
         }
 
-        MUSTACHE_INLINE void runCurrentThread(World& world) override {
-            static constexpr auto unique_components = std::make_index_sequence<Info::FunctionInfo::components_count>();
-            static constexpr auto shared_components = std::make_index_sequence<Info::FunctionInfo::shared_components_count>();
-            auto& dispatcher = world.dispatcher();
-
-            JobInvocationIndex invocation_index;
-            invocation_index.task_index = ParallelTaskId::make(0);
-            invocation_index.thread_id = dispatcher.currentThreadId();
-            invocation_index.entity_index_in_task = ParallelTaskItemIndexInTask::make(0);
-            invocation_index.entity_index = ParallelTaskGlobalItemIndex::make(0);
-
-            for (auto task : TaskGroup::make(filter_result_, 1)) {
-                singleTask(task, invocation_index, unique_components, shared_components);
-                ++invocation_index.task_index;
-            }
-        }
-
-        MUSTACHE_INLINE void runParallel(World& world, uint32_t task_count) override {
-            static constexpr auto unique_components = std::make_index_sequence<Info::FunctionInfo::components_count>();
-            static constexpr auto shared_components = std::make_index_sequence<Info::FunctionInfo::shared_components_count>();
-
-            auto& dispatcher = world.dispatcher();
-            JobInvocationIndex invocation_index;
-            invocation_index.entity_index = ParallelTaskGlobalItemIndex::make(0);
-            invocation_index.entity_index_in_task = ParallelTaskItemIndexInTask::make(0);
-            invocation_index.task_index = ParallelTaskId::make(0);
-
-            for (ArchetypeGroup task : TaskGroup::make(filter_result_, task_count)) {
-                dispatcher.addParallelTask([task, this, invocation_index](ThreadId thread_id) mutable {
-                    invocation_index.thread_id = thread_id;
-                    singleTask(task, invocation_index, unique_components, shared_components);
-                });
-                ++invocation_index.task_index;
-                invocation_index.entity_index = ParallelTaskGlobalItemIndex::make(invocation_index.entity_index.toInt() + task.taskSize());
-            }
-            dispatcher.waitForParallelFinish();
-        }
-
         virtual std::string name() const noexcept override {
             return type_name<T>();
         }
+
+        void singleTask(World& world, ArchetypeGroup task, JobInvocationIndex invocation_index) override {
+            static constexpr auto unique_components = std::make_index_sequence<Info::FunctionInfo::components_count>();
+            static constexpr auto shared_components = std::make_index_sequence<Info::FunctionInfo::shared_components_count>();
+            singleTask(world, task, invocation_index, unique_components, shared_components);
+        }
+
     protected:
 
         template<typename... _ARGS>
@@ -119,8 +87,10 @@ namespace mustache {
         }
 
         template<size_t... _I, size_t... _SI>
-        MUSTACHE_INLINE void singleTask(ArchetypeGroup archetype_group, JobInvocationIndex invocation_index,
+        MUSTACHE_INLINE void singleTask(World& world, ArchetypeGroup archetype_group, JobInvocationIndex invocation_index,
                                         const std::index_sequence<_I...>&, const std::index_sequence<_SI...>&) {
+            const auto task_size = TaskSize::make(archetype_group.taskSize());
+            onTaskBegin(world, task_size, invocation_index.task_index);
             auto shared_components = std::make_tuple(
                     getNullptr<_SI>()...
             );
@@ -139,17 +109,18 @@ namespace mustache {
                                                   info.first_entity, info.current_size)) {
 
                     if constexpr (Info::FunctionInfo::Position::entity >= 0) {
-                        forEachArrayGenerated(ComponentArraySize::make(array.arraySize()), invocation_index,
+                        forEachArrayGenerated(array.arraySize(), invocation_index,
                                               RequiredComponent<Entity>(array.template getEntity<FunctionSafety::kUnsafe>()),
                                               getComponentHandler<_I>(array, component_indexes[_I])...,
                                               makeShared(std::get<_SI>(shared_components))...);
                     } else {
-                        forEachArrayGenerated(ComponentArraySize::make(array.arraySize()), invocation_index,
+                        forEachArrayGenerated(array.arraySize(), invocation_index,
                                               getComponentHandler<_I>(array, component_indexes[_I])...,
                                               makeShared(std::get<_SI>(shared_components))...);
                     }
                 }
             }
+            onTaskEnd(world, task_size, invocation_index.task_index);
         }
 
     };

@@ -5,6 +5,10 @@
 
 namespace mustache {
 
+    struct TasksCount : public IndexLike<uint32_t, TasksCount>{};
+    struct JobSize : public IndexLike<uint32_t, JobSize>{};
+    struct TaskSize : public IndexLike<uint32_t, TaskSize>{};
+
     struct TaskInfo {
         uint32_t size;
         ParallelTaskId id = ParallelTaskId::make(0u);
@@ -58,8 +62,8 @@ namespace mustache {
         Archetype* archetype() const noexcept {
             return filter_result_->archetype;
         }
-        [[nodiscard]] uint32_t arraySize() const noexcept {
-            return array_size_;
+        [[nodiscard]] ComponentArraySize arraySize() const noexcept {
+            return ComponentArraySize::make(array_size_);
         }
 
         static ArrayView make(WorldFilterResult& filter_result, TaskArchetypeIndex archetype_index,
@@ -181,11 +185,11 @@ namespace mustache {
             updateTaskSize();
         }
 
-        static auto make(WorldFilterResult& filter_result, uint32_t num_tasks) noexcept {
+        static auto make(WorldFilterResult& filter_result, TasksCount num_tasks) noexcept {
             struct Result {
-                Result(WorldFilterResult &filter_result, uint32_t num_tasks) :
-                        begin_{filter_result, num_tasks},
-                        end_{ParallelTaskId::make(num_tasks)} {
+                Result(WorldFilterResult &filter_result, TasksCount num_tasks) :
+                        begin_{filter_result, num_tasks.toInt()},
+                        end_{ParallelTaskId::make(num_tasks.toInt())} {
 
                 }
 

@@ -16,6 +16,8 @@ namespace {
         bool is_prev_match = false;
         WorldFilterResult::EntityBlock block{ArchetypeEntityIndex::make(0), ArchetypeEntityIndex::make(0)};
         const auto chunk_size = archetype.chunkCapacity().toInt();
+
+        // TODO: make 2-3 levels of component version (for group of 1024, 32, 1) and let VersionStorage return filtered range
         for (auto chunk_index = ChunkIndex::make(0); chunk_index <= last_index; ++chunk_index) {
             const bool is_match =
                     job.extraChunkFilterCheck(archetype, chunk_index) &&
@@ -77,8 +79,8 @@ namespace {
     }
 }
 
-uint32_t BaseJob::taskCount(World& world, uint32_t entity_count) const noexcept {
-    return std::min(entity_count, world.dispatcher().threadCount() + 1);
+TasksCount BaseJob::taskCount(World& world, uint32_t entity_count) const noexcept {
+    return TasksCount::make(std::min(entity_count, world.dispatcher().threadCount() + 1));
 }
 
 void BaseJob::run(World& world, JobRunMode mode) {
@@ -87,11 +89,15 @@ void BaseJob::run(World& world, JobRunMode mode) {
         return;
     }
 
-    const auto task_count = (mode == JobRunMode::kParallel) ? std::max(1u, taskCount(world, entities_count)) : 1u;
-    if (task_count > 0u) {
+    TasksCount task_count = TasksCount::make(1);
+    if (mode == JobRunMode::kParallel) {
+        task_count = std::max(TasksCount::make(1u), taskCount(world, entities_count));
+    }
+
+    if (task_count.toInt() > 0u) {
         world.incrementVersion();
 
-        onJobBegin(world, TasksCount::make(task_count), JobSize::make(entities_count), mode);
+        onJobBegin(world, task_count, JobSize::make(entities_count), mode);
 
         if (mode == JobRunMode::kCurrentThread) {
             runCurrentThread(world);
@@ -99,7 +105,7 @@ void BaseJob::run(World& world, JobRunMode mode) {
             runParallel(world, task_count);
         }
 
-        onJobEnd(world, TasksCount::make(task_count), JobSize::make(entities_count), mode);
+        onJobEnd(world, task_count, JobSize::make(entities_count), mode);
     }
 }
 
@@ -129,4 +135,44 @@ void BaseJob::onJobBegin(World&, TasksCount, JobSize, JobRunMode) noexcept {
 
 void BaseJob::onJobEnd(World&, TasksCount, JobSize, JobRunMode) noexcept {
 
+}
+
+void BaseJob::onTaskBegin(World&, TaskSize, ParallelTaskId) noexcept {
+
+}
+
+void BaseJob::onTaskEnd(World&, TaskSize, ParallelTaskId) noexcept {
+
+}
+
+void BaseJob::runParallel(World& world, TasksCount task_count) {
+    auto& dispatcher = world.dispatcher();
+    JobInvocationIndex invocation_index;
+    invocation_index.entity_index = ParallelTaskGlobalItemIndex::make(0);
+    invocation_index.entity_index_in_task = ParallelTaskItemIndexInTask::make(0);
+    invocation_index.task_index = ParallelTaskId::make(0);
+
+    for (ArchetypeGroup task : TaskGroup::make(filter_result_, task_count)) {
+        dispatcher.addParallelTask([task, this, invocation_index, &world](ThreadId thread_id) mutable {
+            invocation_index.thread_id = thread_id;
+            singleTask(world, task, invocation_index);
+        });
+        ++invocation_index.task_index;
+        invocation_index.entity_index = ParallelTaskGlobalItemIndex::make(invocation_index.entity_index.toInt() + task.taskSize());
+    }
+    dispatcher.waitForParallelFinish();
+}
+
+void BaseJob::runCurrentThread(World& world) {
+    auto& dispatcher = world.dispatcher();
+    JobInvocationIndex invocation_index;
+    invocation_index.task_index = ParallelTaskId::make(0);
+    invocation_index.thread_id = dispatcher.currentThreadId();
+    invocation_index.entity_index_in_task = ParallelTaskItemIndexInTask::make(0);
+    invocation_index.entity_index = ParallelTaskGlobalItemIndex::make(0);
+
+    for (auto task : TaskGroup::make(filter_result_, TasksCount::make(1))) {
+        singleTask(world, task, invocation_index);
+        ++invocation_index.task_index;
+    }
 }
