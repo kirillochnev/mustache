@@ -68,6 +68,8 @@ add_library(${PROJECT_NAME} STATIC
         mustache/ecs/component_version_storage.hpp
         mustache/ecs/job.hpp
         mustache/ecs/non_template_job.hpp
+        mustache/ecs/mustache_c_api.cpp
+        mustache/ecs/mustache_c_api.h
 )
 
 target_include_directories(${PROJECT_NAME}

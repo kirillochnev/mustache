@@ -130,12 +130,16 @@ namespace mustache {
 
         ComponentIdMask version_check_mask;
 
-        std::function<void (ForEachArrayArgs)> callback;
-        std::function<void (World&, TaskSize, ParallelTaskId)> task_begin;
-        std::function<void (World&, TaskSize, ParallelTaskId)> task_end;
+        using Callback = std::function<void (ForEachArrayArgs)>;
+        using TaskEvent = std::function<void (World&, TaskSize, ParallelTaskId)>;
+        using JobEvent = std::function<void (World&, TasksCount, JobSize, JobRunMode)>;
 
-        std::function<void (World&, TasksCount, JobSize, JobRunMode)> job_begin;
-        std::function<void (World&, TasksCount, JobSize, JobRunMode)> job_end;
+        Callback callback;
+        TaskEvent task_begin;
+        TaskEvent task_end;
+
+        JobEvent job_begin;
+        JobEvent job_end;
 
         std::vector<ComponentRequest> component_requests;
         std::vector<SharedComponentId> shared_component_ids;
