@@ -1,0 +1,30 @@
+name: sanitizer
+
+on: [push, pull_request]
+
+jobs:
+
+  linux:
+    timeout-minutes: 10
+
+    strategy:
+      matrix:
+        compiler: [clang++]
+        cxx_std: [cxx_std_17, cxx_std_20]
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Compile tests
+      working-directory: build
+      env:
+        CXX: ${{ matrix.compiler }}
+      run: |
+        cmake -DMUSTACHE_USE_SANITIZER=ON -DMUSTACHE_BUILD_TESTS=ON -DMUSTACHE_CXX_STD=${{ matrix.cxx_std }} ..
+        make -j4
+    - name: Run tests
+      working-directory: build
+      env:
+        CTEST_OUTPUT_ON_FAILURE: 1
+      run: ctest --timeout 30 -C Debug -j4
