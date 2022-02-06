@@ -259,11 +259,9 @@ struct DebugSystem : public System<DebugSystem>, public Receiver<Collision> {
         world.events().subscribe<Collision>(this);
         // you can use unsubscribe(); to stop getting events
     }
-  void update(entityx::EntityManager &entities, entityx::EventManager &events, TimeDelta dt) {}
-
-  void onEvent(const Collision &collision) {
-      Logger{}.debug("entities collided: %d and %d", collision.first.id().toInt(), collision.second.id().toInt());
-  }
+    void onEvent(const Collision &collision) {
+        Logger{}.debug("entities collided: %d and %d", collision.first.id().toInt(), collision.second.id().toInt());
+    }
 };
 ```
 
