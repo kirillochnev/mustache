@@ -107,8 +107,8 @@ add_library(${PROJECT_NAME} ${MUSTACHE_LIB_TYPE}
     ${mustache_SOURCE_DIR}/src/mustache/ecs/component_version_storage.hpp
     ${mustache_SOURCE_DIR}/src/mustache/ecs/job.hpp
     ${mustache_SOURCE_DIR}/src/mustache/ecs/non_template_job.hpp
-    ${mustache_SOURCE_DIR}/src/mustache/ecs/mustache_c_api.cpp
-    ${mustache_SOURCE_DIR}/src/mustache/ecs/mustache_c_api.h
+    ${mustache_SOURCE_DIR}/src/mustache/c_api.cpp
+    ${mustache_SOURCE_DIR}/src/mustache/c_api.h
 )
 
 target_include_directories(${PROJECT_NAME} PUBLIC
@@ -118,8 +118,6 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 
 target_link_libraries(${PROJECT_NAME} ${CMAKE_THREAD_LIBS_INIT})
 target_compile_features(${PROJECT_NAME} PUBLIC ${MUSTACHE_CXX_STD})
-
-file(GLOB_RECURSE MUSTACHE_HEADERS ${CMAKE_CURRENT_LIST_DIR}/src/*.hpp)
 
 
 if (MUSTACHE_BUILD_TESTS)

@@ -30,17 +30,22 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Install gtest manually
+        run: sudo apt-get install libgtest-dev && cd /usr/src/gtest && sudo cmake CMakeLists.txt && sudo make && sudo cp ./lib/*.a /usr/lib && sudo ln -s /usr/lib/libgtest.a /usr/local/lib/libgtest.a && sudo ln -s /usr/lib/libgtest_main.a /usr/local/lib/libgtest_main.a
+
       - uses: actions/checkout@v2
       - name: Install compiler
         run: |
           sudo apt-get update
           sudo apt-get install ${{ matrix.compiler.pkg }} -y
+
+
       - name: Compile tests
         working-directory: build
         env:
           CXX: ${{ matrix.compiler.exe }}
         run: |
-          cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DMUSTACHE_BUILD_TESTS=ON ..
+          cmake -DCMAKE_BUILD_TYPE=Release -DMUSTACHE_BUILD_TESTS=ON ..
           make -j4
       - name: Run tests
         working-directory: build
@@ -59,101 +64,16 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Install gtest manually
+        run: sudo apt-get install libgtest-dev && cd /usr/src/gtest && sudo cmake CMakeLists.txt && sudo make && sudo cp ./lib/*.a /usr/lib && sudo ln -s /usr/lib/libgtest.a /usr/local/lib/libgtest.a && sudo ln -s /usr/lib/libgtest_main.a /usr/local/lib/libgtest_main.a
+
       - uses: actions/checkout@v2
       - name: Compile tests
         working-directory: build
         env:
           CXX: ${{ matrix.compiler }}
         run: |
-          cmake -DMUSTACHE_BUILD_TESTS=ON -DMUSTACHE_CXX_STD=${{ matrix.cxx_std }} ..
-          make -j4
-      - name: Run tests
-        working-directory: build
-        env:
-          CTEST_OUTPUT_ON_FAILURE: 1
-        run: ctest --timeout 30 -C Debug -j4
-
-  windows:
-    timeout-minutes: 10
-
-    strategy:
-      matrix:
-        toolset: [clang-cl, default, v141]
-        include:
-          - toolset: clang-cl
-            toolset_option: -T"ClangCl"
-          - toolset: v141
-            toolset_option: -T"v141"
-
-    runs-on: windows-latest
-
-    steps:
-      - uses: actions/checkout@v2
-      - name: Compile tests
-        working-directory: build
-        run: |
-          cmake -DMUSTACHE_BUILD_TESTS=ON  ${{ matrix.toolset_option }} ..
-          cmake --build . -j 4
-      - name: Run tests
-        working-directory: build
-        env:
-          CTEST_OUTPUT_ON_FAILURE: 1
-        run: ctest --timeout 30 -C Debug -j4
-
-  windows-extra:
-    timeout-minutes: 10
-
-    strategy:
-      matrix:
-        cxx_std: [cxx_std_17, cxx_std_20]
-
-    runs-on: windows-latest
-
-    steps:
-      - uses: actions/checkout@v2
-      - name: Compile tests
-        working-directory: build
-        run: |
-          cmake -DMUSTACHE_BUILD_TESTS=ON -DMUSTACHE_CXX_STD=${{ matrix.cxx_std }} ..
-          cmake --build . -j 4
-      - name: Run tests
-        working-directory: build
-        env:
-          CTEST_OUTPUT_ON_FAILURE: 1
-        run: ctest --timeout 30 -C Debug -j4
-
-  macos:
-    timeout-minutes: 10
-    runs-on: macOS-latest
-
-    steps:
-      - uses: actions/checkout@v2
-      - name: Compile tests
-        working-directory: build
-        run: |
-          cmake -DMUSTACHE_BUILD_TESTS=ON ..
-          make -j4
-      - name: Run tests
-        working-directory: build
-        env:
-          CTEST_OUTPUT_ON_FAILURE: 1
-        run: ctest --timeout 30 -C Debug -j4
-
-  macos-extra:
-    timeout-minutes: 10
-
-    strategy:
-      matrix:
-        cxx_std: [cxx_std_17, cxx_std_20]
-
-    runs-on: macOS-latest
-
-    steps:
-      - uses: actions/checkout@v2
-      - name: Compile tests
-        working-directory: build
-        run: |
-          cmake -DMUSTACHE_BUILD_TESTS=ON -DMUSTACHE_CXX_STD=${{ matrix.cxx_std }} ..
+          cmake -DCMAKE_BUILD_TYPE=Release -DMUSTACHE_BUILD_TESTS=ON -DMUSTACHE_CXX_STD=${{ matrix.cxx_std }} ..
           make -j4
       - name: Run tests
         working-directory: build

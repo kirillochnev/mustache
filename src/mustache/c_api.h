@@ -1,5 +1,5 @@
-#ifndef MUSTACHE_MUSTACHE_C_API_H
-#define MUSTACHE_MUSTACHE_C_API_H
+#ifndef MUSTACHE_C_API_H
+#define MUSTACHE_C_API_H
 
 #include <cstdint>
 #include <cstddef>
@@ -19,7 +19,6 @@ extern "C" {
     typedef uint32_t ParallelTaskId;
     typedef uint32_t ParallelTaskItemIndexInTask;
     typedef uint32_t ParallelTaskGlobalItemIndex;
-
 
 
     typedef struct {
@@ -89,4 +88,4 @@ extern "C" {
     Archetype* getArchetype(World* world, ComponentMask mask);
 }
 
-#endif //MUSTACHE_MUSTACHE_C_API_H
+#endif //MUSTACHE_C_API_H

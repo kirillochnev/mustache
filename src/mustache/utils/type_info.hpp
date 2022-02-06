@@ -3,6 +3,7 @@
 #include <string>
 #include <functional>
 #include <stdexcept>
+#include <cstddef>
 
 #ifdef _MSC_BUILD
 #define MUSTACHE_FUNCTION_SIGNATURE __FUNCSIG__

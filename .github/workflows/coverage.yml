@@ -9,6 +9,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Install gtest manually
+        run: sudo apt-get install libgtest-dev && cd /usr/src/gtest && sudo cmake CMakeLists.txt && sudo make && sudo cp ./lib/*.a /usr/lib && sudo ln -s /usr/lib/libgtest.a /usr/local/lib/libgtest.a && sudo ln -s /usr/lib/libgtest_main.a /usr/local/lib/libgtest_main.a
       - uses: actions/checkout@v2
       - name: Compile tests
         working-directory: build
@@ -22,17 +24,10 @@ jobs:
         working-directory: build
         env:
           CTEST_OUTPUT_ON_FAILURE: 1
-        run: ctest --timeout 30 -C Debug -j4
+        run: ctest --timeout 120 -C Debug -j4
       - name: Collect data
         working-directory: build
         run: |
           sudo apt install lcov
           lcov -c -d . -o coverage.info
           lcov -l coverage.info
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v2
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          files: build/coverage.info
-          name: mustache
-          fail_ci_if_error: true

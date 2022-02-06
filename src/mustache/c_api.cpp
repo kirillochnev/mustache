@@ -1,6 +1,6 @@
-#include <mustache/ecs/ecs.hpp>
-#include <mustache/ecs/mustache_c_api.h>
-#include <mustache/ecs/non_template_job.hpp>
+#include "mustache/ecs/ecs.hpp"
+#include "c_api.h"
+#include "mustache/ecs/non_template_job.hpp"
 
 #include <numeric>
 #include <valarray>

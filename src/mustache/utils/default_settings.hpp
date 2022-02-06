@@ -16,10 +16,16 @@ namespace mustache {
 
 }
 #ifdef __clang__
+#if __clang_major__ > 10
     #define MUSTACHE_FILE __builtin_FILE()
     #define MUSTACHE_FUNCTION __builtin_FUNCTION()
     #define MUSTACHE_LINE __builtin_LINE()
-
+#else
+// TODO: fix me!
+    #define MUSTACHE_FILE ""
+    #define MUSTACHE_FUNCTION ""
+    #define MUSTACHE_LINE 0u
+#endif
     #define MUSTACHE_INLINE inline
     #define MUSTACHE_RESTRICT_PTR
 
@@ -36,10 +42,15 @@ namespace mustache {
 
     #define MUSTACHE_COPY_NOEXCEPT(exp) noexcept(noexcept(exp))
 #elif _MSC_VER
+#if _MSC_VER > 1900
     #define MUSTACHE_FILE __builtin_FILE()
     #define MUSTACHE_FUNCTION __builtin_FUNCTION()
     #define MUSTACHE_LINE __builtin_LINE()
-
+#else
+    #define MUSTACHE_FILE ""
+    #define MUSTACHE_FUNCTION ""
+    #define MUSTACHE_LINE 0u
+#endif
     #define MUSTACHE_INLINE inline
     #define MUSTACHE_RESTRICT_PTR
 
