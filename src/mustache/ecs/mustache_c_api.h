@@ -53,6 +53,7 @@ extern "C" {
         size_t align;
         const char* name;
         TypeInfoFunctions functions;
+        const void* default_value;
     } TypeInfo;
 
     typedef struct {
@@ -75,13 +76,16 @@ extern "C" {
     } ComponentMask;
 
     World* createWorld(WorldId id);
+    void clearWorldEntities(World*);
     void destroyWorld(World*);
     ComponentId registerComponent(TypeInfo info);
-    ComponentPtr assignComponent(World* world, Entity entity, ComponentId component_id);
+    ComponentPtr assignComponent(World* world, Entity entity, ComponentId component_id, bool skip_constructor);
     Job* makeJob(JobDescriptor info);
     void runJob(Job* job, World* world);
+    void destroyJob(Job*);
     Entity createEntity(World* world, Archetype* archetype);
-    void createEntityGroup(World* world, Archetype* archetype, uint32_t count);
+    Entity* createEntityGroup(World* world, Archetype* archetype, uint32_t count);
+    void destroyEntities(World* world, Entity* entities, uint32_t count, bool now);
     Archetype* getArchetype(World* world, ComponentMask mask);
 }
 

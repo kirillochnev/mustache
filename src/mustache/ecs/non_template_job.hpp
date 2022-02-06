@@ -65,6 +65,8 @@ namespace mustache {
 
                     callback(args);
 
+                    args.invocation_index.entity_index = ParallelTaskGlobalItemIndex::make(
+                            args.count.toInt() + args.invocation_index.entity_index.toInt());
                     args.invocation_index.entity_index_in_task = ParallelTaskItemIndexInTask::make(
                             args.count.toInt() + args.invocation_index.entity_index_in_task.toInt());
                 }

@@ -8,6 +8,7 @@ ArchetypeOperationHelper::ArchetypeOperationHelper(MemoryManager& memory_manager
         component_id_to_component_index{memory_manager},
         component_index_to_component_id {memory_manager},
         insert{memory_manager},
+        create_with_value{memory_manager},
         destroy{memory_manager},
         external_move{memory_manager},
         internal_move{memory_manager} {
@@ -31,6 +32,12 @@ ArchetypeOperationHelper::ArchetypeOperationHelper(MemoryManager& memory_manager
                     info.functions.create,
                     component_index
             });
+        } else if (!info.default_value.empty()) {
+            create_with_value.push_back(CreateWithValueInfo {
+                    info.default_value.data(),
+                    info.default_value.size(),
+                    component_index
+            });
         }
         if (info.functions.destroy) {
             destroy.push_back(DestroyInfo {
@@ -40,14 +47,16 @@ ArchetypeOperationHelper::ArchetypeOperationHelper(MemoryManager& memory_manager
         }
         if (info.functions.move) {
             internal_move.push_back(InternalMoveInfo {
-                    info.functions.move
+                    info.functions.move,
+                    info.size
             });
         }
-        ExternalMoveInfo external_move_info;
-        external_move_info.constructor = info.functions.create;
-        external_move_info.move = info.functions.move_constructor;
+        ExternalMoveInfo& external_move_info = external_move.emplace_back();
+        external_move_info.constructor_ptr = info.functions.create;
+        external_move_info.move_ptr = info.functions.move_constructor;
         external_move_info.id = component_id;
-        external_move.push_back(external_move_info);
+        external_move_info.size = info.size;
+        external_move_info.default_data = info.default_value.empty() ? nullptr : info.default_value.data();
 
         ++component_index;
     }

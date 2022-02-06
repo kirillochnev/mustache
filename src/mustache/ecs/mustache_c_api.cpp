@@ -67,6 +67,10 @@ namespace converter {
         type_info.functions.move = info.functions.move;
         type_info.functions.move_constructor = info.functions.move_constructor;
         type_info.functions.destroy = info.functions.destroy;
+        if (info.default_value != nullptr) {
+            type_info.default_value.resize(info.size);
+            memcpy(type_info.default_value.data(), info.default_value, info.size);
+        }
         return type_info;
     }
 
@@ -101,6 +105,10 @@ World* createWorld(WorldId id) {
     return convert(new mustache::World{mustache::WorldId::make(id)});
 }
 
+void clearWorldEntities(World* world) {
+    convert(world)->entities().clear();
+}
+
 void destroyWorld(World* world) {
     delete convert(world);
 }
@@ -109,8 +117,8 @@ ComponentId registerComponent(TypeInfo info) {
     return mustache::ComponentFactory::componentId(convert(info)).toInt();
 }
 
-ComponentPtr assignComponent(World* world, Entity entity, ComponentId component_id) {
-    auto ptr = convert(world)->entities().assign(convert(entity), convert(component_id));
+ComponentPtr assignComponent(World* world, Entity entity, ComponentId component_id, bool skip_constructor) {
+    auto ptr = convert(world)->entities().assign(convert(entity), convert(component_id), skip_constructor);
     return reinterpret_cast<ComponentPtr>(ptr);
 }
 
@@ -129,16 +137,36 @@ void runJob(Job* job, World* world) {
     convert(job)->run(*convert(world));
 }
 
+void destroyJob(Job* job) {
+    delete convert(job);
+}
+
 Entity createEntity(World* world, Archetype* archetype) {
     return convert(convert(world)->entities().create(*convert(archetype)));
 }
-void createEntityGroup(World* world, Archetype* archetype_ptr, uint32_t count) {
+
+Entity* createEntityGroup(World* world, Archetype* archetype_ptr, uint32_t count) {
+    std::unique_ptr<mustache::Entity[]> result {new mustache::Entity[count]};
     auto& entities = convert(world)->entities();
     auto& archetype = *convert(archetype_ptr);
     for (uint32_t i = 0; i < count; ++i) {
-        (void )entities.create(archetype);
+        result[i] = entities.create(archetype);
+    }
+    return reinterpret_cast<Entity*>(result.release());
+}
+
+void destroyEntities(World* world, Entity* entities, uint32_t count, bool now) {
+    auto& manager = convert(world)->entities();
+    const auto mustache_entities = reinterpret_cast<mustache::Entity*>(entities);
+    for (uint32_t i = 0; i < count; ++i) {
+        if (now) {
+            manager.destroyNow(mustache_entities[i]);
+        } else {
+            manager.destroy(mustache_entities[i]);
+        }
     }
 }
+
 Archetype* getArchetype(World* world, ComponentMask mask) {
     auto& entities = convert(world)->entities();
     return convert(&entities.getArchetype(convert(mask), mustache::SharedComponentsInfo{}));

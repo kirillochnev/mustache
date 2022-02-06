@@ -100,9 +100,9 @@ namespace mustache {
 
 
         template<typename T, typename... _ARGS>
-        MUSTACHE_INLINE decltype(auto) assign(Entity e, _ARGS&&... args) ;
+        MUSTACHE_INLINE decltype(auto) assign(Entity e, _ARGS&&... args);
 
-        MUSTACHE_INLINE void* assign(Entity e, ComponentId id) ;
+        MUSTACHE_INLINE void* assign(Entity e, ComponentId id, bool skip_constructor);
 
         template<typename T, FunctionSafety _Safety = FunctionSafety::kDefault>
         [[nodiscard]] MUSTACHE_INLINE bool hasComponent(Entity entity) const noexcept;
@@ -422,14 +422,14 @@ namespace mustache {
         return removeComponent(entity, component_id);
     }
 
-    void* EntityManager::assign(Entity e, ComponentId component_id) {
+    void* EntityManager::assign(Entity e, ComponentId component_id, bool skip_constructor) {
         const auto& location = locations_[e.id()];
         auto& prev_arch = *archetypes_[location.archetype];
         ComponentIdMask mask = prev_arch.mask_;
         mask.add(component_id);
         auto& arch = getArchetype(mask, prev_arch.sharedComponentInfo());
         const auto prev_index = location.index;
-        arch.externalMove(e, prev_arch, prev_index, ComponentIdMask{});
+        arch.externalMove(e, prev_arch, prev_index, skip_constructor ? mask : ComponentIdMask{});
         const auto component_index = arch.getComponentIndex<FunctionSafety::kUnsafe>(component_id);
         return arch.getComponent<FunctionSafety::kUnsafe>(component_index, location.index);
     }

@@ -50,6 +50,7 @@ namespace mustache {
             Destructor destroy;
             IsEqual compare;
         } functions;
+        std::vector<std::byte> default_value; // this array will be used to init component in case of empty constructor
     };
 
     template <typename T>
@@ -103,7 +104,7 @@ namespace mustache {
                                 throw std::runtime_error("Not implemented");
                             }
                         }
-                }
+                }, {}
         };
         return result;
     }
