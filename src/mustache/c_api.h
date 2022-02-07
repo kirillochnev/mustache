@@ -8,6 +8,7 @@ extern "C" {
     struct World;
     struct Archetype;
     struct Job;
+    struct CSystem;
 
     typedef uint32_t WorldId;
     typedef uint64_t Entity;
@@ -65,6 +66,8 @@ extern "C" {
         ForEachArrayCallback callback;
         JobArgInfo* component_info_arr;
         uint32_t component_info_arr_size;
+        ComponentId* check_update;
+        uint32_t check_update_size;
         bool entity_required;
         const char* name;
     } JobDescriptor;
@@ -74,18 +77,48 @@ extern "C" {
         ComponentId* ids;
     } ComponentMask;
 
-    World* createWorld(WorldId id);
-    void clearWorldEntities(World*);
-    void destroyWorld(World*);
+    typedef struct {
+        const char* update_group;
+        const char** update_before;
+        uint32_t update_before_size;
+        const char** update_after;
+        uint32_t update_after_size;
+        int32_t priority;
+    } SystemConfig;
+
+    typedef void (*SystemEvent)(struct World*, void* user_data);
+    typedef struct {
+        const char* name;
+        void* user_data;
+        void (*free_user_data)(void* user_data);
+        SystemEvent on_create;
+        void (*on_configure)(struct World*, SystemConfig*, void* user_data);
+        SystemEvent on_start;
+        SystemEvent on_stop;
+        SystemEvent on_update;
+        SystemEvent on_pause;
+        SystemEvent on_resume;
+        SystemEvent on_destroy;
+    } SystemDescriptor;
+
+struct World* createWorld(WorldId id);
+    void updateWorld(struct World* world);
+    void clearWorldEntities(struct World*);
+    void destroyWorld(struct World*);
     ComponentId registerComponent(TypeInfo info);
-    ComponentPtr assignComponent(World* world, Entity entity, ComponentId component_id, bool skip_constructor);
-    Job* makeJob(JobDescriptor info);
-    void runJob(Job* job, World* world);
-    void destroyJob(Job*);
-    Entity createEntity(World* world, Archetype* archetype);
-    Entity* createEntityGroup(World* world, Archetype* archetype, uint32_t count);
-    void destroyEntities(World* world, Entity* entities, uint32_t count, bool now);
-    Archetype* getArchetype(World* world, ComponentMask mask);
+    bool hasComponent(struct World* world, Entity entity, ComponentId component_id);
+    ComponentPtr assignComponent(struct World* world, Entity entity, ComponentId component_id, bool skip_constructor);
+    ComponentPtr getComponent(struct World* world, Entity entity, ComponentId component_id, bool is_const);
+    void removeComponent(struct World* world, Entity entity, ComponentId component_id);
+    struct Job* makeJob(JobDescriptor info);
+    void runJob(struct Job* job, struct World* world);
+    void destroyJob(struct Job*);
+    Entity createEntity(struct World* world, struct Archetype* archetype);
+    void createEntityGroup(struct World* world, struct Archetype* archetype, Entity* ptr, uint32_t count);
+    void destroyEntities(struct World* world, Entity* entities, uint32_t count, bool now);
+    struct Archetype* getArchetype(struct World* world, ComponentMask mask);
+    struct CSystem* createSystem(struct World* world, const SystemDescriptor* descriptor);
+    void addSystem(struct World* world, struct CSystem* system);
 }
 
 #endif //MUSTACHE_C_API_H

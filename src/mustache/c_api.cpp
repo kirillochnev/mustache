@@ -97,12 +97,116 @@ namespace converter {
         result.is_required = info.is_required;
         return result;
     }
+
+    mustache::SystemConfig convert(const SystemConfig& cfg) {
+        mustache::SystemConfig result;
+        result.priority = cfg.priority;
+        result.update_group = cfg.update_group;
+        for (uint32_t i = 0; i < cfg.update_after_size; ++i) {
+            result.update_after.insert(cfg.update_after[i]);
+        }
+        for (uint32_t i = 0; i < cfg.update_before_size; ++i) {
+            result.update_after.insert(cfg.update_before[i]);
+        }
+        return result;
+    }
+
+    SystemConfig convert(mustache::SystemConfig& cfg) {
+        SystemConfig result;
+        result.priority = cfg.priority;
+        result.update_group = cfg.update_group.c_str();
+        result.update_after_size = static_cast<uint32_t >(cfg.update_after.size());
+        result.update_before_size = static_cast<uint32_t >(cfg.update_before.size());
+        if (result.update_after_size > 0) {
+            result.update_after = new const char*[result.update_after_size];
+            uint32_t i = 0;
+            for (const auto& str : cfg.update_after) {
+                result.update_after[i] = str.c_str();
+                ++i;
+            }
+        }
+        if (result.update_before_size > 0) {
+            result.update_before = new const char*[result.update_before_size];
+            uint32_t i = 0;
+            for (const auto& str : cfg.update_before) {
+                result.update_before[i] = str.c_str();
+                ++i;
+            }
+        }
+        return result;
+    }
 }
 
 using namespace converter;
 
+struct CSystem : mustache::ASystem {
+    CSystem(const SystemDescriptor& descriptor):
+            descriptor_{descriptor} {
+
+    }
+    ~CSystem() override {
+        if (descriptor_.free_user_data) {
+            descriptor_.free_user_data(descriptor_.user_data);
+        }
+    }
+    std::string name() const noexcept override {
+        return descriptor_.name;
+    }
+protected:
+    SystemDescriptor descriptor_;
+
+    template<typename _F, typename... ARGS>
+    void invoke(_F ptr, mustache::World& world, ARGS&&... args) {
+        if (ptr != nullptr) {
+            mustache::invoke(ptr, convert(&world), descriptor_.user_data, std::forward<ARGS>(args)...);
+        }
+    }
+    void onCreate(mustache::World& world) override {
+        invoke(descriptor_.on_create, world);
+    }
+
+    void onConfigure(mustache::World& world, mustache::SystemConfig& config) override {
+        SystemConfig system_config = convert(config);
+        invoke(descriptor_.on_configure, world, &system_config);
+        config = convert(system_config);
+    }
+
+    void onStart(mustache::World& world) override {
+        invoke(descriptor_.on_start, world);
+    }
+
+    void onUpdate(mustache::World& world) override {
+        invoke(descriptor_.on_update, world);
+    }
+
+    void onPause(mustache::World& world) override {
+        invoke(descriptor_.on_pause, world);
+    }
+
+    void onStop(mustache::World& world) override {
+        invoke(descriptor_.on_stop, world);
+    }
+
+    void onResume(mustache::World& world) override {
+        invoke(descriptor_.on_resume, world);
+    }
+
+    void onDestroy(mustache::World& world) override {
+        invoke(descriptor_.on_destroy, world);
+    }
+};
+
+
 World* createWorld(WorldId id) {
-    return convert(new mustache::World{mustache::WorldId::make(id)});
+    const auto world_id = mustache::WorldId::make(id);
+    if (world_id.isValid()) {
+        return convert(new mustache::World{world_id});
+    }
+    return convert(new mustache::World{});
+}
+
+void updateWorld(World* world) {
+    convert(world)->update();
 }
 
 void clearWorldEntities(World* world) {
@@ -121,6 +225,24 @@ ComponentPtr assignComponent(World* world, Entity entity, ComponentId component_
     auto ptr = convert(world)->entities().assign(convert(entity), convert(component_id), skip_constructor);
     return reinterpret_cast<ComponentPtr>(ptr);
 }
+bool hasComponent(World* world, Entity entity, ComponentId component_id) {
+    return convert(world)->entities().hasComponent(convert(entity), convert(component_id));
+}
+void removeComponent(World* world, Entity entity, ComponentId component_id) {
+    convert(world)->entities().removeComponent(convert(entity), convert(component_id));
+}
+ComponentPtr getComponent(World* world, Entity entity, ComponentId component_id, bool is_const) {
+//    const auto type_id = mustache::ComponentFactory::componentInfo(convert(component_id));
+//    mustache::Logger{}.info("World: %p, Entity: %d, Component: %d, const: %s, Name: %s",
+//                            world, entity, component_id, is_const ? "const" : "mutable", type_id.name.c_str());
+    const void* ptr = nullptr;
+    if (is_const) {
+        ptr = convert(world)->entities().getComponent<true>(convert(entity), convert(component_id));
+    } else {
+        ptr = convert(world)->entities().getComponent<false>(convert(entity), convert(component_id));
+    }
+    return const_cast<ComponentPtr>(ptr);
+}
 
 Job* makeJob(JobDescriptor info) {
     auto job = new mustache::NonTemplateJob{};
@@ -129,6 +251,9 @@ Job* makeJob(JobDescriptor info) {
     job->component_requests.resize(info.component_info_arr_size);
     for (uint32_t i = 0; i < info.component_info_arr_size; ++i) {
         job->component_requests[i] = convert(info.component_info_arr[i]);
+    }
+    for (uint32_t i = 0; i < info.check_update_size; ++i) {
+        job->version_check_mask.set(convert(info.check_update[i]), true);
     }
     return convert(job);
 }
@@ -144,15 +269,20 @@ void destroyJob(Job* job) {
 Entity createEntity(World* world, Archetype* archetype) {
     return convert(convert(world)->entities().create(*convert(archetype)));
 }
-
-Entity* createEntityGroup(World* world, Archetype* archetype_ptr, uint32_t count) {
+void createEntityGroup(World* world, Archetype* archetype_ptr, Entity* ptr, uint32_t count) {
     std::unique_ptr<mustache::Entity[]> result {new mustache::Entity[count]};
     auto& entities = convert(world)->entities();
     auto& archetype = *convert(archetype_ptr);
-    for (uint32_t i = 0; i < count; ++i) {
-        result[i] = entities.create(archetype);
+    auto* out = reinterpret_cast<mustache::Entity*>(ptr);
+    if (out) {
+        for (uint32_t i = 0; i < count; ++i) {
+            result[i] = entities.create(archetype);
+        }
+    } else {
+        for (uint32_t i = 0; i < count; ++i) {
+            (void) entities.create(archetype);
+        }
     }
-    return reinterpret_cast<Entity*>(result.release());
 }
 
 void destroyEntities(World* world, Entity* entities, uint32_t count, bool now) {
@@ -170,4 +300,18 @@ void destroyEntities(World* world, Entity* entities, uint32_t count, bool now) {
 Archetype* getArchetype(World* world, ComponentMask mask) {
     auto& entities = convert(world)->entities();
     return convert(&entities.getArchetype(convert(mask), mustache::SharedComponentsInfo{}));
+}
+
+CSystem* createSystem(World* world, const SystemDescriptor* descriptor) {
+    std::unique_ptr<CSystem> result{new CSystem{*descriptor}};
+    if (world != nullptr) {
+        mustache::SystemManager::SystemPtr system {result.release()};
+        convert(world)->systems().addSystem(system);
+        return static_cast<CSystem*>(system.get());
+    }
+    return result.release();
+}
+
+void addSystem(World* world, CSystem* system) {
+    convert(world)->systems().addSystem(mustache::SystemManager::SystemPtr{system, [](CSystem*){}});
 }

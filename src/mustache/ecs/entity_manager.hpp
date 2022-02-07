@@ -107,6 +107,9 @@ namespace mustache {
         template<typename T, FunctionSafety _Safety = FunctionSafety::kDefault>
         [[nodiscard]] MUSTACHE_INLINE bool hasComponent(Entity entity) const noexcept;
 
+        template<FunctionSafety _Safety = FunctionSafety::kDefault, typename _ComponentId>
+        [[nodiscard]] MUSTACHE_INLINE bool hasComponent(Entity entity, _ComponentId id) const noexcept;
+
         template<typename T, FunctionSafety _Safety = FunctionSafety::kSafe>
         [[nodiscard]] MUSTACHE_INLINE WorldVersion getWorldVersionOfLastComponentUpdate(Entity entity) const noexcept {
             const auto id = entity.id();
@@ -491,8 +494,8 @@ namespace mustache {
         }
     }
 
-    template<typename T, FunctionSafety _Safety>
-    bool EntityManager::hasComponent(Entity entity) const noexcept {
+    template<FunctionSafety _Safety, typename _ComponentId>
+    bool EntityManager::hasComponent(Entity entity, _ComponentId id) const noexcept {
         if constexpr (isSafe(_Safety)) {
             if (!isEntityValid(entity)) {
                 return false;
@@ -503,12 +506,17 @@ namespace mustache {
             return false;
         }
         const auto& archetype = *archetypes_[location.archetype];
+        return archetype.hasComponent(id);
+    }
+
+    template<typename T, FunctionSafety _Safety>
+    bool EntityManager::hasComponent(Entity entity) const noexcept {
         if constexpr (isComponentShared<T>()) {
             static const auto component_id = ComponentFactory::registerSharedComponent<T>();
-            return archetype.hasComponent(component_id);
+            return hasComponent<_Safety>(entity, component_id);
         } else {
             static const auto component_id = ComponentFactory::registerComponent<T>();
-            return archetype.hasComponent(component_id);
+            return hasComponent<_Safety>(entity, component_id);
         }
     }
 
