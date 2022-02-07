@@ -55,6 +55,27 @@ namespace converter {
         };
     }
 
+    mustache::JobRunMode convert(JobRunMode mode) noexcept {
+        if (mode == JobRunMode::kParallel) {
+            return mustache::JobRunMode::kParallel;
+        }
+        return mustache::JobRunMode::kCurrentThread;
+    }
+    JobRunMode convert(mustache::JobRunMode mode) noexcept {
+        if (mode == mustache::JobRunMode::kParallel) {
+            return JobRunMode::kParallel;
+        }
+        return JobRunMode::kCurrentThread;
+    }
+    mustache::NonTemplateJob::JobEvent convert(JobEvent callback, Job* job) noexcept {
+        if (callback == nullptr) {
+            return {};
+        }
+        return [callback, job](mustache::World& world, mustache::TasksCount tasks_count,
+                          mustache::JobSize job_size, mustache::JobRunMode mode) {
+            callback(job, convert(&world), tasks_count.toInt(), job_size.toInt(), convert(mode));
+        };
+    }
     mustache::TypeInfo convert(const TypeInfo& info) noexcept {
         mustache::TypeInfo type_info;
         type_info.name = info.name;
@@ -249,6 +270,8 @@ Job* makeJob(JobDescriptor info) {
     job->callback = convert(info.callback);
     job->job_name = info.name;
     job->component_requests.resize(info.component_info_arr_size);
+    job->job_begin = convert(info.on_job_begin, convert(job));
+    job->job_end = convert(info.on_job_end, convert(job));
     for (uint32_t i = 0; i < info.component_info_arr_size; ++i) {
         job->component_requests[i] = convert(info.component_info_arr[i]);
     }
@@ -258,8 +281,8 @@ Job* makeJob(JobDescriptor info) {
     return convert(job);
 }
 
-void runJob(Job* job, World* world) {
-    convert(job)->run(*convert(world));
+void runJob(Job* job, World* world, JobRunMode mode) {
+    convert(job)->run(*convert(world), convert(mode));
 }
 
 void destroyJob(Job* job) {
@@ -270,13 +293,12 @@ Entity createEntity(World* world, Archetype* archetype) {
     return convert(convert(world)->entities().create(*convert(archetype)));
 }
 void createEntityGroup(World* world, Archetype* archetype_ptr, Entity* ptr, uint32_t count) {
-    std::unique_ptr<mustache::Entity[]> result {new mustache::Entity[count]};
     auto& entities = convert(world)->entities();
     auto& archetype = *convert(archetype_ptr);
     auto* out = reinterpret_cast<mustache::Entity*>(ptr);
     if (out) {
         for (uint32_t i = 0; i < count; ++i) {
-            result[i] = entities.create(archetype);
+            out[i] = entities.create(archetype);
         }
     } else {
         for (uint32_t i = 0; i < count; ++i) {
