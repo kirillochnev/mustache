@@ -3,10 +3,11 @@
 #include <mustache/utils/type_info.hpp>
 #include <mustache/utils/array_wrapper.hpp>
 #include <mustache/utils/default_settings.hpp>
+
 #include <mustache/ecs/id_deff.hpp>
 
-#include <vector>
 #include <cstring>
+#include <vector>
 
 namespace mustache {
     struct ComponentIdMask;

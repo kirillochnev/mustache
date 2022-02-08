@@ -2,9 +2,9 @@
 
 #include <mustache/utils/index_like.hpp>
 #include <mustache/utils/default_settings.hpp>
+
 #include <cstdint>
 #include <cstddef>
-#include <iostream>
 
 namespace mustache {
     struct MUSTACHE_EXPORT EntityId : public IndexLike<uint32_t, EntityId>{};

@@ -1,9 +1,10 @@
 #pragma once
 
+#include <mustache/utils/dispatch.hpp>
+
 #include <mustache/ecs/task_view.hpp>
 #include <mustache/ecs/world_filter.hpp>
 #include <mustache/ecs/component_mask.hpp>
-#include <mustache/utils/dispatch.hpp>
 
 namespace mustache {
     class Archetype;

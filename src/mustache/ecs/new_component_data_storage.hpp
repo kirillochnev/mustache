@@ -1,9 +1,10 @@
 #pragma once
 
-#include <mustache/ecs/entity.hpp>
-#include <mustache/ecs/component_mask.hpp>
 #include <mustache/utils/array_wrapper.hpp>
 #include <mustache/utils/memory_manager.hpp>
+
+#include <mustache/ecs/entity.hpp>
+#include <mustache/ecs/component_mask.hpp>
 #include <mustache/ecs/base_component_data_storage.hpp>
 
 #include <array>

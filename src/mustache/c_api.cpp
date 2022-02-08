@@ -272,16 +272,16 @@ Job* makeJob(JobDescriptor info) {
     job->component_requests.resize(info.component_info_arr_size);
     job->job_begin = convert(info.on_job_begin, convert(job));
     job->job_end = convert(info.on_job_end, convert(job));
-    mustache::Logger{}.info("Args count: %d", info.component_info_arr_size);
+//    mustache::Logger{}.info("Args count: %d", info.component_info_arr_size);
     for (uint32_t i = 0; i < info.component_info_arr_size; ++i) {
         auto t = info.component_info_arr[i];
-        mustache::Logger{}.info("%d) Id: %d, Required: %d, Const: %d", i, t.component_id, t.is_required, t.is_const);
+//        mustache::Logger{}.info("%d) Id: %d, Required: %d, Const: %d", i, t.component_id, t.is_required, t.is_const);
         job->component_requests[i] = convert(info.component_info_arr[i]);
     }
     for (uint32_t i = 0; i < info.check_update_size; ++i) {
         job->version_check_mask.set(convert(info.check_update[i]), true);
     }
-    mustache::Logger{}.info("New job has been create, name: [%s], ptr: %p", info.name, job);
+//    mustache::Logger{}.info("New job has been create, name: [%s], ptr: %p", info.name, job);
     return convert(job);
 }
 

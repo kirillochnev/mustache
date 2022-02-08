@@ -1,7 +1,7 @@
 #pragma once
 
-#include <mustache/ecs/world_filter.hpp>
 #include <mustache/ecs/archetype.hpp>
+#include <mustache/ecs/world_filter.hpp>
 
 namespace mustache {
 

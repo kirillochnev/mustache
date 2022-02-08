@@ -1,13 +1,13 @@
 #pragma once
 
+#include <mustache/utils/dispatch.hpp>
 #include <mustache/utils/index_like.hpp>
+#include <mustache/utils/memory_manager.hpp>
+
 #include <mustache/ecs/world_storage.hpp>
+#include <mustache/ecs/event_manager.hpp>
 #include <mustache/ecs/entity_manager.hpp>
 #include <mustache/ecs/system_manager.hpp>
-#include <mustache/ecs/event_manager.hpp>
-
-#include <mustache/utils/memory_manager.hpp>
-#include <mustache/utils/dispatch.hpp>
 
 #include <cstdint>
 

@@ -6,6 +6,7 @@
 #include <mustache/ecs/component_factory.hpp>
 #include <mustache/ecs/new_component_data_storage.hpp>
 #include <mustache/ecs/default_component_data_storage.hpp>
+
 #include <cstring>
 
 using namespace mustache;

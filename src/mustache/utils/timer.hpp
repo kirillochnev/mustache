@@ -1,7 +1,9 @@
 #pragma once
 
-#include <chrono>
 #include <mustache/utils/dll_export.h>
+
+#include <chrono>
+
 namespace mustache {
 
     enum class TimerStatus {

@@ -1,7 +1,8 @@
 #pragma once
 
-#include <mustache/ecs/id_deff.hpp>
 #include <mustache/utils/default_settings.hpp>
+
+#include <mustache/ecs/id_deff.hpp>
 
 #include <memory>
 

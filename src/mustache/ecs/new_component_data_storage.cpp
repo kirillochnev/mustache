@@ -1,5 +1,7 @@
 #include "new_component_data_storage.hpp"
-#include "component_factory.hpp"
+
+#include <mustache/ecs/component_factory.hpp>
+
 #include <mustache/utils/logger.hpp>
 
 using namespace mustache;

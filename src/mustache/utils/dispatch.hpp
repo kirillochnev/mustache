@@ -1,13 +1,13 @@
 #pragma once
 
+#include <mustache/utils/uncopiable.hpp>
+#include <mustache/utils/index_like.hpp>
+
 #include <cstdint>
 #include <vector>
 #include <thread>
 #include <memory>
 #include <future>
-
-#include <mustache/utils/uncopiable.hpp>
-#include <mustache/utils/index_like.hpp>
 
 namespace mustache {
 

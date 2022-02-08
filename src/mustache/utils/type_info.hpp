@@ -1,10 +1,11 @@
 #pragma once
 
+#include <mustache/utils/dll_export.h>
+
 #include <string>
+#include <cstddef>
 #include <functional>
 #include <stdexcept>
-#include <cstddef>
-#include <mustache/utils/dll_export.h>
 
 #ifdef _MSC_BUILD
 #define MUSTACHE_FUNCTION_SIGNATURE __FUNCSIG__

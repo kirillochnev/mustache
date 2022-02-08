@@ -1,6 +1,8 @@
 #include "component_factory.hpp"
-#include <map>
+
 #include <mustache/utils/logger.hpp>
+
+#include <map>
 
 using namespace mustache;
 

@@ -1,9 +1,9 @@
 #include "benchmark.hpp"
+
 #include <mustache/utils/logger.hpp>
 
 #include <cmath>
 #include <numeric>
-#include <iostream>
 #include <algorithm>
 
 using namespace mustache;
@@ -13,7 +13,7 @@ void Benchmark::show() {
         return;
     }
     if(times_.size() < 2) {
-        std::cout<<"Time: " << times_.front() << "ms" << std::endl;
+        Logger{}.hideContext().info("Time: %fms", static_cast<float>(times_.front()));
         return;
     }
     const auto sum = std::accumulate(times_.begin(), times_.end(), 0.0);

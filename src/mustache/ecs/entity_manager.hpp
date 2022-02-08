@@ -1,8 +1,8 @@
 #pragma once
 
-#include <mustache/utils/default_settings.hpp>
-#include <mustache/utils/array_wrapper.hpp>
 #include <mustache/utils/uncopiable.hpp>
+#include <mustache/utils/array_wrapper.hpp>
+#include <mustache/utils/default_settings.hpp>
 
 #include <mustache/ecs/entity.hpp>
 #include <mustache/ecs/base_job.hpp>
@@ -11,9 +11,9 @@
 #include <mustache/ecs/entity_builder.hpp>
 #include <mustache/ecs/component_factory.hpp>
 
-#include <memory>
 #include <map>
 #include <set>
+#include <memory>
 
 namespace mustache {
 

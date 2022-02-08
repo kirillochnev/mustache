@@ -1,5 +1,8 @@
 #pragma once
 
+#include <mustache/utils/type_info.hpp>
+#include <mustache/utils/uncopiable.hpp>
+
 #include <mustache/ecs/entity.hpp>
 #include <mustache/ecs/id_deff.hpp>
 #include <mustache/ecs/entity_group.hpp>
@@ -9,11 +12,9 @@
 #include <mustache/ecs/archetype_operation_helper.hpp>
 #include <mustache/ecs/base_component_data_storage.hpp>
 
-#include <mustache/utils/uncopiable.hpp>
-#include <mustache/utils/type_info.hpp>
+#include <stdexcept>
 #include <cstdint>
 #include <string>
-#include <stdexcept>
 
 namespace mustache {
 

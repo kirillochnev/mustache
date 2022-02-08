@@ -1,17 +1,16 @@
 #pragma once
 
-#include <mustache/ecs/component_mask.hpp>
-#include <mustache/ecs/component_handler.hpp>
-#include <mustache/ecs/component_factory.hpp>
-#include <mustache/ecs/entity.hpp>
-
 #include <mustache/utils/invoke.hpp>
 #include <mustache/utils/dispatch.hpp>
 #include <mustache/utils/type_info.hpp>
 #include <mustache/utils/function_traits.hpp>
 
+#include <mustache/ecs/entity.hpp>
+#include <mustache/ecs/component_mask.hpp>
+#include <mustache/ecs/component_handler.hpp>
+#include <mustache/ecs/component_factory.hpp>
+
 #include <array>
-#include <iostream>
 #include <cstdint>
 
 namespace mustache {
@@ -315,28 +314,4 @@ namespace mustache {
         }
     };
 
-    template<typename T, size_t... _I>
-    void showJobInfo(const std::index_sequence<_I...>&) {
-        using info = typename JobInfo<T>::FunctionInfo;
-        std::cout << "Job type name: " << type_name<T>() << std::endl;
-        std::cout << "\tFunctor type: " << type_name<typename info::FunctionType>() << std::endl;
-        std::cout << "\tArgs count: " << info::args_count << std::endl;
-        std::cout << "\tComponents count: " << info::components_count << std::endl;
-        const auto show_component = [](auto pairs){
-            for (const auto pair : pairs) {
-                std::cout << "\tComponent name: " << pair.second << ", position: " << pair.first << std::endl;
-            }
-        };
-        if constexpr (sizeof...(_I) > 0) {
-            const std::array array = {std::make_pair(info::componentPosition(_I),
-                                      type_name<typename info::template UniqueComponentType<_I>::type>())...};
-            show_component(array);
-        }
-    }
-
-    template<typename T>
-    void showJobInfo() {
-        using info = typename JobInfo<T>::FunctionInfo;
-        showJobInfo<T>(std::make_index_sequence<info::components_count>());
-    }
 }

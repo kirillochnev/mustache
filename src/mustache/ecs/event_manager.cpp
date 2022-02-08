@@ -1,5 +1,7 @@
 #include "event_manager.hpp"
+
 #include <mustache/utils/logger.hpp>
+
 #include <map>
 
 using namespace mustache;

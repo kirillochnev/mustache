@@ -1,4 +1,5 @@
 #include "archetype_operation_helper.hpp"
+
 #include <mustache/ecs/entity.hpp>
 #include <mustache/ecs/component_factory.hpp>
 

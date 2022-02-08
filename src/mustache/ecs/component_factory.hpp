@@ -2,9 +2,9 @@
 
 #include <mustache/ecs/entity.hpp>
 #include <mustache/ecs/id_deff.hpp>
+#include <mustache/utils/type_info.hpp>
 #include <mustache/ecs/component_mask.hpp>
 #include <mustache/ecs/component_handler.hpp>
-#include <mustache/utils/type_info.hpp>
 #include <mustache/utils/default_settings.hpp>
 
 namespace mustache {

@@ -1,12 +1,13 @@
 #pragma once
 
-#include <cstdint>
 #include <mustache/ecs/world.hpp>
+#include <mustache/ecs/base_job.hpp>
+#include <mustache/ecs/task_view.hpp>
+#include <mustache/ecs/world_filter.hpp>
 #include <mustache/ecs/entity_manager.hpp>
 #include <mustache/ecs/job_arg_parcer.hpp>
-#include <mustache/ecs/world_filter.hpp>
-#include <mustache//ecs/task_view.hpp>
-#include <mustache/ecs/base_job.hpp>
+
+#include <cstdint>
 
 namespace mustache {
 
