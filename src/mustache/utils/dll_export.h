@@ -7,6 +7,8 @@
     #else
         #define MUSTACHE_EXPORT __declspec(dllimport)
     #endif
+    // TODO: fix this warning
+    #pragma warning( disable : 4251 )
 #else
     #define MUSTACHE_EXPORT
 #endif
