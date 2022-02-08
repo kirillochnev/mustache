@@ -43,15 +43,15 @@ namespace converter {
         return result;
     }
 
-    mustache::NonTemplateJob::Callback convert(ForEachArrayCallback callback) noexcept {
-        return [callback](mustache::NonTemplateJob::ForEachArrayArgs in_args) {
+    mustache::NonTemplateJob::Callback convert(ForEachArrayCallback callback, Job* job) noexcept {
+        return [callback, job](mustache::NonTemplateJob::ForEachArrayArgs in_args) {
             JobForEachArrayArg args;
             args.entities = reinterpret_cast<Entity*>(in_args.entities);
             args.components = static_cast<ComponentPtr*>(in_args.components);
             args.shared_components = static_cast<SharedComponentPtr*>(in_args.shared_components);
             args.invocation_index = convert(in_args.invocation_index);
             args.array_size = in_args.count.toInt();
-            callback(&args);
+            callback(job, &args);
         };
     }
 
@@ -253,31 +253,35 @@ void removeComponent(World* world, Entity entity, ComponentId component_id) {
     convert(world)->entities().removeComponent(convert(entity), convert(component_id));
 }
 ComponentPtr getComponent(World* world, Entity entity, ComponentId component_id, bool is_const) {
-//    const auto type_id = mustache::ComponentFactory::componentInfo(convert(component_id));
-//    mustache::Logger{}.info("World: %p, Entity: %d, Component: %d, const: %s, Name: %s",
-//                            world, entity, component_id, is_const ? "const" : "mutable", type_id.name.c_str());
+    const auto type_id = mustache::ComponentFactory::componentInfo(convert(component_id));
     const void* ptr = nullptr;
     if (is_const) {
         ptr = convert(world)->entities().getComponent<true>(convert(entity), convert(component_id));
     } else {
         ptr = convert(world)->entities().getComponent<false>(convert(entity), convert(component_id));
     }
+//    mustache::Logger{}.info("Ptr: %p, Entity: %d, Component: %d, const: %s, Name: %s",
+//                            ptr, entity, component_id, is_const ? "const" : "mutable", type_id.name.c_str());
     return const_cast<ComponentPtr>(ptr);
 }
 
 Job* makeJob(JobDescriptor info) {
     auto job = new mustache::NonTemplateJob{};
-    job->callback = convert(info.callback);
+    job->callback = convert(info.callback, convert(job));
     job->job_name = info.name;
     job->component_requests.resize(info.component_info_arr_size);
     job->job_begin = convert(info.on_job_begin, convert(job));
     job->job_end = convert(info.on_job_end, convert(job));
+    mustache::Logger{}.info("Args count: %d", info.component_info_arr_size);
     for (uint32_t i = 0; i < info.component_info_arr_size; ++i) {
+        auto t = info.component_info_arr[i];
+        mustache::Logger{}.info("%d) Id: %d, Required: %d, Const: %d", i, t.component_id, t.is_required, t.is_const);
         job->component_requests[i] = convert(info.component_info_arr[i]);
     }
     for (uint32_t i = 0; i < info.check_update_size; ++i) {
         job->version_check_mask.set(convert(info.check_update[i]), true);
     }
+    mustache::Logger{}.info("New job has been create, name: [%s], ptr: %p", info.name, job);
     return convert(job);
 }
 
@@ -323,7 +327,16 @@ Archetype* getArchetype(World* world, ComponentMask mask) {
     auto& entities = convert(world)->entities();
     return convert(&entities.getArchetype(convert(mask), mustache::SharedComponentsInfo{}));
 }
-
+Archetype* getArchetypeByBitsetMask(World* world, uint64_t bits)
+{
+    auto& entities = convert(world)->entities();
+    mustache::ComponentIdMask mask;
+    for (uint64_t i = 0; i < 64; ++i) {
+        const auto is_set = ((1ull << i) & bits) != 0u;
+        mask.set(mustache::ComponentId::make(i), is_set);
+    }
+    return convert(&entities.getArchetype(mask, mustache::SharedComponentsInfo{}));
+}
 CSystem* createSystem(World* world, const SystemDescriptor* descriptor) {
     std::unique_ptr<CSystem> result{new CSystem{*descriptor}};
     if (world != nullptr) {
@@ -337,3 +350,16 @@ CSystem* createSystem(World* world, const SystemDescriptor* descriptor) {
 void addSystem(World* world, CSystem* system) {
     convert(world)->systems().addSystem(mustache::SystemManager::SystemPtr{system, [](CSystem*){}});
 }
+
+struct Foo {
+    static uint32_t next() noexcept {
+        static uint32_t value = 0;
+        return value++;
+    }
+
+    template<typename T>
+    static uint32_t getId() noexcept {
+        static auto result = next();
+        return result;
+    }
+};

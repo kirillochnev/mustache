@@ -6,7 +6,7 @@
 
 namespace mustache {
 
-    struct Entity {
+    struct MUSTACHE_EXPORT Entity {
 
         constexpr Entity() = default;
 

@@ -17,7 +17,7 @@ namespace mustache {
         kDefault = kCurrentThread,
     };
 
-    class BaseJob {
+    class MUSTACHE_EXPORT BaseJob {
     public:
         virtual ~BaseJob() = default;
 

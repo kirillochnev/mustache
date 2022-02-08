@@ -1,7 +1,9 @@
 #pragma once
 
+#include <mustache/utils/dll_export.h>
+
 namespace mustache {
-    class Uncopiable {
+    class MUSTACHE_EXPORT Uncopiable {
     public:
         Uncopiable() = default;
         Uncopiable(Uncopiable&&) = default;

@@ -16,6 +16,8 @@ set(MUSTACHE_VERSION ${PROJECT_VERSION})
 find_package(Threads REQUIRED)
 
 set(MUSTACHE_CXX_STD cxx_std_17 CACHE STRING "C++ standard revision to build mustache")
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+
 option(MUSTACHE_USE_SANITIZER "Enable sanitizers by adding -fsanitize=address -fno-omit-frame-pointer -fsanitize=undefined flags if availbale." OFF)
 option(MUSTACHE_WARNINGS_AS_ERROR "Enable -Werror and some of extra warnings" ON)
 option(MUSTACHE_BUILD_SHARED "Build shared libraries?" ON)
@@ -40,12 +42,14 @@ endif()
 include(GNUInstallDirs)
 
 if (MUSTACHE_BUILD_SHARED)
+    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
     set(MUSTACHE_LIB_TYPE SHARED)
 else()
     set(MUSTACHE_LIB_TYPE STATIC)
 endif ()
 
 add_library(${PROJECT_NAME} ${MUSTACHE_LIB_TYPE}
+    ${mustache_SOURCE_DIR}/src/mustache/utils/dll_export.h
     ${mustache_SOURCE_DIR}/src/mustache/utils/timer.cpp
     ${mustache_SOURCE_DIR}/src/mustache/utils/timer.hpp
     ${mustache_SOURCE_DIR}/src/mustache/utils/logger.cpp
@@ -110,6 +114,10 @@ add_library(${PROJECT_NAME} ${MUSTACHE_LIB_TYPE}
     ${mustache_SOURCE_DIR}/src/mustache/c_api.cpp
     ${mustache_SOURCE_DIR}/src/mustache/c_api.h
 )
+
+if (MUSTACHE_BUILD_SHARED)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE MAKE_MUSTACHE_DLL)
+endif()
 
 target_include_directories(${PROJECT_NAME} PUBLIC
         $<BUILD_INTERFACE:${mustache_SOURCE_DIR}/src>

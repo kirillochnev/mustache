@@ -5,18 +5,18 @@
 
 namespace mustache {
 
-    struct TasksCount : public IndexLike<uint32_t, TasksCount>{};
-    struct JobSize : public IndexLike<uint32_t, JobSize>{};
-    struct TaskSize : public IndexLike<uint32_t, TaskSize>{};
+    struct MUSTACHE_EXPORT TasksCount : public IndexLike<uint32_t, TasksCount>{};
+    struct MUSTACHE_EXPORT JobSize : public IndexLike<uint32_t, JobSize>{};
+    struct MUSTACHE_EXPORT TaskSize : public IndexLike<uint32_t, TaskSize>{};
 
-    struct TaskInfo {
+    struct MUSTACHE_EXPORT TaskInfo {
         uint32_t size;
         ParallelTaskId id = ParallelTaskId::make(0u);
         TaskArchetypeIndex first_archetype = TaskArchetypeIndex::make(0u);
         ArchetypeEntityIndex first_entity = ArchetypeEntityIndex::make(0u);
     };
 
-    struct ArrayView : private ElementView {
+    struct MUSTACHE_EXPORT ArrayView : private ElementView {
         using FilrerResult = WorldFilterResult::ArchetypeFilterResult;
 
 
@@ -92,7 +92,7 @@ namespace mustache {
         uint32_t dist_to_block_end_ = 0;
     };
 
-    struct ArchetypeGroup {
+    struct MUSTACHE_EXPORT ArchetypeGroup {
         ArchetypeGroup(const TaskInfo& info, WorldFilterResult& fr):
                 dist_to_end{info.size},
                 archetype_index{info.first_archetype},
@@ -141,7 +141,7 @@ namespace mustache {
         ArchetypeEntityIndex first_entity = ArchetypeEntityIndex::make(0u);
     };
 
-    struct TaskGroup {
+    struct MUSTACHE_EXPORT TaskGroup {
     public:
         struct End {
             ParallelTaskId task_id_;

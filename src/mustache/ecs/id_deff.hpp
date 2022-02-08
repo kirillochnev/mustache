@@ -7,40 +7,40 @@
 #include <iostream>
 
 namespace mustache {
-    struct EntityId : public IndexLike<uint32_t, EntityId>{};
-    struct EntityVersion : public IndexLike<uint32_t, EntityVersion>{};
-    struct WorldId : public IndexLike<uint32_t, WorldId>{};
-    struct WorldVersion : public IndexLike<uint32_t, WorldVersion>{};
+    struct MUSTACHE_EXPORT EntityId : public IndexLike<uint32_t, EntityId>{};
+    struct MUSTACHE_EXPORT EntityVersion : public IndexLike<uint32_t, EntityVersion>{};
+    struct MUSTACHE_EXPORT WorldId : public IndexLike<uint32_t, WorldId>{};
+    struct MUSTACHE_EXPORT WorldVersion : public IndexLike<uint32_t, WorldVersion>{};
 
-    struct ComponentId : public IndexLike<uint32_t, ComponentId>{};
-    struct SharedComponentId : public IndexLike<uint32_t, SharedComponentId>{};
+    struct MUSTACHE_EXPORT ComponentId : public IndexLike<uint32_t, ComponentId>{};
+    struct MUSTACHE_EXPORT SharedComponentId : public IndexLike<uint32_t, SharedComponentId>{};
 
     /// Index archetype in entity manager
-    struct ArchetypeIndex : public IndexLike<uint32_t , ArchetypeIndex> {};
+    struct MUSTACHE_EXPORT ArchetypeIndex : public IndexLike<uint32_t , ArchetypeIndex> {};
 
     /// Index archetype in task
-    struct TaskArchetypeIndex : public IndexLike<uint32_t , TaskArchetypeIndex> {};
+    struct MUSTACHE_EXPORT TaskArchetypeIndex : public IndexLike<uint32_t , TaskArchetypeIndex> {};
 
     /// index of entity in archetype
-    struct ArchetypeEntityIndex : public IndexLike<uint32_t, ArchetypeEntityIndex> {};
+    struct MUSTACHE_EXPORT ArchetypeEntityIndex : public IndexLike<uint32_t, ArchetypeEntityIndex> {};
 
     /// index of item in chunk
-    struct ChunkItemIndex : public IndexLike<uint32_t, ChunkItemIndex> {};
+    struct MUSTACHE_EXPORT ChunkItemIndex : public IndexLike<uint32_t, ChunkItemIndex> {};
 
-    struct ChunkCapacity : public mustache::IndexLike<uint32_t, ChunkCapacity, 0u> {
+    struct MUSTACHE_EXPORT ChunkCapacity : public mustache::IndexLike<uint32_t, ChunkCapacity, 0u> {
         [[nodiscard]] bool isIndexValid(ChunkItemIndex index) const noexcept {
             return index.toInt() < value_;
         }
     };
 
     /// Location of data in component data storage
-    struct DataLocation : public mustache::IndexLike<uint32_t, DataLocation> {};
+    struct MUSTACHE_EXPORT DataLocation : public mustache::IndexLike<uint32_t, DataLocation> {};
 
     /// index of chunk in archetype
-    struct ChunkIndex : public IndexLike<uint32_t, ChunkIndex> {};
+    struct MUSTACHE_EXPORT ChunkIndex : public IndexLike<uint32_t, ChunkIndex> {};
 
     /// index of element in component data storage
-    struct ComponentStorageIndex : public mustache::IndexLike<uint32_t, ComponentStorageIndex> {
+    struct MUSTACHE_EXPORT ComponentStorageIndex : public mustache::IndexLike<uint32_t, ComponentStorageIndex> {
         [[nodiscard]] static ComponentStorageIndex fromArchetypeIndex(ArchetypeEntityIndex index) noexcept {
             return make(index.toInt());
         }
@@ -62,15 +62,15 @@ namespace mustache {
     };
 
     /// index(position) of component in archetype
-    struct ComponentIndex : public IndexLike<uint32_t, ComponentIndex>{};
+    struct MUSTACHE_EXPORT ComponentIndex : public IndexLike<uint32_t, ComponentIndex>{};
 
-    struct SharedComponentIndex : public IndexLike<uint32_t, SharedComponentIndex>{};
+    struct MUSTACHE_EXPORT SharedComponentIndex : public IndexLike<uint32_t, SharedComponentIndex>{};
 
     // size of component array for Job::forEachArray function, this allows to use int-types as components
-    struct ComponentArraySize : public IndexLike<uint32_t, ComponentArraySize>{};
+    struct MUSTACHE_EXPORT ComponentArraySize : public IndexLike<uint32_t, ComponentArraySize>{};
 
     // offset of component data in the chunk
-    struct ComponentOffset : public IndexLike<uint32_t, ComponentOffset> {
+    struct MUSTACHE_EXPORT ComponentOffset : public IndexLike<uint32_t, ComponentOffset> {
         template <typename T = std::byte>
         constexpr ComponentOffset add(size_t i) const noexcept {
             return ComponentOffset::make(value_ + static_cast<ValueType>(i * sizeof(T)));

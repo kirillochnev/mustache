@@ -8,7 +8,7 @@ namespace mustache {
 
     class Archetype;
 
-    struct WorldFilterParam {
+    struct MUSTACHE_EXPORT WorldFilterParam {
         WorldFilterParam() = default;
         WorldFilterParam(const ComponentIdMask& m, const WorldVersion v):
             mask{m},
@@ -18,17 +18,17 @@ namespace mustache {
         ComponentIdMask mask;
         WorldVersion version;
     };
-    struct FilterCheckParam : public WorldFilterParam {
+    struct MUSTACHE_EXPORT FilterCheckParam : public WorldFilterParam {
         using WorldFilterParam::WorldFilterParam;
     };
-    struct FilterSetParam : public WorldFilterParam {
+    struct MUSTACHE_EXPORT FilterSetParam : public WorldFilterParam {
         using WorldFilterParam::WorldFilterParam;
     };
 
     /**
      * Stores result of archetype filtering
      */
-    struct WorldFilterResult {
+    struct MUSTACHE_EXPORT WorldFilterResult {
         struct EntityBlock {
             ArchetypeEntityIndex begin;
             ArchetypeEntityIndex end;

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <chrono>
-
+#include <mustache/utils/dll_export.h>
 namespace mustache {
 
     enum class TimerStatus {
@@ -9,7 +9,7 @@ namespace mustache {
         Active = 1,
     };
 
-    class Timer {
+    class MUSTACHE_EXPORT Timer {
     public:
         void reset();
 

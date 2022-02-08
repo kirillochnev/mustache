@@ -16,7 +16,7 @@
 
 namespace mustache {
 
-    struct JobInvocationIndex {
+    struct MUSTACHE_EXPORT JobInvocationIndex {
         ParallelTaskId task_index;
         ParallelTaskItemIndexInTask entity_index_in_task;
         ParallelTaskGlobalItemIndex entity_index;

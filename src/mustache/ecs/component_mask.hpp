@@ -108,7 +108,7 @@ namespace mustache {
         std::bitset<_MaxElements> value_;
     };
 
-    struct ComponentIdMask : public ComponentMask<ComponentId, 64> {
+    struct MUSTACHE_EXPORT ComponentIdMask : public ComponentMask<ComponentId, 64> {
         ComponentIdMask(const ComponentMask<ComponentId, 64>& oth):
                 ComponentMask{oth} {
 

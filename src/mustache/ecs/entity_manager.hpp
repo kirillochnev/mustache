@@ -30,7 +30,7 @@ namespace mustache {
 
     using ArchetypeChunkSizeFunction = std::function<ArchetypeChunkSize (const ComponentIdMask&)>;
 
-    class EntityManager : public Uncopiable {
+    class MUSTACHE_EXPORT EntityManager : public Uncopiable {
     public:
         explicit EntityManager(World& world);
 
@@ -207,7 +207,7 @@ namespace mustache {
             }
         }
 
-        template<class Arg>
+        template<typename Arg>
         bool initComponent(Archetype& archetype, ArchetypeEntityIndex entity_index, Arg&& arg);
 
         template<typename TupleType, size_t... _I>
@@ -549,7 +549,7 @@ namespace mustache {
         (void ) unused_init_list;
     }
 
-    template<class Arg>
+    template<typename Arg>
     bool EntityManager::initComponent(Archetype& archetype, ArchetypeEntityIndex entity_index, Arg&& arg) {
         using ArgType = typename std::remove_reference<Arg>::type;
         using Component = typename ArgType::Component;

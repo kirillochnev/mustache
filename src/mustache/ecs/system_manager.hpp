@@ -8,7 +8,7 @@ namespace mustache {
     class World;
     class ASystem;
 
-    class SystemManager : public Uncopiable {
+    class MUSTACHE_EXPORT SystemManager : public Uncopiable {
     public:
         using SystemPtr = std::shared_ptr<ASystem>;
 

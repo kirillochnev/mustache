@@ -11,7 +11,7 @@
 
 namespace mustache {
 
-    struct ThreadId : public IndexLike<uint32_t, ThreadId>{};
+    struct MUSTACHE_EXPORT ThreadId : public IndexLike<uint32_t, ThreadId>{};
 
     using Job = std::function<void(ThreadId)>;
     using QueueId = uint32_t;
@@ -24,7 +24,7 @@ namespace mustache {
         kBackground = -1000
     };
 
-    class Queue : public Uncopiable {
+    class MUSTACHE_EXPORT Queue : public Uncopiable {
     public:
         bool valid() const noexcept {
             return dispatcher_ != nullptr && id_ != static_cast<QueueId>(-1);
@@ -41,7 +41,7 @@ namespace mustache {
     struct ParallelTaskItemIndexInTask : public IndexLike<uint32_t , ParallelTaskItemIndexInTask> {};
     struct ParallelTaskGlobalItemIndex : public IndexLike<uint32_t , ParallelTaskGlobalItemIndex> {};
 
-    class Dispatcher : public Uncopiable {
+    class MUSTACHE_EXPORT Dispatcher : public Uncopiable {
     public:
         uint32_t threadCount() const noexcept;
         static uint32_t maxThreadCount() noexcept;

@@ -89,3 +89,17 @@ ComponentId ComponentFactory::nextComponentId() noexcept {
 bool ComponentFactory::isEq(const SharedComponentTag* c0,const SharedComponentTag* c1, SharedComponentId id) {
     return shared_component_id_storage.componentInfo(id).functions.compare(c0, c1);
 }
+
+void ComponentFactory::moveComponent(const TypeInfo& info, void* source, void* dest) {
+    if (!info.functions.move) {
+        throw std::runtime_error("Invalid move function for: " + info.name);
+    }
+    info.functions.move(dest, source);
+}
+
+void ComponentFactory::copyComponent(const TypeInfo& info, const void* source, void* dest) {
+    if (!info.functions.copy) {
+        throw std::runtime_error("Invalid copy function for: " + info.name);
+    }
+    info.functions.copy(dest, source);
+}

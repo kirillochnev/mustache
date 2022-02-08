@@ -9,7 +9,7 @@
 
 namespace mustache {
 
-    class ComponentFactory {
+    class MUSTACHE_EXPORT ComponentFactory {
     public:
         ComponentFactory() = delete;
         ~ComponentFactory() = delete;

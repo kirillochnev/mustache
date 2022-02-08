@@ -11,7 +11,7 @@
 namespace mustache {
     struct ComponentIdMask;
 
-    class ArchetypeOperationHelper {
+    class MUSTACHE_EXPORT ArchetypeOperationHelper {
     private:
         friend class Archetype;
 

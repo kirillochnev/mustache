@@ -4,6 +4,7 @@
 #include <functional>
 #include <stdexcept>
 #include <cstddef>
+#include <mustache/utils/dll_export.h>
 
 #ifdef _MSC_BUILD
 #define MUSTACHE_FUNCTION_SIGNATURE __FUNCSIG__
@@ -12,7 +13,7 @@
 #endif
 namespace mustache {
     namespace detail {
-        std::string make_type_name_from_func_name(const char* func_name) noexcept;
+        MUSTACHE_EXPORT std::string make_type_name_from_func_name(const char* func_name) noexcept;
         template<typename C>
         inline constexpr bool testOperatorEq(decltype(&C::operator==)) noexcept {
             return true;
@@ -32,7 +33,7 @@ namespace mustache {
     template<typename _Sign>
     using Functor = _Sign* ;//std::function<_Sign>;
 
-    struct TypeInfo {
+    struct MUSTACHE_EXPORT TypeInfo {
         using Constructor = Functor<void (void*) >;
         using CopyFunction = Functor<void (void*, const void*) >;
         using MoveFunction = Functor<void (void*, void*) >;

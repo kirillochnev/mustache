@@ -9,7 +9,7 @@ namespace mustache {
 
     class World;
 
-    struct SystemConfig {
+    struct MUSTACHE_EXPORT SystemConfig {
         template <typename... ARGS>
         void updateBefore() {
             update_before.insert(ARGS::systemName()...);
@@ -55,7 +55,7 @@ namespace mustache {
      *  onStop() -> onStart()
      *  onStop() -> onDestroy()
      */
-    class ASystem : Uncopiable {
+    class MUSTACHE_EXPORT ASystem : Uncopiable {
     public:
         virtual ~ASystem() = default;
 

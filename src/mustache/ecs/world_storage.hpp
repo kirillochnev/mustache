@@ -11,11 +11,11 @@
 
 namespace mustache {
 
-    struct SingletonId : public IndexLike<uint32_t, SingletonId> {
+    struct MUSTACHE_EXPORT SingletonId : public IndexLike<uint32_t, SingletonId> {
 
     };
 
-    struct ObjectTag : public IndexLike<uint32_t, ObjectTag> {
+    struct MUSTACHE_EXPORT ObjectTag : public IndexLike<uint32_t, ObjectTag> {
         template<size_t _N>
         [[nodiscard]] static constexpr ObjectTag fromStr(const char (&str)[_N]) {
             return fromStr(str, _N);
@@ -36,8 +36,9 @@ namespace mustache {
         };
     };
 
-    class WorldStorage {
+    class MUSTACHE_EXPORT WorldStorage : public Uncopiable {
     public:
+
         explicit WorldStorage(MemoryManager& manager);
 
         template<typename _Singleton>

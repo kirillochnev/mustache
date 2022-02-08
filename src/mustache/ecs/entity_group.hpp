@@ -5,7 +5,7 @@
 
 namespace mustache {
 
-    class EntityGroup {
+    class MUSTACHE_EXPORT EntityGroup {
     public:
         EntityGroup(std::vector<Entity>&& fragmented, uint32_t first, uint32_t count):
                 fragmented_(std::move(fragmented)),

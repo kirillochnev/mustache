@@ -3,6 +3,7 @@
 
 #include <cstdint>
 #include <cstddef>
+#include <mustache/utils/dll_export.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -74,7 +75,7 @@ typedef struct {
     bool is_const;
 } JobArgInfo;
 
-typedef void (* ForEachArrayCallback)(JobForEachArrayArg*);
+typedef void (* ForEachArrayCallback)(struct Job*, JobForEachArrayArg*);
 typedef void (* JobEvent)(struct Job*, struct World*, TasksCount, JobSize, enum JobRunMode);
 typedef struct {
     ForEachArrayCallback callback;
@@ -121,25 +122,25 @@ typedef struct {
     SystemEvent on_destroy;
 } SystemDescriptor;
 
-struct World* createWorld(WorldId id);
-void updateWorld(struct World* world);
-void clearWorldEntities(struct World*);
-void destroyWorld(struct World*);
-ComponentId registerComponent(TypeInfo info);
-bool hasComponent(struct World* world, Entity entity, ComponentId component_id);
-ComponentPtr assignComponent(struct World* world, Entity entity, ComponentId component_id, bool skip_constructor);
-ComponentPtr getComponent(struct World* world, Entity entity, ComponentId component_id, bool is_const);
-void removeComponent(struct World* world, Entity entity, ComponentId component_id);
-struct Job* makeJob(JobDescriptor info);
-void runJob(struct Job* job, struct World* world, enum JobRunMode mode);
-void destroyJob(struct Job*);
-Entity createEntity(struct World* world, struct Archetype* archetype);
-void createEntityGroup(struct World* world, struct Archetype* archetype, Entity* ptr, uint32_t count);
-void destroyEntities(struct World* world, Entity* entities, uint32_t count, bool now);
-struct Archetype* getArchetype(struct World* world, ComponentMask mask);
-struct CSystem* createSystem(struct World* world, const SystemDescriptor* descriptor);
-void addSystem(struct World* world, struct CSystem* system);
-
+MUSTACHE_EXPORT struct World* createWorld(WorldId id);
+MUSTACHE_EXPORT void updateWorld(struct World* world);
+MUSTACHE_EXPORT void clearWorldEntities(struct World*);
+MUSTACHE_EXPORT void destroyWorld(struct World*);
+MUSTACHE_EXPORT ComponentId registerComponent(TypeInfo info);
+MUSTACHE_EXPORT bool hasComponent(struct World* world, Entity entity, ComponentId component_id);
+MUSTACHE_EXPORT ComponentPtr assignComponent(struct World* world, Entity entity, ComponentId component_id, bool skip_constructor);
+MUSTACHE_EXPORT ComponentPtr getComponent(struct World* world, Entity entity, ComponentId component_id, bool is_const);
+MUSTACHE_EXPORT void removeComponent(struct World* world, Entity entity, ComponentId component_id);
+MUSTACHE_EXPORT struct Job* makeJob(JobDescriptor info);
+MUSTACHE_EXPORT void runJob(struct Job* job, struct World* world, enum JobRunMode mode);
+MUSTACHE_EXPORT void destroyJob(struct Job*);
+MUSTACHE_EXPORT Entity createEntity(struct World* world, struct Archetype* archetype);
+MUSTACHE_EXPORT void createEntityGroup(struct World* world, struct Archetype* archetype, Entity* ptr, uint32_t count);
+MUSTACHE_EXPORT void destroyEntities(struct World* world, Entity* entities, uint32_t count, bool now);
+MUSTACHE_EXPORT struct Archetype* getArchetype(struct World* world, ComponentMask mask);
+MUSTACHE_EXPORT struct Archetype* getArchetypeByBitsetMask(struct World* world, uint64_t mask);
+MUSTACHE_EXPORT struct CSystem* createSystem(struct World* world, const SystemDescriptor* descriptor);
+MUSTACHE_EXPORT void addSystem(struct World* world, struct CSystem* system);
 #ifdef __cplusplus
 }
 #endif

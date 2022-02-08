@@ -24,7 +24,7 @@ namespace mustache {
     class EntityBuilder;
 
     template<>
-    class EntityBuilder<void> {
+    class MUSTACHE_EXPORT EntityBuilder<void> {
     public:
         template<typename Component, typename... ARGS>
         MUSTACHE_INLINE auto assign(ARGS&&... args);

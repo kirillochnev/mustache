@@ -14,13 +14,13 @@
 namespace mustache {
 
     // Shared data
-    struct WorldContext {
+    struct MUSTACHE_EXPORT WorldContext {
         std::shared_ptr<MemoryManager> memory_manager;
         std::shared_ptr<Dispatcher> dispatcher;
         std::shared_ptr<EventManager> events;
     };
 
-    class World : public Uncopiable {
+    class MUSTACHE_EXPORT World : public Uncopiable {
     public:
         [[nodiscard]] static WorldId nextWorldId() noexcept;
 

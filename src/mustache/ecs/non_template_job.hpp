@@ -1,7 +1,7 @@
 #include <mustache/ecs/base_job.hpp>
 
 namespace mustache {
-    struct NonTemplateJob : public BaseJob {
+    struct MUSTACHE_EXPORT NonTemplateJob : public BaseJob {
 
         using ComponentPtr = void*;
         using SharedComponentPtr = const void*;
