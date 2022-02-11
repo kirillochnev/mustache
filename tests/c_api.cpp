@@ -190,4 +190,6 @@ TEST(C_API_Job, iterate_singlethread_with_required_componen) {
     destroyJob(job_check);
     destroyJob(job_update);
     destroyWorld(world);
+    delete[] update_descriptor.component_info_arr;
+    delete[] check_descriptor.component_info_arr;
 }

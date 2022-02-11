@@ -1,4 +1,11 @@
 # mustache - A fast, modern C++ Entity Component System
+[![Build Status](https://github.com/kirillochnev/mustache/workflows/build/badge.svg)](https://github.com/kirillochnev/mustache/actions)
+## Why mustache
+
+* [Super fast component iteration](#Performance)
+* [Multithreading support out of the box](#Multithreading)
+* Fully runtime: you can describe Components and Systems without using templates
+* Has C-API and can be used with other programing languages like ex: [mustache-lua](https://github.com/kirillochnev/mustache-lua)
 
 ## Introduction
 
@@ -183,6 +190,16 @@ MySuperJob job; // create instance of job
 job.run(world); 
 
 ```
+
+#### Multithreading
+Mustache has builtin multithreading support, to run job in parallel mode, just use code like following:
+```cpp
+// run job parallel
+job.run(world, JobRunMode::kParallel);
+
+// run forEach parallel
+world.entities().forEach(function, JobRunMode::kParallel);
+```
 #### Component dependencies
 In the case where a component has dependencies on other components, a helper class exists that will automatically create these dependencies.
 
@@ -281,3 +298,48 @@ You can use mustache in you projects by doing the following steps
 2. Add mustache subdirectory with cmake `add_subdirectory(third_party/mustache)`
 3. Link mustache to your project `target_link_libraries(${PROJECT_NAME} mustache)`
 
+## Performance
+
+The proposed entity-component system is incredibly fast to iterate entities and components, this is a fact. Some compilers make a lot of optimizations because of how mustache works, some others aren't that good. In general, if we consider real world cases, mustache is somewhere between a bit and much faster than many of the other solutions around, although I couldn't check them all for obvious reasons.
+
+Let's make a little benchmark.
+
+For this benchmark we will compare some ECS frameworks and classic OOP
+* [mustache](https://github.com/kirillochnev/mustache)
+* [mustache binding to LuaJit](https://github.com/kirillochnev/mustache-lua)
+* [EnTT (using owning groups)](https://github.com/skypjack/entt)
+* [EntityX](https://github.com/alecthomas/entityx)
+* [OpenEcs](https://github.com/Gronis/OpenEcs)
+* OOP
+* OOP with object pool
+
+We create entities with 2 components
+
+```cpp
+struct Position {
+    glm::vec<3, int32_t> value {0, 0, 0};
+};
+
+struct Velocity {
+    int32_t value { 1 };
+};
+```
+
+And call the next function for them
+
+```cpp
+inline void updatePositionFunction(Position& position, const Velocity& velocity) {
+    constexpr glm::vec<3, int32_t > forward {1, 1, 1};
+    position.value += forward * velocity.value;
+}
+    
+```
+
+Create time:
+![Create time](doc/create.png "Benchmark Results: Create entities")
+_(lower is faster)_
+
+
+Update time:
+![Create time](doc/update.png "Benchmark Results: Create entities")
+_(lower is faster)_
