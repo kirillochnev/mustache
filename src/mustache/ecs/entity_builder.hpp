@@ -1,6 +1,7 @@
 #pragma once
 
 #include <mustache/utils/default_settings.hpp>
+
 #include <mustache/ecs/entity.hpp>
 
 #include <tuple>
@@ -24,7 +25,7 @@ namespace mustache {
     class EntityBuilder;
 
     template<>
-    class MUSTACHE_EXPORT EntityBuilder<void> {
+    class EntityBuilder<void> {
     public:
         template<typename Component, typename... ARGS>
         MUSTACHE_INLINE auto assign(ARGS&&... args);
