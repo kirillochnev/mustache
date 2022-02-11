@@ -1,10 +1,11 @@
 #pragma once
 
 #include <mustache/utils/timer.hpp>
+
 #include <deque>
 
 namespace mustache {
-    class Benchmark {
+    class MUSTACHE_EXPORT Benchmark {
     public:
         Benchmark() = default;
 

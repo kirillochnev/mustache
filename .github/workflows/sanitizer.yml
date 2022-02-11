@@ -1,0 +1,33 @@
+name: sanitizer
+
+on: [push, pull_request]
+
+jobs:
+
+  linux:
+    timeout-minutes: 10
+
+    strategy:
+      matrix:
+        compiler: [clang++]
+        cxx_std: [cxx_std_17, cxx_std_20]
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Install gtest manually
+        run: sudo apt-get install libgtest-dev && cd /usr/src/gtest && sudo cmake CMakeLists.txt && sudo make && sudo cp ./lib/*.a /usr/lib && sudo ln -s /usr/lib/libgtest.a /usr/local/lib/libgtest.a && sudo ln -s /usr/lib/libgtest_main.a /usr/local/lib/libgtest_main.a
+
+      - uses: actions/checkout@v2
+      - name: Compile tests
+        working-directory: build
+        env:
+          CXX: ${{ matrix.compiler }}
+        run: |
+          cmake -DCMAKE_BUILD_TYPE=Release -DMUSTACHE_USE_SANITIZER=ON -DMUSTACHE_BUILD_TESTS=ON -DMUSTACHE_CXX_STD=${{ matrix.cxx_std }} ..
+          make -j4
+      - name: Run tests
+        working-directory: build
+        env:
+          CTEST_OUTPUT_ON_FAILURE: 1
+        run: ctest --timeout 60 -C Debug -j4

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <mustache/utils/function_traits.hpp>
+#include <mustache/utils/default_settings.hpp>
 
 namespace mustache {
 

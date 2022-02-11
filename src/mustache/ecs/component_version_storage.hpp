@@ -1,8 +1,9 @@
 #pragma once
 
+#include <mustache/utils/array_wrapper.hpp>
+
 #include <mustache/ecs/id_deff.hpp>
 #include <mustache/ecs/component_mask.hpp>
-#include <mustache/utils/array_wrapper.hpp>
 
 namespace mustache {
     class MemoryManager;
@@ -12,8 +13,9 @@ namespace mustache {
         std::vector<ComponentIndex> mask;
     };
 
-    class VersionStorage {
+    class MUSTACHE_EXPORT VersionStorage : public Uncopiable {
     public:
+
         VersionStorage(MemoryManager& memory_manager, uint32_t num_components, uint32_t chunk_size);
 
         void emplace(WorldVersion version, ArchetypeEntityIndex index) noexcept;

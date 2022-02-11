@@ -7,7 +7,7 @@
 #include <memory>
 
 namespace mustache {
-    struct EventId : public IndexLike<uint32_t, EventId>{};
+    struct MUSTACHE_EXPORT EventId : public IndexLike<uint32_t, EventId>{};
 
     class EventManager;
     template <typename T>
@@ -27,7 +27,7 @@ namespace mustache {
         std::weak_ptr<EventManager> events_;
     };
 
-    struct AReceivers {
+    struct MUSTACHE_EXPORT AReceivers {
         virtual ~AReceivers() = default;
     };
 
@@ -55,7 +55,7 @@ namespace mustache {
         }
     };
 
-    class EventManager : public Uncopiable {
+    class MUSTACHE_EXPORT EventManager : public Uncopiable {
     public:
         explicit EventManager(MemoryManager& memory_manager):
                 subscriptions_{memory_manager} {

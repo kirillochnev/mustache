@@ -7,6 +7,8 @@
 #include <mustache/ecs/new_component_data_storage.hpp>
 #include <mustache/ecs/default_component_data_storage.hpp>
 
+#include <cstring>
+
 using namespace mustache;
 
 Archetype::Archetype(World& world, ArchetypeIndex id, const ComponentIdMask& mask,
@@ -123,7 +125,7 @@ void Archetype::externalMove(Entity entity, Archetype& prev_archetype, Archetype
         if (prev_ptr != nullptr) {
             auto component_ptr = dest_view.getData<FunctionSafety::kUnsafe>(component_index);
             info.move(component_ptr, prev_ptr);
-        } else if (info.constructor && !skip_constructor.has(info.id)) {
+        } else if (info.hasConstructor() && !skip_constructor.has(info.id)) {
             auto component_ptr = dest_view.getData<FunctionSafety::kUnsafe>(component_index);
             info.constructor(component_ptr);
         }
@@ -146,6 +148,13 @@ ArchetypeEntityIndex Archetype::insert(Entity entity, const ComponentIdMask& ski
             if (is_skip_mask_empty || !skip_constructor.has(component_id)) {
                 auto component_ptr = view.getData<FunctionSafety::kUnsafe>(info.component_index);
                 info.constructor(component_ptr);
+            }
+        }
+        for (const auto& info : operation_helper_.create_with_value) {
+            const auto& component_id = operation_helper_.component_index_to_component_id[info.component_index];
+            if (is_skip_mask_empty || !skip_constructor.has(component_id)) {
+                auto component_ptr = view.getData<FunctionSafety::kUnsafe>(info.component_index);
+                memcpy(component_ptr, info.value, info.size);
             }
         }
     }

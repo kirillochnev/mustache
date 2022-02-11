@@ -1,0 +1,33 @@
+name: coverage
+
+on: [push, pull_request]
+
+jobs:
+
+  codecov:
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Install gtest manually
+        run: sudo apt-get install libgtest-dev && cd /usr/src/gtest && sudo cmake CMakeLists.txt && sudo make && sudo cp ./lib/*.a /usr/lib && sudo ln -s /usr/lib/libgtest.a /usr/local/lib/libgtest.a && sudo ln -s /usr/lib/libgtest_main.a /usr/local/lib/libgtest_main.a
+      - uses: actions/checkout@v2
+      - name: Compile tests
+        working-directory: build
+        env:
+          CXXFLAGS: "--coverage -fno-inline"
+          CXX: g++
+        run: |
+          cmake -DMUSTACHE_BUILD_TESTS=ON ..
+          make -j4
+      - name: Run tests
+        working-directory: build
+        env:
+          CTEST_OUTPUT_ON_FAILURE: 1
+        run: ctest --timeout 120 -C Debug -j4
+      - name: Collect data
+        working-directory: build
+        run: |
+          sudo apt install lcov
+          lcov -c -d . -o coverage.info
+          lcov -l coverage.info

@@ -1,8 +1,8 @@
 #pragma once
 
-#include <mustache/utils/default_settings.hpp>
-#include <mustache/utils/array_wrapper.hpp>
 #include <mustache/utils/uncopiable.hpp>
+#include <mustache/utils/array_wrapper.hpp>
+#include <mustache/utils/default_settings.hpp>
 
 #include <mustache/ecs/entity.hpp>
 #include <mustache/ecs/base_job.hpp>
@@ -11,9 +11,9 @@
 #include <mustache/ecs/entity_builder.hpp>
 #include <mustache/ecs/component_factory.hpp>
 
-#include <memory>
 #include <map>
 #include <set>
+#include <memory>
 
 namespace mustache {
 
@@ -30,7 +30,7 @@ namespace mustache {
 
     using ArchetypeChunkSizeFunction = std::function<ArchetypeChunkSize (const ComponentIdMask&)>;
 
-    class EntityManager : public Uncopiable {
+    class MUSTACHE_EXPORT EntityManager : public Uncopiable {
     public:
         explicit EntityManager(World& world);
 
@@ -100,10 +100,15 @@ namespace mustache {
 
 
         template<typename T, typename... _ARGS>
-        MUSTACHE_INLINE decltype(auto) assign(Entity e, _ARGS&&... args) ;
+        MUSTACHE_INLINE decltype(auto) assign(Entity e, _ARGS&&... args);
+
+        MUSTACHE_INLINE void* assign(Entity e, ComponentId id, bool skip_constructor);
 
         template<typename T, FunctionSafety _Safety = FunctionSafety::kDefault>
         [[nodiscard]] MUSTACHE_INLINE bool hasComponent(Entity entity) const noexcept;
+
+        template<FunctionSafety _Safety = FunctionSafety::kDefault, typename _ComponentId>
+        [[nodiscard]] MUSTACHE_INLINE bool hasComponent(Entity entity, _ComponentId id) const noexcept;
 
         template<typename T, FunctionSafety _Safety = FunctionSafety::kSafe>
         [[nodiscard]] MUSTACHE_INLINE WorldVersion getWorldVersionOfLastComponentUpdate(Entity entity) const noexcept {
@@ -202,7 +207,7 @@ namespace mustache {
             }
         }
 
-        template<class Arg>
+        template<typename Arg>
         bool initComponent(Archetype& archetype, ArchetypeEntityIndex entity_index, Arg&& arg);
 
         template<typename TupleType, size_t... _I>
@@ -420,6 +425,18 @@ namespace mustache {
         return removeComponent(entity, component_id);
     }
 
+    void* EntityManager::assign(Entity e, ComponentId component_id, bool skip_constructor) {
+        const auto& location = locations_[e.id()];
+        auto& prev_arch = *archetypes_[location.archetype];
+        ComponentIdMask mask = prev_arch.mask_;
+        mask.add(component_id);
+        auto& arch = getArchetype(mask, prev_arch.sharedComponentInfo());
+        const auto prev_index = location.index;
+        arch.externalMove(e, prev_arch, prev_index, skip_constructor ? mask : ComponentIdMask{});
+        const auto component_index = arch.getComponentIndex<FunctionSafety::kUnsafe>(component_id);
+        return arch.getComponent<FunctionSafety::kUnsafe>(component_index, location.index);
+    }
+
     template<typename T, typename... _ARGS>
     T& EntityManager::assignUnique(Entity e, _ARGS&&... args) {
         static const auto component_id = ComponentFactory::registerComponent<T>();
@@ -477,8 +494,8 @@ namespace mustache {
         }
     }
 
-    template<typename T, FunctionSafety _Safety>
-    bool EntityManager::hasComponent(Entity entity) const noexcept {
+    template<FunctionSafety _Safety, typename _ComponentId>
+    bool EntityManager::hasComponent(Entity entity, _ComponentId id) const noexcept {
         if constexpr (isSafe(_Safety)) {
             if (!isEntityValid(entity)) {
                 return false;
@@ -489,12 +506,17 @@ namespace mustache {
             return false;
         }
         const auto& archetype = *archetypes_[location.archetype];
+        return archetype.hasComponent(id);
+    }
+
+    template<typename T, FunctionSafety _Safety>
+    bool EntityManager::hasComponent(Entity entity) const noexcept {
         if constexpr (isComponentShared<T>()) {
             static const auto component_id = ComponentFactory::registerSharedComponent<T>();
-            return archetype.hasComponent(component_id);
+            return hasComponent<_Safety>(entity, component_id);
         } else {
             static const auto component_id = ComponentFactory::registerComponent<T>();
-            return archetype.hasComponent(component_id);
+            return hasComponent<_Safety>(entity, component_id);
         }
     }
 
@@ -527,7 +549,7 @@ namespace mustache {
         (void ) unused_init_list;
     }
 
-    template<class Arg>
+    template<typename Arg>
     bool EntityManager::initComponent(Archetype& archetype, ArchetypeEntityIndex entity_index, Arg&& arg) {
         using ArgType = typename std::remove_reference<Arg>::type;
         using Component = typename ArgType::Component;

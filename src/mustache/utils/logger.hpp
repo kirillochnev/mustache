@@ -1,7 +1,8 @@
 #pragma once
 
-#include <string>
 #include <mustache/utils/default_settings.hpp>
+
+#include <string>
 #include <memory>
 
 namespace mustache {
@@ -12,7 +13,7 @@ namespace mustache {
         kDebug
     };
 
-    class LogWriter {
+    class MUSTACHE_EXPORT LogWriter {
     public:
         static constexpr const char* toStr(LogLevel lvl) noexcept {
             switch (lvl) {
@@ -45,7 +46,7 @@ namespace mustache {
 
     };
 
-    class Logger {
+    class MUSTACHE_EXPORT Logger {
     public:
         Logger(const char* file = MUSTACHE_FILE, const char* function = MUSTACHE_FUNCTION, uint32_t line = MUSTACHE_LINE):
                 context_{file, function, line} {

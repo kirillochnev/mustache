@@ -1,6 +1,7 @@
 #pragma once
 
 #include <mustache/utils/default_settings.hpp>
+
 #include <mustache/ecs/entity.hpp>
 
 #include <tuple>

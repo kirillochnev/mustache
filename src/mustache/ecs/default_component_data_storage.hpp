@@ -1,9 +1,9 @@
 #pragma once
 
+#include <mustache/utils/array_wrapper.hpp>
+
 #include <mustache/ecs/component_mask.hpp>
 #include <mustache/ecs/base_component_data_storage.hpp>
-
-#include <mustache/utils/array_wrapper.hpp>
 
 namespace mustache {
     class MemoryManager;

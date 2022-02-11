@@ -1,5 +1,8 @@
 #pragma once
 
+#include <mustache/utils/dispatch.hpp>
+
+#include <mustache/ecs/task_view.hpp>
 #include <mustache/ecs/world_filter.hpp>
 #include <mustache/ecs/component_mask.hpp>
 
@@ -15,17 +18,16 @@ namespace mustache {
         kDefault = kCurrentThread,
     };
 
-    struct TasksCount : public IndexLike<uint32_t, TasksCount>{};
-    struct JobSize : public IndexLike<uint32_t, JobSize>{};
-
-    class BaseJob {
+    class MUSTACHE_EXPORT BaseJob {
     public:
         virtual ~BaseJob() = default;
 
         void run(World& world, JobRunMode mode = JobRunMode::kDefault);
 
-        virtual void runParallel(World&, uint32_t num_tasks) = 0;
-        virtual void runCurrentThread(World&) = 0;
+        virtual void runParallel(World&, TasksCount num_tasks);
+        virtual void runCurrentThread(World&);
+        virtual void singleTask(World& world, ArchetypeGroup archetype_group,
+                                        JobInvocationIndex invocation_index) = 0;
         virtual ComponentIdMask checkMask() const noexcept = 0;
         virtual ComponentIdMask updateMask() const noexcept = 0;
         [[nodiscard]] virtual std::string name() const noexcept = 0;
@@ -38,7 +40,9 @@ namespace mustache {
         }
 
         virtual uint32_t applyFilter(World&) noexcept;
-        [[nodiscard]] virtual uint32_t taskCount(World&, uint32_t entity_count) const noexcept;
+        [[nodiscard]] virtual TasksCount taskCount(World&, uint32_t entity_count) const noexcept;
+        virtual void onTaskBegin(World&, TaskSize size, ParallelTaskId task_id) noexcept;
+        virtual void onTaskEnd(World&, TaskSize size, ParallelTaskId task_id) noexcept;
 
         virtual void onJobBegin(World&, TasksCount, JobSize total_entity_count, JobRunMode mode) noexcept;
         virtual void onJobEnd(World&, TasksCount, JobSize total_entity_count, JobRunMode mode) noexcept;

@@ -1,26 +1,26 @@
 #pragma once
 
+#include <mustache/utils/dispatch.hpp>
 #include <mustache/utils/index_like.hpp>
+#include <mustache/utils/memory_manager.hpp>
+
 #include <mustache/ecs/world_storage.hpp>
+#include <mustache/ecs/event_manager.hpp>
 #include <mustache/ecs/entity_manager.hpp>
 #include <mustache/ecs/system_manager.hpp>
-#include <mustache/ecs/event_manager.hpp>
-
-#include <mustache/utils/memory_manager.hpp>
-#include <mustache/utils/dispatch.hpp>
 
 #include <cstdint>
 
 namespace mustache {
 
     // Shared data
-    struct WorldContext {
+    struct MUSTACHE_EXPORT WorldContext {
         std::shared_ptr<MemoryManager> memory_manager;
         std::shared_ptr<Dispatcher> dispatcher;
         std::shared_ptr<EventManager> events;
     };
 
-    class World : public Uncopiable {
+    class MUSTACHE_EXPORT World : public Uncopiable {
     public:
         [[nodiscard]] static WorldId nextWorldId() noexcept;
 

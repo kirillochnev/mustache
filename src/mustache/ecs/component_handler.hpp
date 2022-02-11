@@ -1,7 +1,8 @@
 #pragma once
 
-#include <stdexcept>
 #include <mustache/ecs/shared_component.hpp>
+
+#include <stdexcept>
 
 namespace mustache {
 

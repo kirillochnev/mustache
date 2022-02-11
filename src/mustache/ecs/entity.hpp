@@ -1,12 +1,13 @@
 #pragma once
 
+#include <mustache/ecs/id_deff.hpp>
+
 #include <vector>
 #include <cstdint>
-#include <mustache/ecs/id_deff.hpp>
 
 namespace mustache {
 
-    struct Entity {
+    struct MUSTACHE_EXPORT Entity {
 
         constexpr Entity() = default;
 

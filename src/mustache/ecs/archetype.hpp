@@ -1,5 +1,8 @@
 #pragma once
 
+#include <mustache/utils/type_info.hpp>
+#include <mustache/utils/uncopiable.hpp>
+
 #include <mustache/ecs/entity.hpp>
 #include <mustache/ecs/id_deff.hpp>
 #include <mustache/ecs/entity_group.hpp>
@@ -9,11 +12,9 @@
 #include <mustache/ecs/archetype_operation_helper.hpp>
 #include <mustache/ecs/base_component_data_storage.hpp>
 
-#include <mustache/utils/uncopiable.hpp>
-#include <mustache/utils/type_info.hpp>
+#include <stdexcept>
 #include <cstdint>
 #include <string>
-#include <stdexcept>
 
 namespace mustache {
 
@@ -22,7 +23,7 @@ namespace mustache {
     class Archetype;
 
     // NOTE: element view does not update component versions
-    struct ElementView : public DataStorageIterator {
+    struct MUSTACHE_EXPORT ElementView : public DataStorageIterator {
         using DataStorageIterator::DataStorageIterator;
 
         ElementView(const DataStorageIterator& view, const Archetype& archetype):
@@ -51,7 +52,7 @@ namespace mustache {
      * Stores Entities with same component set
      * NOTE: It is has no information about entity manager, so Archetype's methods don't effects entity location.
      */
-    class Archetype : public Uncopiable {
+    class MUSTACHE_EXPORT Archetype : public Uncopiable {
     public:
         Archetype(World& world, ArchetypeIndex id, const ComponentIdMask& mask,
                   const SharedComponentsInfo& shared_components_info, uint32_t chunk_size);

@@ -1,8 +1,8 @@
 #include "default_component_data_storage.hpp"
 
-#include <mustache/ecs/component_factory.hpp>
-
 #include <mustache/utils/logger.hpp>
+
+#include <mustache/ecs/component_factory.hpp>
 
 using namespace mustache;
 

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <mustache/utils/dll_export.h>
+
 #include <chrono>
 
 namespace mustache {
@@ -9,7 +11,7 @@ namespace mustache {
         Active = 1,
     };
 
-    class Timer {
+    class MUSTACHE_EXPORT Timer {
     public:
         void reset();
 

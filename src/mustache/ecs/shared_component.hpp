@@ -3,8 +3,8 @@
 #include <stdexcept>
 
 namespace mustache {
-    struct SharedComponentTag {};
+    struct MUSTACHE_EXPORT SharedComponentTag {};
 
     template <typename T>
-    struct TSharedComponentTag : public SharedComponentTag {};
+    struct MUSTACHE_EXPORT TSharedComponentTag : public SharedComponentTag {};
 }

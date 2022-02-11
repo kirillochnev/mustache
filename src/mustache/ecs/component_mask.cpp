@@ -1,4 +1,5 @@
 #include "component_mask.hpp"
+
 #include <mustache/ecs/component_factory.hpp>
 
 using namespace mustache;

@@ -1,4 +1,5 @@
 #include "entity_manager.hpp"
+
 #include <mustache/ecs/world.hpp>
 
 using namespace mustache;

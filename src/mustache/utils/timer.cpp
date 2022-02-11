@@ -1,13 +1,14 @@
 #include "timer.hpp"
 
 using namespace mustache;
-template<typename T>
-static double GetSeconds(const T& pDur){
-    constexpr double Microseconds2SecondConvertK = 0.000001;
-    const auto microseconds = std::chrono::duration_cast<std::chrono::microseconds>(pDur).count();
-    return static_cast<double>(microseconds) * Microseconds2SecondConvertK;
+namespace {
+    template<typename T>
+    double GetSeconds(const T& pDur) {
+        constexpr double Microseconds2SecondConvertK = 0.000001;
+        const auto microseconds = std::chrono::duration_cast<std::chrono::microseconds>(pDur).count();
+        return static_cast<double>(microseconds) * Microseconds2SecondConvertK;
+    }
 }
-
 
 //-------------------------------------------------------------------------------------------------
 double Timer::elapsed() const{

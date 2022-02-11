@@ -1,6 +1,7 @@
 #pragma once
 
 #include <mustache/utils/default_settings.hpp>
+#include <mustache/utils/dll_export.h>
 
 namespace mustache {
 
@@ -91,7 +92,7 @@ namespace mustache {
         }
 
         constexpr _Type operator++(int) noexcept {
-            _Type copy = *this;
+            _Type copy = _Type::make(value_);
             ++value_;
             return copy;
         }

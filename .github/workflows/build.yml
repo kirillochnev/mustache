@@ -1,0 +1,82 @@
+name: build
+
+on: [push]
+
+jobs:
+
+  linux:
+    timeout-minutes: 10
+
+    strategy:
+      matrix:
+        compiler:
+          - pkg: g++-7
+            exe: g++-7
+          - pkg: g++-8
+            exe: g++-8
+          - pkg: g++-9
+            exe: g++-9
+          - pkg: g++
+            exe: g++
+          - pkg: clang-8
+            exe: clang++-8
+          - pkg: clang-9
+            exe: clang++-9
+          - pkg: clang-10
+            exe: clang++-10
+          - pkg: clang
+            exe: clang++
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Install gtest manually
+        run: sudo apt-get install libgtest-dev && cd /usr/src/gtest && sudo cmake CMakeLists.txt && sudo make && sudo cp ./lib/*.a /usr/lib && sudo ln -s /usr/lib/libgtest.a /usr/local/lib/libgtest.a && sudo ln -s /usr/lib/libgtest_main.a /usr/local/lib/libgtest_main.a
+
+      - uses: actions/checkout@v2
+      - name: Install compiler
+        run: |
+          sudo apt-get update
+          sudo apt-get install ${{ matrix.compiler.pkg }} -y
+
+
+      - name: Compile tests
+        working-directory: build
+        env:
+          CXX: ${{ matrix.compiler.exe }}
+        run: |
+          cmake -DCMAKE_BUILD_TYPE=Release -DMUSTACHE_BUILD_TESTS=ON ..
+          make -j4
+      - name: Run tests
+        working-directory: build
+        env:
+          CTEST_OUTPUT_ON_FAILURE: 1
+        run: ctest --timeout 60 -C Debug -j4
+
+  linux-extra:
+    timeout-minutes: 10
+
+    strategy:
+      matrix:
+        compiler: [g++, clang++]
+        cxx_std: [cxx_std_17, cxx_std_20]
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Install gtest manually
+        run: sudo apt-get install libgtest-dev && cd /usr/src/gtest && sudo cmake CMakeLists.txt && sudo make && sudo cp ./lib/*.a /usr/lib && sudo ln -s /usr/lib/libgtest.a /usr/local/lib/libgtest.a && sudo ln -s /usr/lib/libgtest_main.a /usr/local/lib/libgtest_main.a
+
+      - uses: actions/checkout@v2
+      - name: Compile tests
+        working-directory: build
+        env:
+          CXX: ${{ matrix.compiler }}
+        run: |
+          cmake -DCMAKE_BUILD_TYPE=Release -DMUSTACHE_BUILD_TESTS=ON -DMUSTACHE_CXX_STD=${{ matrix.cxx_std }} ..
+          make -j4
+      - name: Run tests
+        working-directory: build
+        env:
+          CTEST_OUTPUT_ON_FAILURE: 1
+        run: ctest --timeout 30 -C Debug -j4

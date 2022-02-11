@@ -1,18 +1,22 @@
 #pragma once
 
-#include <mustache/ecs/world_filter.hpp>
 #include <mustache/ecs/archetype.hpp>
+#include <mustache/ecs/world_filter.hpp>
 
 namespace mustache {
 
-    struct TaskInfo {
+    struct MUSTACHE_EXPORT TasksCount : public IndexLike<uint32_t, TasksCount>{};
+    struct MUSTACHE_EXPORT JobSize : public IndexLike<uint32_t, JobSize>{};
+    struct MUSTACHE_EXPORT TaskSize : public IndexLike<uint32_t, TaskSize>{};
+
+    struct MUSTACHE_EXPORT TaskInfo {
         uint32_t size;
         ParallelTaskId id = ParallelTaskId::make(0u);
         TaskArchetypeIndex first_archetype = TaskArchetypeIndex::make(0u);
         ArchetypeEntityIndex first_entity = ArchetypeEntityIndex::make(0u);
     };
 
-    struct ArrayView : private ElementView {
+    struct MUSTACHE_EXPORT ArrayView : private ElementView {
         using FilrerResult = WorldFilterResult::ArchetypeFilterResult;
 
 
@@ -58,17 +62,17 @@ namespace mustache {
         Archetype* archetype() const noexcept {
             return filter_result_->archetype;
         }
-        [[nodiscard]] uint32_t arraySize() const noexcept {
-            return array_size_;
+        [[nodiscard]] ComponentArraySize arraySize() const noexcept {
+            return ComponentArraySize::make(array_size_);
         }
 
         static ArrayView make(WorldFilterResult& filter_result, TaskArchetypeIndex archetype_index,
                               ArchetypeEntityIndex first_entity, uint32_t size) noexcept {
-            int32_t count = first_entity.toInt<int32_t >();
+            uint32_t count = first_entity.toInt();
             auto block_index = WorldFilterResult::BlockIndex::make(0u);
-            while (count > 0) {
+            while (count > 0u) {
                 const auto block = filter_result.filtered_archetypes[archetype_index.toInt()].blocks[block_index];
-                const int32_t block_size = block.end.toInt<int32_t >() - block.begin.toInt<int32_t >();
+                const uint32_t block_size = block.end.toInt() - block.begin.toInt();
                 if (count > block_size) {
                     count -= block_size;
                     ++block_index;
@@ -77,7 +81,7 @@ namespace mustache {
                 }
             }
             const auto block_begin = filter_result.filtered_archetypes[archetype_index.toInt()].blocks[block_index].begin;
-            first_entity = ArchetypeEntityIndex::make(block_begin.toInt<int32_t >() + count);
+            first_entity = ArchetypeEntityIndex::make(block_begin.toInt() + count);
             return ArrayView{filter_result, archetype_index, first_entity, size, block_index};
         }
     private:
@@ -88,7 +92,7 @@ namespace mustache {
         uint32_t dist_to_block_end_ = 0;
     };
 
-    struct ArchetypeGroup {
+    struct MUSTACHE_EXPORT ArchetypeGroup {
         ArchetypeGroup(const TaskInfo& info, WorldFilterResult& fr):
                 dist_to_end{info.size},
                 archetype_index{info.first_archetype},
@@ -137,7 +141,7 @@ namespace mustache {
         ArchetypeEntityIndex first_entity = ArchetypeEntityIndex::make(0u);
     };
 
-    struct TaskGroup {
+    struct MUSTACHE_EXPORT TaskGroup {
     public:
         struct End {
             ParallelTaskId task_id_;
@@ -181,11 +185,11 @@ namespace mustache {
             updateTaskSize();
         }
 
-        static auto make(WorldFilterResult& filter_result, uint32_t num_tasks) noexcept {
+        static auto make(WorldFilterResult& filter_result, TasksCount num_tasks) noexcept {
             struct Result {
-                Result(WorldFilterResult &filter_result, uint32_t num_tasks) :
-                        begin_{filter_result, num_tasks},
-                        end_{ParallelTaskId::make(num_tasks)} {
+                Result(WorldFilterResult &filter_result, TasksCount num_tasks) :
+                        begin_{filter_result, num_tasks.toInt()},
+                        end_{ParallelTaskId::make(num_tasks.toInt())} {
 
                 }
 

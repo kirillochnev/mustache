@@ -1,7 +1,8 @@
 #pragma once
 
-#include <mustache/ecs/id_deff.hpp>
 #include <mustache/utils/default_settings.hpp>
+
+#include <mustache/ecs/id_deff.hpp>
 
 #include <memory>
 
@@ -9,7 +10,7 @@ namespace mustache {
 
     class DataStorageIterator;
 
-    class BaseComponentDataStorage {
+    class MUSTACHE_EXPORT BaseComponentDataStorage {
     public:
         virtual ~BaseComponentDataStorage() = default;
 
@@ -59,7 +60,7 @@ namespace mustache {
         uint32_t size_{0u};
     };
 
-    class DataStorageIterator {
+    class MUSTACHE_EXPORT DataStorageIterator {
     public:
 
         [[nodiscard]] MUSTACHE_INLINE ComponentStorageIndex globalIndex() const noexcept {

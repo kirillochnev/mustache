@@ -1,0 +1,7 @@
+# mustache pkg-config source file
+
+Name: mustache
+Description: Mustache is an ECS that uses C++17 features.
+Url: https://github.com/kirillochnev/mustache
+Version: @MUSTACHE_VERSION@
+Libs: @mustache_libs@

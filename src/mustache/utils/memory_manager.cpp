@@ -1,14 +1,11 @@
 #include "memory_manager.hpp"
-#include "logger.hpp"
+
+#include <mustache/utils/logger.hpp>
+
+#include <map>
 #include <cstdlib>
 #include <cstring>
 #include <malloc.h>
-#include <map>
-#include <iostream>
-
-#ifdef ALIGNED_ALLOC
-#include <malloc.h>
-#endif
 
 #if MEMORY_MANAGER_COLLECT_STATISTICS
 #define MEMORY_MANAGER_STATISTICS_ARG_DECL , const char* file, uint32_t line
@@ -73,10 +70,10 @@ void mustache::MemoryManager::showStatistic() const noexcept {
     for (const auto& pair : file_to_size) {
         if (pair.second > 0) {
             const auto mbytes = static_cast<float>(pair.second) / 1024.0f / 1024.f;
-            std::cout << "File: " << pair.first << ", size: " << mbytes << "MB" << std::endl;
+            Logger{}.info("File: %s, size: %dMB", pair.first.c_str(), mbytes);
         }
     }
 #else
-    std::cerr << "Set MEMORY_MANAGER_COLLECT_STATISTICS 1" << std::endl;
+    Logger{}.error("Set MEMORY_MANAGER_COLLECT_STATISTICS 1");
 #endif
 }

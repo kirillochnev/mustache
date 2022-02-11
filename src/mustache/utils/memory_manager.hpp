@@ -17,7 +17,7 @@ class Allocator;
 #define MEMORY_MANAGER_STATISTICS_FORWARD_ARG
 
 #endif
-class MemoryManager : mustache::Uncopiable {
+class MUSTACHE_EXPORT MemoryManager : mustache::Uncopiable {
     public:
         void* allocate(size_t size, size_t align = 0 MEMORY_MANAGER_STATISTICS_ARG_DECL) noexcept;
         void* allocateAndClear(size_t size, size_t align = 0) noexcept;
@@ -39,6 +39,12 @@ class MemoryManager : mustache::Uncopiable {
     template<typename T>
     class Allocator {
     public:
+        Allocator() = default;
+
+        bool operator==(const Allocator& rhs) const {
+            return manager_ == rhs.manager_;
+        }
+
         constexpr Allocator(MemoryManager& manager):
             manager_{&manager} {
 
@@ -58,7 +64,7 @@ class MemoryManager : mustache::Uncopiable {
         }
         using value_type = T;
     private:
-        MemoryManager* manager_;
+        MemoryManager* manager_ = nullptr;
     };
 
 #undef MEMORY_MANAGER_STATISTICS_ARG_DECL

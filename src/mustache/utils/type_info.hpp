@@ -1,6 +1,9 @@
 #pragma once
 
+#include <mustache/utils/dll_export.h>
+
 #include <string>
+#include <cstddef>
 #include <functional>
 #include <stdexcept>
 
@@ -11,7 +14,7 @@
 #endif
 namespace mustache {
     namespace detail {
-        std::string make_type_name_from_func_name(const char* func_name) noexcept;
+        MUSTACHE_EXPORT std::string make_type_name_from_func_name(const char* func_name) noexcept;
         template<typename C>
         inline constexpr bool testOperatorEq(decltype(&C::operator==)) noexcept {
             return true;
@@ -31,7 +34,7 @@ namespace mustache {
     template<typename _Sign>
     using Functor = _Sign* ;//std::function<_Sign>;
 
-    struct TypeInfo {
+    struct MUSTACHE_EXPORT TypeInfo {
         using Constructor = Functor<void (void*) >;
         using CopyFunction = Functor<void (void*, const void*) >;
         using MoveFunction = Functor<void (void*, void*) >;
@@ -50,6 +53,7 @@ namespace mustache {
             Destructor destroy;
             IsEqual compare;
         } functions;
+        std::vector<std::byte> default_value; // this array will be used to init component in case of empty constructor
     };
 
     template <typename T>
@@ -103,7 +107,7 @@ namespace mustache {
                                 throw std::runtime_error("Not implemented");
                             }
                         }
-                }
+                }, {}
         };
         return result;
     }

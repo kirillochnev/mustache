@@ -1,6 +1,8 @@
 #include "component_factory.hpp"
-#include <map>
+
 #include <mustache/utils/logger.hpp>
+
+#include <map>
 
 using namespace mustache;
 
@@ -12,11 +14,11 @@ namespace {
             TypeInfo info{};
             IdType id = IdType::null();
         };
-        std::map<size_t, Element> type_map;
+        std::map<std::string, Element> type_map;
         IdType next_component_id{IdType::make(0)};
         std::vector<TypeInfo> components_info;
         IdType getId(const TypeInfo& info) {
-            const auto find_res = type_map.find(info.type_id_hash_code);
+            const auto find_res = type_map.find(info.name);
 
             if (find_res != type_map.end()) {
                 if(components_info.size() <= find_res->second.id.toInt()) {
@@ -25,7 +27,10 @@ namespace {
                 components_info[find_res->second.id.toInt()] = find_res->second.info;
                 return find_res->second.id;
             }
-            type_map[info.type_id_hash_code] = {
+            if (!info.default_value.empty() && info.default_value.size() != info.size) {
+                throw std::runtime_error("Invalid component default value for component: " + info.name);
+            }
+            type_map[info.name] = {
                     info,
                     next_component_id
             };
@@ -85,4 +90,18 @@ ComponentId ComponentFactory::nextComponentId() noexcept {
 
 bool ComponentFactory::isEq(const SharedComponentTag* c0,const SharedComponentTag* c1, SharedComponentId id) {
     return shared_component_id_storage.componentInfo(id).functions.compare(c0, c1);
+}
+
+void ComponentFactory::moveComponent(const TypeInfo& info, void* source, void* dest) {
+    if (!info.functions.move) {
+        throw std::runtime_error("Invalid move function for: " + info.name);
+    }
+    info.functions.move(dest, source);
+}
+
+void ComponentFactory::copyComponent(const TypeInfo& info, const void* source, void* dest) {
+    if (!info.functions.copy) {
+        throw std::runtime_error("Invalid copy function for: " + info.name);
+    }
+    info.functions.copy(dest, source);
 }
