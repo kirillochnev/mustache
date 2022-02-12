@@ -126,6 +126,7 @@ TEST(EntityManager, create_and_destroy_entities_check_id_version2) {
     }
     ASSERT_EQ(created_components.size(), 0);
 }
+
 TEST(EntityManager, create_and_destroy_entities_check_id_version3) {
     ASSERT_EQ(created_components.size(), 0);
     {
@@ -586,6 +587,7 @@ TEST(EntityManager, remove_not_last) {
         }
     }
 }
+
 TEST(EntityManager, component_builder) {
     struct Component0 {
         Component0(uint32_t v = 0):
@@ -610,8 +612,75 @@ TEST(EntityManager, component_builder) {
     };
     mustache::World world;
     auto& entities = world.entities();
-    const auto entity = entities.begin().assign<Component0>(0u).assign<Component1>(1u).assign<Component2>(2u).end();
+    auto entity = entities.begin().assign<Component0>(0u).assign<Component1>(1u).assign<Component2>(2u).end();
     ASSERT_EQ(entities.getComponent<Component0>(entity)->value, 0);
+    ASSERT_EQ(entities.getComponent<Component1>(entity)->value, 1);
+    ASSERT_EQ(entities.getComponent<Component2>(entity)->value, 2);
+
+    entity = entities.begin().end();
+    ASSERT_FALSE(entities.hasComponent<Component0>(entity));
+    ASSERT_FALSE(entities.hasComponent<Component1>(entity));
+    ASSERT_FALSE(entities.hasComponent<Component2>(entity));
+
+}
+
+TEST(EntityManager, component_builder_to_modify) {
+    struct Component0 {
+        Component0(uint32_t v = 0):
+                value {v} {
+
+        }
+        uint32_t value;
+    };
+    struct Component1 {
+        Component1(uint32_t v = 0):
+                value {v} {
+
+        }
+        uint32_t value;
+    };
+    struct Component2 {
+        Component2(uint32_t v = 0):
+                value {v} {
+
+        }
+        uint32_t value;
+    };
+    struct Component3 {
+        Component3(uint32_t v = 0):
+        value {v} {
+
+        }
+        uint32_t value;
+    };
+    mustache::World world;
+    auto& entities = world.entities();
+    const auto entity = entities.begin().assign<Component0>(0u).assign<Component1>(1u).end();
+    ASSERT_EQ(entities.getComponent<Component0>(entity)->value, 0);
+    ASSERT_EQ(entities.getComponent<Component1>(entity)->value, 1);
+    ASSERT_FALSE(entities.hasComponent<Component2>(entity));
+    ASSERT_FALSE(entities.hasComponent<Component3>(entity));
+
+
+    entities.begin(entity)
+        .assign<Component2>(2u)
+        .assign<Component3>(3u)
+        .remove<Component0>()
+    .end();
+
+    ASSERT_FALSE(entities.hasComponent<Component0>(entity));
+    ASSERT_TRUE(entities.hasComponent<Component1>(entity));
+    ASSERT_TRUE(entities.hasComponent<Component2>(entity));
+    ASSERT_TRUE(entities.hasComponent<Component3>(entity));
+    ASSERT_EQ(entities.getComponent<Component1>(entity)->value, 1);
+    ASSERT_EQ(entities.getComponent<Component2>(entity)->value, 2);
+    ASSERT_EQ(entities.getComponent<Component3>(entity)->value, 3);
+
+    entities.begin(entity).remove<Component3>().end();
+    ASSERT_FALSE(entities.hasComponent<Component0>(entity));
+    ASSERT_TRUE(entities.hasComponent<Component1>(entity));
+    ASSERT_TRUE(entities.hasComponent<Component2>(entity));
+    ASSERT_FALSE(entities.hasComponent<Component3>(entity));
     ASSERT_EQ(entities.getComponent<Component1>(entity)->value, 1);
     ASSERT_EQ(entities.getComponent<Component2>(entity)->value, 2);
 }

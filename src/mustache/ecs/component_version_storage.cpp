@@ -11,8 +11,8 @@ VersionStorage::VersionStorage(MemoryManager& memory_manager, uint32_t num_compo
 
 void VersionStorage::emplace(WorldVersion version, ArchetypeEntityIndex index) noexcept {
     const auto chunk = chunkAt(index);
-    if (chunk.toInt() * numComponents() <= chunk_versions_.size()) {
-        chunk_versions_.resize(chunk.next().toInt() * numComponents());
+    if (chunk.toInt<size_t>() * numComponents() <= chunk_versions_.size()) {
+        chunk_versions_.resize(chunk.next().toInt<size_t>() * numComponents());
     }
 
     setVersion(version, chunk);

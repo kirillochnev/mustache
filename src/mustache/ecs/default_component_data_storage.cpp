@@ -91,7 +91,7 @@ void* DefaultComponentDataStorage::getDataSafe(ComponentIndex component_index,
     }
     const auto chunk_index = index % chunk_capacity_;
     const auto& info = component_getter_info_[component_index];
-    const auto offset = info.offset.add(info.size * chunk_index.toInt());
+    const auto offset = info.offset.add(info.size * chunk_index.toInt<size_t>());
     auto chunk = chunks_[index / chunk_capacity_];
     return dataPointerWithOffset(chunk, offset);
 }
@@ -100,7 +100,7 @@ void* DefaultComponentDataStorage::getDataUnsafe(ComponentIndex component_index,
                                                  ComponentStorageIndex index) const noexcept {
     const auto chunk_index = index % chunk_capacity_;
     const auto& info = component_getter_info_[component_index];
-    const auto offset = info.offset.add(info.size * chunk_index.toInt());
+    const auto offset = info.offset.add(info.size * chunk_index.toInt<size_t>());
     auto chunk = chunks_[index / chunk_capacity_];
     return dataPointerWithOffset(chunk, offset);
 }
