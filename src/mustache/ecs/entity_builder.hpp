@@ -3,6 +3,8 @@
 #include <mustache/utils/default_settings.hpp>
 
 #include <mustache/ecs/entity.hpp>
+#include <mustache/ecs/component_mask.hpp>
+#include <mustache/ecs/component_factory.hpp>
 
 #include <tuple>
 
@@ -30,24 +32,41 @@ namespace mustache {
         template<typename Component, typename... ARGS>
         MUSTACHE_INLINE auto assign(ARGS&&... args);
 
+        template<typename T>
+        MUSTACHE_INLINE auto& remove() noexcept {
+            to_destroy_.add(ComponentFactory::registerComponent<T>());
+            return *this;
+        }
+
         MUSTACHE_INLINE Entity end();
 
     private:
         friend EntityManager;
-        explicit EntityBuilder(EntityManager* manager):
+        explicit EntityBuilder(EntityManager* manager, Entity e):
+                entity_{e},
+                to_destroy_{},
                 entity_manager_{manager} {
 
         }
+        Entity entity_;
+        ComponentIdMask to_destroy_;
         EntityManager* entity_manager_;
     };
 
     template<typename TupleType>
     class EntityBuilder {
     public:
-        EntityBuilder(EntityManager* manager, TupleType&& args):
+        EntityBuilder(const ComponentIdMask& to_destroy, EntityManager* manager,  Entity e, TupleType&& args):
                 args_ {std::move(args)},
+                entity_{e},
+                to_destroy_{to_destroy},
                 entity_manager_ {manager} {
 
+        }
+        template<typename T>
+        MUSTACHE_INLINE auto& remove() noexcept {
+            to_destroy_.add(ComponentFactory::registerComponent<T>());
+            return *this;
         }
 
         template<typename Component, typename... ARGS>
@@ -57,7 +76,8 @@ namespace mustache {
                     std::forward_as_tuple(args...)
             };
             using NewTupleType = decltype(std::tuple_cat(args_, std::make_tuple(std::move(arg))));
-            return EntityBuilder<NewTupleType> (entity_manager_, std::tuple_cat(args_, std::make_tuple(std::move(arg))));
+            return EntityBuilder<NewTupleType> (to_destroy_, entity_manager_, entity_,
+                                                std::tuple_cat(args_, std::make_tuple(std::move(arg))));
         }
 
         MUSTACHE_INLINE Entity end();
@@ -67,6 +87,8 @@ namespace mustache {
         }
     private:
         TupleType args_;
+        Entity entity_;
+        ComponentIdMask to_destroy_;
         EntityManager* entity_manager_;
 
 

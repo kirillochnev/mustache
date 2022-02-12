@@ -82,6 +82,18 @@ namespace mustache {
             return result;
         }
 
+        [[nodiscard]] ComponentMask inverse() const noexcept {
+            ComponentMask result;
+            result.value_ = ~value_;
+            return result;
+        }
+
+        [[nodiscard]] ComponentMask intersection(const ComponentMask& oth) const noexcept {
+            ComponentMask result;
+            result.value_ = value_ & oth.value_;
+            return result;
+        }
+
         void set(_ItemType item, bool value) noexcept {
             value_.set(item.toInt(), value);
         }
@@ -199,6 +211,21 @@ namespace mustache {
             return data_[index.toInt()];
         }
 
+        SharedComponentsInfo merge(const SharedComponentsInfo& oth) const noexcept {
+            // TODO: check me!
+            SharedComponentsInfo result;
+            result.mask_ = oth.mask_.merge(mask_);
+            result.data_ = oth.data_;
+            for (const auto& id : data_) {
+                result.data_.push_back(id);
+            }
+
+            for (const auto& id : ids_) {
+                result.ids_.push_back(id);
+            }
+
+            return result;
+        }
     private:
         SharedComponentIdMask mask_;
         std::vector<SharedComponentId> ids_;

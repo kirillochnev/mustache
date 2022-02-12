@@ -139,12 +139,12 @@ namespace mustache {
             forEach(std::forward<_F>(function), mode, std::make_index_sequence<args_count>());
         }
 
-        EntityBuilder<void> begin() noexcept {
-            return EntityBuilder<void>{this};
+        EntityBuilder<void> begin(Entity entity = {}) noexcept {
+            return EntityBuilder<void>{this, entity};
         }
 
         template<typename TupleType>
-        Entity create(EntityBuilder<TupleType>& args_pack);
+        Entity apply(Entity entity, const ComponentIdMask& to_remove, EntityBuilder<TupleType>& args_pack);
 
         ComponentIdMask getExtraComponents(const ComponentIdMask&) const noexcept;
 
@@ -211,7 +211,12 @@ namespace mustache {
         bool initComponent(Archetype& archetype, ArchetypeEntityIndex entity_index, Arg&& arg);
 
         template<typename TupleType, size_t... _I>
-        void initComponents(Entity entity, TupleType& tuple, const SharedComponentsInfo&, std::index_sequence<_I...>&&);
+        void initComponents(Entity entity, TupleType& tuple, const SharedComponentsInfo&,
+                            const std::index_sequence<_I...>&);
+
+        template<typename TupleType, size_t... _I>
+        void updateComponents(const ComponentIdMask& to_remove, Entity entity, TupleType& tuple,
+                              SharedComponentsInfo, const std::index_sequence<_I...>&);
 
         [[nodiscard]] WorldVersion worldVersion() const noexcept {
             return world_version_;
@@ -520,15 +525,6 @@ namespace mustache {
         }
     }
 
-    template<typename TupleType>
-    Entity EntityBuilder<TupleType>::end() {
-        return entity_manager_->create(*this);
-    }
-
-    Entity EntityBuilder<void>::end() {
-        return entity_manager_->create();
-    }
-
     template<typename Component, typename... ARGS>
     auto EntityBuilder<void>::assign(ARGS&&... args) {
         using TypleType = decltype(std::forward_as_tuple(args...));
@@ -536,17 +532,7 @@ namespace mustache {
         ComponentArgType arg {
                 std::forward_as_tuple(args...)
         };
-        return EntityBuilder <std::tuple<ComponentArgType> >(entity_manager_, std::move(arg));
-    }
-
-    template<typename TupleType, size_t... _I>
-    void EntityManager::initComponents(Entity entity, TupleType& tuple,
-                                       const SharedComponentsInfo& info, std::index_sequence<_I...>&&) {
-        const auto mask = ComponentFactory::makeMask<typename std::tuple_element<_I, TupleType>::type::Component...>();
-        Archetype& archetype = getArchetype(mask, info);
-        const auto index = archetype.insert(entity, mask);
-        auto unused_init_list = {initComponent(archetype, index, std::get<_I>(tuple))...};
-        (void ) unused_init_list;
+        return EntityBuilder <std::tuple<ComponentArgType> >(to_destroy_, entity_manager_, entity_, std::move(arg));
     }
 
     template<typename Arg>
@@ -558,12 +544,65 @@ namespace mustache {
         return true;
     }
 
+    template<typename TupleType, size_t... _I>
+    void EntityManager::initComponents(Entity entity, TupleType& tuple, const SharedComponentsInfo& info,
+                                       const std::index_sequence<_I...>&) {
+        ComponentIdMask mask = ComponentFactory::makeMask<typename std::tuple_element<_I, TupleType>::type::Component...>();
+
+        Archetype& archetype = getArchetype(mask, info);
+        const auto index = archetype.insert(entity, mask);
+        auto unused_init_list = {initComponent(archetype, index, std::get<_I>(tuple))...};
+        (void) unused_init_list;
+    }
+
+    template<typename TupleType, size_t... _I>
+    void EntityManager::updateComponents(const ComponentIdMask& to_remove, Entity entity, TupleType& tuple,
+                                         SharedComponentsInfo shared, const std::index_sequence<_I...>&) {
+        ComponentIdMask skip_mask;
+        if constexpr(sizeof...(_I) > 0) {
+            skip_mask = ComponentFactory::makeMask<typename std::tuple_element<_I, TupleType>::type::Component...>();
+        }
+        const auto& prev_location = locations_[entity.id()];
+        auto prev_arch = archetypes_[prev_location.archetype].get();
+        const auto mask = skip_mask.merge(prev_arch->mask_).intersection(to_remove.inverse());
+        shared = shared.merge(prev_arch->sharedComponentInfo());
+        auto& archetype = getArchetype(mask, shared);
+        archetype.externalMove(entity, *prev_arch, prev_location.index, ComponentIdMask{});
+        const auto index = locations_[entity.id()].index;
+        if constexpr(sizeof...(_I) > 0) {
+            auto unused_init_list = {initComponent(archetype, index, std::get<_I>(tuple))...};
+            (void) unused_init_list;
+        }
+    }
+
     template<typename TupleType>
-    Entity EntityManager::create(EntityBuilder<TupleType>& args_pack) {
-        Entity entity = createWithOutInit();
-        constexpr size_t num_components = std::tuple_size<TupleType>();
+    Entity EntityManager::apply(Entity entity, const ComponentIdMask& to_remove, EntityBuilder<TupleType>& args_pack) {
         const SharedComponentsInfo shared; // TODO: fill me
-        initComponents<TupleType>(entity, args_pack.getArgs(), shared, std::make_index_sequence<num_components>());
+        if constexpr (std::is_same<TupleType, void>::value) {
+            if (entity.isNull()) {
+                return create();
+            }
+            updateComponents(to_remove, entity, entity, shared, std::make_index_sequence<0>());
+        } else {
+            constexpr size_t num_components = std::tuple_size<TupleType>();
+            constexpr auto index_sequence = std::make_index_sequence<num_components>();
+            if (entity.isNull()) {
+                entity = createWithOutInit();
+                initComponents<TupleType>(entity, args_pack.getArgs(), shared, index_sequence);
+            } else {
+                updateComponents(to_remove, entity, args_pack.getArgs(), shared, index_sequence);
+            }
+        }
         return entity;
     }
+
+    template<typename TupleType>
+    Entity EntityBuilder<TupleType>::end() {
+        return entity_manager_->apply(entity_, to_destroy_, *this);
+    }
+
+    Entity EntityBuilder<void>::end() {
+        return entity_manager_->apply(entity_, to_destroy_, *this);
+    }
+
 }
