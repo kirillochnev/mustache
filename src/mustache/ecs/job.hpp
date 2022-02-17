@@ -53,7 +53,7 @@ namespace mustache {
             if constexpr (Info::has_for_each_array) {
                 invokeMethod(self, &T::forEachArray, count, invocation_index, pointers...);
             } else {
-                const auto size = count.template toInt();
+                const auto size = count.toInt();
                 for(uint32_t i = 0u; i < size; ++i) {
                     invoke(self, invocation_index, pointers[i]...);
                     if constexpr(Info::FunctionInfo::Position::job_invocation >= 0) {
