@@ -47,15 +47,19 @@ namespace mustache {
 
         template<typename... _ARGS>
         MUSTACHE_INLINE void forEachArrayGenerated(ComponentArraySize count, JobInvocationIndex& invocation_index,
-                                                   _ARGS MUSTACHE_RESTRICT_PTR ... pointers) {
-            T& self = *static_cast<T*>(this);
+                                                   _ARGS MUSTACHE_RESTRICT_PTR ... pointers) noexcept(Info::is_noexcept) {
+            using TargetType = typename std::conditional<Info ::is_const_this, const T, T>::type;
+            TargetType& self = *static_cast<TargetType*>(this);
             if constexpr (Info::has_for_each_array) {
                 invokeMethod(self, &T::forEachArray, count, invocation_index, pointers...);
             } else {
-                for(ComponentArraySize i = ComponentArraySize::make(0); i < count; ++i) {
-                    invoke(self, invocation_index, pointers++...);
-                    ++invocation_index.entity_index_in_task;
-                    ++invocation_index.entity_index;
+                const auto size = count.toInt();
+                for(uint32_t i = 0u; i < size; ++i) {
+                    invoke(self, invocation_index, pointers[i]...);
+                    if constexpr(Info::FunctionInfo::Position::job_invocation >= 0) {
+                        ++invocation_index.entity_index_in_task;
+                        ++invocation_index.entity_index;
+                    }
                 }
             }
         }
@@ -67,7 +71,7 @@ namespace mustache {
         }
 
         template<size_t _I, typename _ViewType>
-        MUSTACHE_INLINE auto getComponentHandler(const _ViewType& view, ComponentIndex index) noexcept {
+        MUSTACHE_INLINE static auto getComponentHandler(const _ViewType& view, ComponentIndex index) noexcept {
             using RequiredType = typename Info::FunctionInfo::template UniqueComponentType<_I>::type;
             using Component = typename ComponentType<RequiredType>::type;
             if constexpr (IsComponentRequired<RequiredType>::value) {
@@ -88,10 +92,8 @@ namespace mustache {
         }
 
         template<size_t... _I, size_t... _SI>
-        MUSTACHE_INLINE void singleTask(World& world, ArchetypeGroup archetype_group, JobInvocationIndex invocation_index,
+        MUSTACHE_INLINE void singleTask(World&, ArchetypeGroup archetype_group, JobInvocationIndex invocation_index,
                                         const std::index_sequence<_I...>&, const std::index_sequence<_SI...>&) {
-            const auto task_size = TaskSize::make(archetype_group.taskSize());
-            onTaskBegin(world, task_size, invocation_index.task_index);
             auto shared_components = std::make_tuple(
                     getNullptr<_SI>()...
             );
@@ -121,7 +123,6 @@ namespace mustache {
                     }
                 }
             }
-            onTaskEnd(world, task_size, invocation_index.task_index);
         }
 
     };

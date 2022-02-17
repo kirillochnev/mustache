@@ -36,7 +36,7 @@ namespace mustache {
             }
         }
 
-        ArrayView(WorldFilterResult& filter_result, TaskArchetypeIndex archetype_index,
+        ArrayView(const WorldFilterResult& filter_result, TaskArchetypeIndex archetype_index,
                   ArchetypeEntityIndex first_entity, uint32_t size, WorldFilterResult::BlockIndex block_index):
                 ElementView{filter_result.filtered_archetypes[archetype_index.toInt()].archetype->getElementView(first_entity)},
                 current_block_{block_index},
@@ -66,7 +66,7 @@ namespace mustache {
             return ComponentArraySize::make(array_size_);
         }
 
-        static ArrayView make(WorldFilterResult& filter_result, TaskArchetypeIndex archetype_index,
+        static ArrayView make(const WorldFilterResult& filter_result, TaskArchetypeIndex archetype_index,
                               ArchetypeEntityIndex first_entity, uint32_t size) noexcept {
             uint32_t count = first_entity.toInt();
             auto block_index = WorldFilterResult::BlockIndex::make(0u);
@@ -88,7 +88,7 @@ namespace mustache {
         WorldFilterResult::BlockIndex current_block_ = WorldFilterResult::BlockIndex::make(0u);
         uint32_t array_size_ = 0u;
         uint32_t dist_to_end_ = 0u;
-        FilrerResult* filter_result_ = nullptr;
+        const FilrerResult* filter_result_ = nullptr;
         uint32_t dist_to_block_end_ = 0;
     };
 

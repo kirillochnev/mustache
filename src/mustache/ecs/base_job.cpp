@@ -156,7 +156,10 @@ void BaseJob::runParallel(World& world, TasksCount task_count) {
     for (ArchetypeGroup task : TaskGroup::make(filter_result_, task_count)) {
         dispatcher.addParallelTask([task, this, invocation_index, &world](ThreadId thread_id) mutable {
             invocation_index.thread_id = thread_id;
+            const auto task_size = TaskSize::make(task.taskSize());
+            onTaskBegin(world, task_size, invocation_index.task_index);
             singleTask(world, task, invocation_index);
+            onTaskEnd(world, task_size, invocation_index.task_index);
         });
         ++invocation_index.task_index;
         invocation_index.entity_index = ParallelTaskGlobalItemIndex::make(invocation_index.entity_index.toInt() + task.taskSize());
@@ -173,7 +176,10 @@ void BaseJob::runCurrentThread(World& world) {
     invocation_index.entity_index = ParallelTaskGlobalItemIndex::make(0);
 
     for (auto task : TaskGroup::make(filter_result_, TasksCount::make(1))) {
+        const auto task_size = TaskSize::make(task.taskSize());
+        onTaskBegin(world, task_size, invocation_index.task_index);
         singleTask(world, task, invocation_index);
+        onTaskEnd(world, task_size, invocation_index.task_index);
         ++invocation_index.task_index;
     }
 }
