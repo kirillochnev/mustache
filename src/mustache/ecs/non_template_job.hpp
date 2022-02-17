@@ -20,11 +20,8 @@ namespace mustache {
             bool is_required = true;
         };
 
-        void singleTask(World& world, ArchetypeGroup archetype_group,
+        void singleTask(World&, ArchetypeGroup archetype_group,
                                         JobInvocationIndex invocation_index) override {
-            const auto task_size = TaskSize::make(archetype_group.taskSize());
-            onTaskBegin(world, task_size, invocation_index.task_index);
-
             std::vector<const void*> shared_components(shared_component_ids.size());
             std::vector<ComponentIndex> component_indexes(component_requests.size());
             std::vector<void*> component_ptr(component_requests.size());
@@ -71,7 +68,6 @@ namespace mustache {
                             args.count.toInt() + args.invocation_index.entity_index_in_task.toInt());
                 }
             }
-            onTaskEnd(world, task_size, invocation_index.task_index);
         }
 
     public:

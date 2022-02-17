@@ -88,10 +88,8 @@ namespace mustache {
         }
 
         template<size_t... _I, size_t... _SI>
-        MUSTACHE_INLINE void singleTask(World& world, ArchetypeGroup archetype_group, JobInvocationIndex invocation_index,
+        MUSTACHE_INLINE void singleTask(World&, ArchetypeGroup archetype_group, JobInvocationIndex invocation_index,
                                         const std::index_sequence<_I...>&, const std::index_sequence<_SI...>&) {
-            const auto task_size = TaskSize::make(archetype_group.taskSize());
-            onTaskBegin(world, task_size, invocation_index.task_index);
             auto shared_components = std::make_tuple(
                     getNullptr<_SI>()...
             );
@@ -121,7 +119,6 @@ namespace mustache {
                     }
                 }
             }
-            onTaskEnd(world, task_size, invocation_index.task_index);
         }
 
     };
