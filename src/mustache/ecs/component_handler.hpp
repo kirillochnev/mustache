@@ -17,13 +17,22 @@ namespace mustache {
         ComponentHandler() = default;
 
         ComponentHandler(T& value):
-            ptr_{&value} {
+                ptr_{&value} {
 
         }
         ComponentHandler(T* value):
                 ptr_{value} {
 
         }
+
+        decltype(auto) operator[](size_t i) const noexcept {
+            if constexpr(_IsRequired) {
+                return ptr_[i];
+            } else {
+                return ComponentHandler{ptr_ + i * (ptr_ != nullptr)};
+            }
+        }
+
         ComponentHandler operator++(int) {
             if constexpr (std::is_base_of<SharedComponentTag, T>::value) {
                 return *this;

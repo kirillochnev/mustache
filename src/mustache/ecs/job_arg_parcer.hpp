@@ -62,18 +62,19 @@ namespace mustache {
     class JobFunctionInfo {
     public:
         struct ArgInfo {
-           enum ArgType: uint32_t {
-               kComponent = 0,
-               kSharedComponent = 1,
-               kEntity = 2,
-               kInvocationIndex = 3
-           };
-           ArgType type;
-           uint32_t position;
+            enum ArgType: uint32_t {
+                kComponent = 0,
+                kSharedComponent = 1,
+                kEntity = 2,
+                kInvocationIndex = 3,
+                kArraySize = 4
+            };
+            ArgType type;
+            uint32_t position;
             constexpr ArgInfo() = default;
             constexpr ArgInfo(ArgType t, uint32_t pos):
-                type {t},
-                position {pos} {
+                    type {t},
+                    position {pos} {
             }
         };
         template<size_t _I>
@@ -85,6 +86,10 @@ namespace mustache {
             if constexpr (IsArgJobInvocationIndex<ArgType>::value) {
                 return ArgInfo(ArgInfo::kInvocationIndex, _I);
             }
+            if constexpr(IsArgComponentArraySize<ArgType>::value) {
+                return ArgInfo(ArgInfo::kArraySize, _I);
+            }
+
             if constexpr (isComponentShared<ArgType>()) {
                 return ArgInfo(ArgInfo::kSharedComponent, _I);
             }
@@ -94,7 +99,7 @@ namespace mustache {
         template<size_t... _I>
         static constexpr std::array<ArgInfo, sizeof...(_I)> buildArgsInfo(const std::index_sequence<_I...>&) {
             return std::array<ArgInfo, sizeof...(_I)> {
-                getArgInfo<_I>()...
+                    getArgInfo<_I>()...
             };
         }
         using FunctionType = T;
@@ -261,15 +266,37 @@ namespace mustache {
                 return JobFunctionInfo<T>{};
             }
         }
-        
+
+        static constexpr decltype(auto) getUserFunction() noexcept {
+            if constexpr (testForEachArray<T>(nullptr)) {
+                return &T::forEachArray;
+            } else {
+                return &T::operator();
+            }
+        }
+
+        template <typename C, typename R, typename... A>
+        static constexpr bool checkConst(R (C::*)(A...) const ) {
+            return true;
+        }
+        template <typename C, typename R, typename... A>
+        static constexpr bool checkConst(R (C::*)(A...) ) {
+            return false;
+        }
+
     public:
         JobInfo() = delete;
         ~JobInfo() = delete;
 
         static_assert(testForEachArray<T>(nullptr) || testCallOperator<T>(nullptr),
-                "T is not a job type, operator() or method forEachArray does not found");
-        using FunctionInfo = decltype(getJobFunctionInfo());
+                      "T is not a job type, operator() or method forEachArray does not found");
+
+        static constexpr auto user_function_ptr = getUserFunction();
         static constexpr bool has_for_each_array = testForEachArray<T>(nullptr);
+        static constexpr bool is_noexcept = noexcept(user_function_ptr);
+        static constexpr bool is_const_this = checkConst(user_function_ptr);
+
+        using FunctionInfo = decltype(getJobFunctionInfo());
 
         template<size_t... _I>
         static ComponentIdMask componentMask(const std::index_sequence<_I...>&) noexcept {
@@ -291,14 +318,14 @@ namespace mustache {
         static std::pair<ComponentId, bool> componentInfo() noexcept {
             using Component = typename ComponentType<_C>::type;
             return std::make_pair(ComponentFactory::registerComponent<Component>(),
-                    IsComponentMutable<_C>::value);
+                                  IsComponentMutable<_C>::value);
         }
 
         template<size_t... _I>
         static ComponentIdMask updateMask(std::index_sequence<_I...>&&) noexcept {
             ComponentIdMask result;
             std::array array {
-                componentInfo<typename FunctionInfo::template UniqueComponentType<_I> ::type>()...
+                    componentInfo<typename FunctionInfo::template UniqueComponentType<_I> ::type>()...
             };
             for (const auto& pair : array) {
                 result.set(pair.first, pair.second);
