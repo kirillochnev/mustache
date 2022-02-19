@@ -176,15 +176,19 @@ SharedComponentPtr EntityManager::getCreatedSharedComponent(const SharedComponen
     return ptr;
 }
 
-bool EntityManager::removeComponent(Entity entity, ComponentId component) {
+void EntityManager::removeComponent(Entity entity, ComponentId component) {
+    if (isLocked()) {
+        getTemporalStorage().removeComponent(entity, component);
+        return;
+    }
     const auto& location = locations_[entity.id()];
     if (location.archetype.isNull()) {
-        return false;
+        return;
     }
 
     auto& prev_archetype = *archetypes_[location.archetype];
     if (!prev_archetype.hasComponent(component)) {
-        return false;
+        return;
     }
 
     auto mask = prev_archetype.mask_;
@@ -192,13 +196,11 @@ bool EntityManager::removeComponent(Entity entity, ComponentId component) {
 
     auto& archetype = getArchetype(mask, prev_archetype.sharedComponentInfo());
     if (&archetype == &prev_archetype) {
-        return false;
+        return;
     }
 
     const auto prev_index = location.index;
     archetype.externalMove(entity, prev_archetype, prev_index, ComponentIdMask{});
-
-    return true;
 }
 
 bool EntityManager::removeSharedComponent(Entity entity, SharedComponentId component) {
@@ -244,4 +246,52 @@ void EntityManager::markDirty(Entity entity, ComponentId component_id) noexcept 
             arch->markComponentDirty(component_index, location.index, worldVersion());
         }
     }
+}
+
+void EntityManager::onLock() {
+    const auto thread_count = world_.dispatcher().maxThreadCount();
+    temporal_storages_.resize(thread_count);
+}
+
+void EntityManager::onUnlock() {
+    if (isLocked()) {
+        throw std::runtime_error("Entity manager must be unlocked");
+    }
+
+    const auto apply = [this](TemporalStorage& storage) {
+        for (const auto& info : storage.actions_) {
+            switch (info.action) {
+                case TemporalStorage::Action::kAssignComponent:
+                {
+                    auto& assign_info = storage.commands_.assign[info.index];
+                    const auto& component_info = ComponentFactory::componentInfo(assign_info.component_id);
+                    auto dest = assign(info.entity, assign_info.component_id, false);
+                    auto src = storage.data_.data() + assign_info.data_offset;
+                    component_info.functions.move(dest, src);
+                    if (component_info.functions.destroy) {
+                        component_info.functions.destroy(src);
+                    }
+                }
+                    break;
+                case TemporalStorage::Action::kRemoveComponent:
+                    removeComponent(info.entity, storage.commands_.remove[info.index].component_id);
+                    break;
+                case TemporalStorage::Action::kDestroyEntity:
+                    destroy(info.entity);
+                    break;
+                case TemporalStorage::Action::kDestroyEntityNow:
+                    destroyNow(info.entity);
+                    break;
+            }
+        }
+    };
+
+    for (auto& storage : temporal_storages_) {
+        apply(storage);
+        storage.clear();
+    }
+}
+
+[[nodiscard]] ThreadId EntityManager::threadId() const noexcept {
+    return world_.dispatcher().currentThreadId();
 }

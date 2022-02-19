@@ -71,12 +71,13 @@ add_library(${PROJECT_NAME} ${MUSTACHE_LIB_TYPE}
     ${mustache_SOURCE_DIR}/src/mustache/ecs/entity.hpp
     ${mustache_SOURCE_DIR}/src/mustache/ecs/archetype_operation_helper.cpp
     ${mustache_SOURCE_DIR}/src/mustache/ecs/archetype_operation_helper.hpp
+    ${mustache_SOURCE_DIR}/src/mustache/ecs/temporal_storage.hpp
     ${mustache_SOURCE_DIR}/src/mustache/ecs/entity_manager.cpp
-    ${mustache_SOURCE_DIR}/src/mustache/ecs/entity_manager.hpp
     ${mustache_SOURCE_DIR}/src/mustache/ecs/entity_manager.hpp
     ${mustache_SOURCE_DIR}/src/mustache/ecs/base_job.cpp
     ${mustache_SOURCE_DIR}/src/mustache/ecs/base_job.hpp
     ${mustache_SOURCE_DIR}/src/mustache/ecs/job.hpp
+    ${mustache_SOURCE_DIR}/src/mustache/ecs/non_template_job.hpp
     ${mustache_SOURCE_DIR}/src/mustache/ecs/system.cpp
     ${mustache_SOURCE_DIR}/src/mustache/ecs/system.hpp
     ${mustache_SOURCE_DIR}/src/mustache/ecs/system_manager.cpp
@@ -109,8 +110,6 @@ add_library(${PROJECT_NAME} ${MUSTACHE_LIB_TYPE}
     ${mustache_SOURCE_DIR}/src/mustache/ecs/world_storage.hpp
     ${mustache_SOURCE_DIR}/src/mustache/ecs/component_version_storage.cpp
     ${mustache_SOURCE_DIR}/src/mustache/ecs/component_version_storage.hpp
-    ${mustache_SOURCE_DIR}/src/mustache/ecs/job.hpp
-    ${mustache_SOURCE_DIR}/src/mustache/ecs/non_template_job.hpp
     ${mustache_SOURCE_DIR}/src/mustache/c_api.cpp
     ${mustache_SOURCE_DIR}/src/mustache/c_api.h
 )

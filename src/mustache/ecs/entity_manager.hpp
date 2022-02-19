@@ -9,6 +9,7 @@
 #include <mustache/ecs/archetype.hpp>
 #include <mustache/ecs/component_mask.hpp>
 #include <mustache/ecs/entity_builder.hpp>
+#include <mustache/ecs/temporal_storage.hpp>
 #include <mustache/ecs/component_factory.hpp>
 
 #include <map>
@@ -64,6 +65,8 @@ namespace mustache {
 
         MUSTACHE_INLINE void destroy(Entity entity);
 
+        [[nodiscard]] MUSTACHE_INLINE bool isMarkedForDestroy(Entity entity) const noexcept;
+
         template<FunctionSafety _Safety = FunctionSafety::kSafe>
         MUSTACHE_INLINE void destroyNow(Entity entity);
 
@@ -89,9 +92,9 @@ namespace mustache {
         MUSTACHE_INLINE const T* getSharedComponent(Entity entity) const noexcept;
 
         template<typename T, FunctionSafety _Safety = FunctionSafety::kSafe>
-        MUSTACHE_INLINE bool removeComponent(Entity entity);
+        MUSTACHE_INLINE void removeComponent(Entity entity);
 
-        bool removeComponent(Entity entity, ComponentId component);
+        void removeComponent(Entity entity, ComponentId component);
 
         template<typename T, FunctionSafety _Safety = FunctionSafety::kSafe>
         MUSTACHE_INLINE bool removeSharedComponent(Entity entity);
@@ -189,7 +192,36 @@ namespace mustache {
         }
 
         void markDirty(Entity entity, ComponentId component_id) noexcept;
+
+        [[nodiscard]] MUSTACHE_INLINE bool isLocked() const noexcept {
+            return lock_counter_ > 0u;
+        }
+        MUSTACHE_INLINE void lock() noexcept {
+            ++lock_counter_;
+            if (lock_counter_ == 1u) {
+                onLock();
+            }
+        }
+        MUSTACHE_INLINE bool unlock() noexcept {
+            if (lock_counter_ > 0u) {
+                --lock_counter_;
+            }
+            if (lock_counter_ == 0u) {
+                onUnlock();
+            }
+            return lock_counter_ < 1u;
+        }
     private:
+
+        void onLock();
+        void onUnlock();
+
+        [[nodiscard]] ThreadId threadId() const noexcept;
+
+        [[nodiscard]] TemporalStorage& getTemporalStorage() noexcept {
+            static thread_local const auto thread_id = threadId();
+            return temporal_storages_[thread_id];
+        }
 
         [[nodiscard]] MUSTACHE_INLINE Entity createWithOutInit() noexcept;
 
@@ -244,7 +276,8 @@ namespace mustache {
         };
 
         World& world_;
-
+        uint32_t lock_counter_{0u};
+        ArrayWrapper<TemporalStorage, ThreadId, false> temporal_storages_;
         ArrayWrapper<SharedComponentsData, SharedComponentId, false> shared_components_;
         using ArchetypeMap = std::map<SharedComponentsData, Archetype*>;
         std::map<ArchetypeComponents, ArchetypeMap> mask_to_arch_;
@@ -307,11 +340,24 @@ namespace mustache {
     }
 
     void EntityManager::destroy(Entity entity) {
-        marked_for_delete_.insert(entity);
+        if (isLocked()) {
+            getTemporalStorage().destroy(entity);
+        } else {
+            marked_for_delete_.insert(entity);
+        }
+    }
+
+    bool EntityManager::isMarkedForDestroy(Entity entity) const noexcept {
+        return marked_for_delete_.count(entity) > 0u;
     }
 
     template<FunctionSafety _Safety>
     void EntityManager::destroyNow(Entity entity) {
+        if (isLocked()) {
+            getTemporalStorage().destroyNow(entity);
+            return;
+        }
+
         if constexpr (isSafe(_Safety)) {
             if (!isEntityValid(entity)) {
                 return;
@@ -419,48 +465,41 @@ namespace mustache {
     }
 
     template<typename T, FunctionSafety _Safety>
-    bool EntityManager::removeComponent(Entity entity) {
+    void EntityManager::removeComponent(Entity entity) {
         static const auto component_id = ComponentFactory::registerComponent<T>();
         if constexpr (isSafe(_Safety)) {
             if (!isEntityValid(entity)) {
-                return false;
+                return;
             }
         }
 
-        return removeComponent(entity, component_id);
+        removeComponent(entity, component_id);
     }
 
     void* EntityManager::assign(Entity e, ComponentId component_id, bool skip_constructor) {
-        const auto& location = locations_[e.id()];
-        auto& prev_arch = *archetypes_[location.archetype];
-        ComponentIdMask mask = prev_arch.mask_;
-        mask.add(component_id);
-        auto& arch = getArchetype(mask, prev_arch.sharedComponentInfo());
-        const auto prev_index = location.index;
-        arch.externalMove(e, prev_arch, prev_index, skip_constructor ? mask : ComponentIdMask{});
-        const auto component_index = arch.getComponentIndex<FunctionSafety::kUnsafe>(component_id);
-        return arch.getComponent<FunctionSafety::kUnsafe>(component_index, location.index);
+        if (!isLocked()) {
+            const auto& location = locations_[e.id()];
+            auto& prev_arch = *archetypes_[location.archetype];
+            ComponentIdMask mask = prev_arch.mask_;
+            mask.add(component_id);
+            auto& arch = getArchetype(mask, prev_arch.sharedComponentInfo());
+            const auto prev_index = location.index;
+            arch.externalMove(e, prev_arch, prev_index, skip_constructor ? mask : ComponentIdMask{});
+            const auto component_index = arch.getComponentIndex<FunctionSafety::kUnsafe>(component_id);
+            return arch.getComponent<FunctionSafety::kUnsafe>(component_index, location.index);
+        } else {
+            return getTemporalStorage().assignComponent(e, component_id, skip_constructor);
+        }
     }
 
     template<typename T, typename... _ARGS>
     T& EntityManager::assignUnique(Entity e, _ARGS&&... args) {
         static const auto component_id = ComponentFactory::registerComponent<T>();
-        const auto& location = locations_[e.id()];
         constexpr bool use_custom_constructor = sizeof...(_ARGS) > 0;
-
-        auto& prev_arch = *archetypes_[location.archetype];
-        ComponentIdMask mask = prev_arch.mask_;
-        mask.add(component_id);
-        auto& arch = getArchetype(mask, prev_arch.sharedComponentInfo());
-        const auto prev_index = location.index;
-        const auto skip_init_mask = use_custom_constructor ? ComponentIdMask{component_id} : ComponentIdMask{};
-        arch.externalMove(e, prev_arch, prev_index, skip_init_mask);
-        const auto component_index = arch.getComponentIndex<FunctionSafety::kUnsafe>(component_id);
-        auto component_ptr = arch.getComponent<FunctionSafety::kUnsafe>(component_index, location.index);
-        if constexpr (use_custom_constructor) {
+        auto component_ptr = assign(e, component_id, use_custom_constructor);
+        if constexpr(use_custom_constructor) {
             *new(component_ptr) T{std::forward<_ARGS>(args)...};
         }
-
         return *reinterpret_cast<T*>(component_ptr);
     }
 
