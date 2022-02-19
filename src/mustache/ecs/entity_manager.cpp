@@ -258,33 +258,67 @@ void EntityManager::onUnlock() {
         throw std::runtime_error("Entity manager must be unlocked");
     }
 
-    const auto apply = [this](TemporalStorage& storage) {
-        for (const auto& info : storage.actions_) {
-            switch (info.action) {
-                case TemporalStorage::Action::kAssignComponent:
-                {
-                    auto& assign_info = storage.commands_.assign[info.index];
-                    const auto& component_info = ComponentFactory::componentInfo(assign_info.component_id);
-                    auto dest = assign(info.entity, assign_info.component_id, false);
-                    auto src = storage.data_.data() + assign_info.data_offset;
-                    component_info.functions.move(dest, src);
-                    if (component_info.functions.destroy) {
-                        component_info.functions.destroy(src);
-                    }
+    const auto doAction = [this](TemporalStorage& storage,
+            const TemporalStorage::ActionInfo& info) {
+        switch (info.action) {
+            case TemporalStorage::Action::kAssignComponent:
+            {
+                auto& assign_info = storage.commands_.assign[info.index];
+                const auto& component_info = ComponentFactory::componentInfo(assign_info.component_id);
+                auto dest = assign(info.entity, assign_info.component_id, false);
+                auto src = storage.data_.data() + assign_info.data_offset;
+                component_info.functions.move(dest, src);
+                if (component_info.functions.destroy) {
+                    component_info.functions.destroy(src);
                 }
-                    break;
-                case TemporalStorage::Action::kRemoveComponent:
-                    removeComponent(info.entity, storage.commands_.remove[info.index].component_id);
-                    break;
-                case TemporalStorage::Action::kDestroyEntity:
-                    destroy(info.entity);
-                    break;
-                case TemporalStorage::Action::kDestroyEntityNow:
-                    destroyNow(info.entity);
-                    break;
             }
+                break;
+            case TemporalStorage::Action::kRemoveComponent:
+                removeComponent(info.entity, storage.commands_.remove[info.index].component_id);
+                break;
+            case TemporalStorage::Action::kDestroyEntity:
+                destroy(info.entity);
+                break;
+            case TemporalStorage::Action::kDestroyEntityNow:
+                destroyNow(info.entity);
+                break;
         }
     };
+    const auto apply = [this, &doAction](TemporalStorage& storage) {
+        Entity prev_entity;
+        volatile bool was_entity_destroyed = false;
+        for (const auto& info : storage.actions_) {
+            volatile bool same_entity = prev_entity == info.entity;
+            if (!same_entity || !was_entity_destroyed) {
+                doAction(storage, info);
+                was_entity_destroyed = false;
+            }
+
+            prev_entity = info.entity;
+            const bool action_destroy = info.action == TemporalStorage::Action::kDestroyEntityNow;
+            was_entity_destroyed = was_entity_destroyed || action_destroy;
+        }
+    };
+
+    const auto comparator = [](const auto& a, const auto& b) {
+        if (a.entity != b.entity) {
+            return a.entity.id() < b.entity.id();
+        }
+        return a.action == TemporalStorage::Action::kDestroyEntityNow;
+    };
+
+    constexpr bool parallel_sort = false;
+
+    if constexpr(parallel_sort) {
+        world_.dispatcher().parallelFor([this, &comparator](size_t i){
+            auto& storage = temporal_storages_[ThreadId::make(i)];
+            std::sort(storage.actions_.begin(), storage.actions_.end(), comparator);
+        }, 0u, temporal_storages_.size());
+    } else {
+        for (auto& storage : temporal_storages_) {
+            std::sort(storage.actions_.begin(), storage.actions_.end(), comparator);
+        }
+    }
 
     for (auto& storage : temporal_storages_) {
         apply(storage);
