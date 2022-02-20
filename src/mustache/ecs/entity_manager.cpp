@@ -284,20 +284,35 @@ void EntityManager::onUnlock() {
                 break;
         }
     };
-    const auto apply = [this, &doAction](TemporalStorage& storage) {
-        Entity prev_entity;
-        volatile bool was_entity_destroyed = false;
-        for (const auto& info : storage.actions_) {
-            volatile bool same_entity = prev_entity == info.entity;
-            if (!same_entity || !was_entity_destroyed) {
-                doAction(storage, info);
-                was_entity_destroyed = false;
-            }
-
-            prev_entity = info.entity;
-            const bool action_destroy = info.action == TemporalStorage::Action::kDestroyEntityNow;
-            was_entity_destroyed = was_entity_destroyed || action_destroy;
+    const auto apply_pack = [&doAction, this](TemporalStorage& storage,
+            size_t begin, size_t end) {
+        /*const bool can_be_optimized = (end - begin) > 1u &&
+                storage.actions_[begin].action != TemporalStorage::Action::kDestroyEntityNow;
+        if (!can_be_optimized) {
+            doAction(storage, storage.actions_[begin]);
+            return;
         }
+        auto archetype = getArchetypeOf(storage.actions_[begin].entity);*/
+        for (size_t i = begin; i < end; ++i) {
+            const auto& info = storage.actions_[i];
+            doAction(storage, info);
+            if (info.action == TemporalStorage::Action::kDestroyEntityNow) {
+                return;
+            }
+        }
+    };
+
+    const auto apply = [&apply_pack](TemporalStorage& storage) {
+        size_t begin = 0u;
+        for (size_t i = 1; i < storage.actions_.size(); ++i) {
+            const auto entity = storage.actions_[i].entity;
+            const bool is_same = storage.actions_[i - 1].entity == entity;
+            if (!is_same) {
+                apply_pack(storage, begin, i);
+                begin = i;
+            }
+        }
+        apply_pack(storage, begin, storage.actions_.size());
     };
 
     const auto comparator = [](const auto& a, const auto& b) {
@@ -321,8 +336,10 @@ void EntityManager::onUnlock() {
     }
 
     for (auto& storage : temporal_storages_) {
-        apply(storage);
-        storage.clear();
+        if (!storage.actions_.empty()) {
+            apply(storage);
+            storage.clear();
+        }
     }
 }
 
