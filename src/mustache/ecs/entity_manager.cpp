@@ -261,6 +261,15 @@ void EntityManager::onUnlock() {
     const auto doAction = [this](TemporalStorage& storage,
             const TemporalStorage::ActionInfo& info) {
         switch (info.action) {
+            case TemporalStorage::Action::kDestroyEntityNow:
+                destroyNow(info.entity);
+                break;
+            case TemporalStorage::Action::kDestroyEntity:
+                destroy(info.entity);
+                break;
+            case TemporalStorage::Action::kRemoveComponent:
+                removeComponent(info.entity, storage.commands_.remove[info.index].component_id);
+                break;
             case TemporalStorage::Action::kAssignComponent:
             {
                 auto& assign_info = storage.commands_.assign[info.index];
@@ -273,31 +282,58 @@ void EntityManager::onUnlock() {
                 }
             }
                 break;
-            case TemporalStorage::Action::kRemoveComponent:
-                removeComponent(info.entity, storage.commands_.remove[info.index].component_id);
-                break;
-            case TemporalStorage::Action::kDestroyEntity:
-                destroy(info.entity);
-                break;
-            case TemporalStorage::Action::kDestroyEntityNow:
-                destroyNow(info.entity);
-                break;
         }
     };
     const auto apply_pack = [&doAction, this](TemporalStorage& storage,
             size_t begin, size_t end) {
-        /*const bool can_be_optimized = (end - begin) > 1u &&
+        const bool can_be_optimized = (end - begin) > 1u &&
                 storage.actions_[begin].action != TemporalStorage::Action::kDestroyEntityNow;
         if (!can_be_optimized) {
             doAction(storage, storage.actions_[begin]);
             return;
         }
-        auto archetype = getArchetypeOf(storage.actions_[begin].entity);*/
+        auto entity = storage.actions_[begin].entity;
+        const auto prev_location = locations_[entity.id()];
+        auto& prev_archetype = getArchetype(prev_location.archetype);
+        auto mask = prev_archetype.componentMask();
+        size_t assign_begin = end;
+        // update component mask to find new archetype
         for (size_t i = begin; i < end; ++i) {
-            const auto& info = storage.actions_[i];
-            doAction(storage, info);
-            if (info.action == TemporalStorage::Action::kDestroyEntityNow) {
-                return;
+            const auto info = storage.actions_[i];
+            switch (info.action) {
+                case TemporalStorage::Action::kDestroyEntityNow:
+                    std::terminate(); // unreachable
+                    break;
+                case TemporalStorage::Action::kDestroyEntity:
+                    doAction(storage, info);
+                    break;
+                case TemporalStorage::Action::kRemoveComponent:
+                    mask.set(storage.commands_.remove[info.index].component_id, false);
+                    break;
+                case TemporalStorage::Action::kAssignComponent:
+                    mask.set(storage.commands_.assign[info.index].component_id, true);
+                    assign_begin = std::min(assign_begin, i);
+                    break;
+            }
+        }
+        // Move to new archetype
+        auto& archetype = getArchetype(mask, prev_archetype.sharedComponentInfo());
+        archetype.externalMove(entity, prev_archetype, prev_location.index, mask);
+
+        if (assign_begin < end) {
+            // Init new components
+            const auto index = locations_[entity.id()].index;
+            auto view = archetype.getElementView(index);
+            for (size_t i = assign_begin; i < end; ++i) {
+                auto& info = storage.commands_.assign[storage.actions_[i].index];
+                const auto& component_info = ComponentFactory::componentInfo(info.component_id);
+                const auto component_index = archetype.getComponentIndex(info.component_id);
+                auto dest = view.getData(component_index);
+                auto src = storage.data_.data() + info.data_offset;
+                component_info.functions.move_constructor(dest, src);
+                if (component_info.functions.destroy) {
+                    component_info.functions.destroy(src);
+                }
             }
         }
     };
@@ -319,11 +355,10 @@ void EntityManager::onUnlock() {
         if (a.entity != b.entity) {
             return a.entity.id() < b.entity.id();
         }
-        return a.action == TemporalStorage::Action::kDestroyEntityNow;
+        return static_cast<uint32_t >(a.action) < static_cast<uint32_t >(b.action);
     };
 
-    constexpr bool parallel_sort = false;
-
+    constexpr bool parallel_sort = true;
     if constexpr(parallel_sort) {
         world_.dispatcher().parallelFor([this, &comparator](size_t i){
             auto& storage = temporal_storages_[ThreadId::make(i)];

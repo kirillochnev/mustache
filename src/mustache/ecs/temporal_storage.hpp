@@ -9,10 +9,10 @@ namespace mustache {
 
     struct TemporalStorage {
         enum class Action : uint32_t {
-            kAssignComponent = 1,
+            kDestroyEntityNow = 0,
+            kDestroyEntity = 1,
             kRemoveComponent = 2,
-            kDestroyEntity = 3,
-            kDestroyEntityNow = 4
+            kAssignComponent = 3,
         };
 
         void* assignComponent(Entity entity, ComponentId id, bool skip_constructor) {

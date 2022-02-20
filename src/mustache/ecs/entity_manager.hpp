@@ -142,8 +142,12 @@ namespace mustache {
             forEach(std::forward<_F>(function), mode, std::make_index_sequence<args_count>());
         }
 
-        EntityBuilder<void> begin(Entity entity = {}) noexcept {
-            return EntityBuilder<void>{this, entity};
+        EntityBuilder<void> begin(Entity entity = {}) {
+            if (!isLocked()) {
+                return EntityBuilder<void>{this, entity};
+            }
+            throw std::runtime_error("EntityBuilder is not implemented for locked EntityManager,"
+                                     " use EntityManager functions instead");
         }
 
         template<typename TupleType>
