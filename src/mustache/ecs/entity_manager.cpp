@@ -107,6 +107,9 @@ void EntityManager::clear() {
 }
 
 void EntityManager::update() {
+    if (isLocked()) {
+        throw std::runtime_error("Can not update locked EntityManager");
+    }
     world_version_ = world_.version();
     for (auto entity : marked_for_delete_) {
         destroyNow(entity);
@@ -251,6 +254,7 @@ void EntityManager::markDirty(Entity entity, ComponentId component_id) noexcept 
 void EntityManager::onLock() {
     const auto thread_count = world_.dispatcher().maxThreadCount();
     temporal_storages_.resize(thread_count);
+    next_entity_id_ = static_cast<uint32_t >(entities_.size());
 }
 
 void EntityManager::onUnlock() {
@@ -260,21 +264,38 @@ void EntityManager::onUnlock() {
 
     const auto doAction = [this](TemporalStorage& storage,
             const TemporalStorage::ActionInfo& info) {
+        const auto entity = info.entity;
         switch (info.action) {
             case TemporalStorage::Action::kDestroyEntityNow:
-                destroyNow(info.entity);
+                destroyNow(entity);
+                break;
+            case TemporalStorage::Action::kCreateEntity:
+            {
+                const auto index = entity.id().toInt();
+                if (locations_.size() <= index) {
+                    locations_.resize(index + 1);
+                }
+                if (entities_.size() <= index) {
+                    entities_.resize(index + 1);
+                }
+                entities_[entity.id()] = entity;
+                auto* archetype = storage.commands_.create[info.index];
+                if (archetype) {
+                    updateLocation(entity, archetype->id(), archetype->insert(entity));
+                }
+            }
                 break;
             case TemporalStorage::Action::kDestroyEntity:
-                destroy(info.entity);
+                destroy(entity);
                 break;
             case TemporalStorage::Action::kRemoveComponent:
-                removeComponent(info.entity, storage.commands_.remove[info.index].component_id);
+                removeComponent(entity, storage.commands_.remove[info.index].component_id);
                 break;
             case TemporalStorage::Action::kAssignComponent:
             {
                 auto& assign_info = storage.commands_.assign[info.index];
                 const auto& component_info = *assign_info.type_info;
-                auto dest = assign(info.entity, assign_info.component_id, false);
+                auto dest = assign(entity, assign_info.component_id, false);
                 auto src = assign_info.ptr;
                 component_info.functions.move(dest, src);
                 if (component_info.functions.destroy) {
@@ -304,6 +325,9 @@ void EntityManager::onUnlock() {
             switch (info.action) {
                 case TemporalStorage::Action::kDestroyEntityNow:
                     std::terminate(); // unreachable
+                    break;
+                case TemporalStorage::Action::kCreateEntity:
+                    doAction(storage, info);
                     break;
                 case TemporalStorage::Action::kDestroyEntity:
                     doAction(storage, info);

@@ -10,9 +10,10 @@ namespace mustache {
     struct TemporalStorage {
         enum class Action : uint32_t {
             kDestroyEntityNow = 0,
-            kDestroyEntity = 1,
-            kRemoveComponent = 2,
-            kAssignComponent = 3,
+            kCreateEntity = 1,
+            kDestroyEntity = 2,
+            kRemoveComponent = 3,
+            kAssignComponent = 4,
         };
         TemporalStorage() = default;
         TemporalStorage(TemporalStorage&&) = default;
@@ -33,6 +34,14 @@ namespace mustache {
                 component_info.functions.create(command.ptr);
             }
             return command.ptr;
+        }
+
+        void create(Entity entity, Archetype* archetype) {
+            auto& action = actions_.emplace_back();
+            action.entity = entity;
+            action.index = static_cast<uint32_t >(commands_.create.size());
+            action.action = Action::kCreateEntity;
+            commands_.create.push_back(archetype);
         }
 
         void removeComponent(Entity entity, ComponentId id) {
@@ -95,6 +104,7 @@ namespace mustache {
         struct {
             std::vector<AssignComponentWithArgs> assign;
             std::vector<RemoveComponent> remove;
+            std::vector<Archetype*> create;
         } commands_;
 
         struct DataChunk {
