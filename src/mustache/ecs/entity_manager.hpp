@@ -232,8 +232,8 @@ namespace mustache {
         SharedComponentPtr getCreatedSharedComponent(const SharedComponentPtr& ptr, SharedComponentId id);
 
         template<typename Component, typename TupleType, size_t... _I>
-        void initComponent(Archetype& archetype, ArchetypeEntityIndex entity_index,
-                           TupleType& tuple, std::index_sequence<_I...>&&) {
+        void initComponent([[maybe_unused]] Archetype& archetype, [[maybe_unused]] ArchetypeEntityIndex entity_index,
+                           [[maybe_unused]] TupleType& tuple, std::index_sequence<_I...>&&) {
             if constexpr (std::tuple_size<TupleType>::value > 0 ||
                           !std::is_trivially_default_constructible<Component>::value) {
                 static const auto component_id = ComponentFactory::registerComponent<Component>();

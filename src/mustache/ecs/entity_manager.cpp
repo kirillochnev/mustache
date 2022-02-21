@@ -273,13 +273,14 @@ void EntityManager::onUnlock() {
             case TemporalStorage::Action::kAssignComponent:
             {
                 auto& assign_info = storage.commands_.assign[info.index];
-                const auto& component_info = ComponentFactory::componentInfo(assign_info.component_id);
+                const auto& component_info = *assign_info.type_info;
                 auto dest = assign(info.entity, assign_info.component_id, false);
-                auto src = storage.data_.data() + assign_info.data_offset;
+                auto src = assign_info.ptr;
                 component_info.functions.move(dest, src);
                 if (component_info.functions.destroy) {
                     component_info.functions.destroy(src);
                 }
+                assign_info.type_info = nullptr;
             }
                 break;
         }
@@ -329,7 +330,7 @@ void EntityManager::onUnlock() {
                 const auto& component_info = ComponentFactory::componentInfo(info.component_id);
                 const auto component_index = archetype.getComponentIndex(info.component_id);
                 auto dest = view.getData(component_index);
-                auto src = storage.data_.data() + info.data_offset;
+                auto src = info.ptr;
                 component_info.functions.move_constructor(dest, src);
                 if (component_info.functions.destroy) {
                     component_info.functions.destroy(src);
@@ -338,7 +339,7 @@ void EntityManager::onUnlock() {
         }
     };
 
-    const auto apply = [&apply_pack](TemporalStorage& storage) {
+    const auto apply_storage = [&apply_pack](TemporalStorage& storage) {
         size_t begin = 0u;
         for (size_t i = 1; i < storage.actions_.size(); ++i) {
             const auto entity = storage.actions_[i].entity;
@@ -372,7 +373,7 @@ void EntityManager::onUnlock() {
 
     for (auto& storage : temporal_storages_) {
         if (!storage.actions_.empty()) {
-            apply(storage);
+            apply_storage(storage);
             storage.clear();
         }
     }
