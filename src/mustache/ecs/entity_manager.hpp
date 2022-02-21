@@ -36,7 +36,9 @@ namespace mustache {
         explicit EntityManager(World& world);
 
         /// iteration safe
-        [[nodiscard]] Entity create();
+        [[nodiscard]] MUSTACHE_INLINE Entity create() {
+            return create<>();
+        }
 
         void update();
 
@@ -145,11 +147,7 @@ namespace mustache {
         }
 
         EntityBuilder<void> begin(Entity entity = {}) {
-            if (!isLocked()) {
-                return EntityBuilder<void>{this, entity};
-            }
-            throw std::runtime_error("EntityBuilder is not implemented for locked EntityManager,"
-                                     " use EntityManager functions instead");
+            return EntityBuilder<void>{this, entity};
         }
 
         template<typename TupleType>
@@ -247,6 +245,11 @@ namespace mustache {
         SharedComponentPtr getCreatedSharedComponent(const SharedComponentPtr& ptr, SharedComponentId id);
 
         template<typename Component, typename TupleType, size_t... _I>
+        void initComponent(void* ptr, TupleType& tuple, std::index_sequence<_I...>&&) {
+            ComponentFactory::initComponent<Component>(ptr,std::get<_I>(tuple)...);
+        }
+
+        template<typename Component, typename TupleType, size_t... _I>
         void initComponent([[maybe_unused]] Archetype& archetype, [[maybe_unused]] ArchetypeEntityIndex entity_index,
                            [[maybe_unused]] TupleType& tuple, std::index_sequence<_I...>&&) {
             if constexpr (std::tuple_size<TupleType>::value > 0 ||
@@ -260,6 +263,9 @@ namespace mustache {
 
         template<typename Arg>
         bool initComponent(Archetype& archetype, ArchetypeEntityIndex entity_index, Arg&& arg);
+
+        template<typename Arg>
+        bool initComponent(void* ptr, Arg&& arg);
 
         template<typename TupleType, size_t... _I>
         void initComponents(Entity entity, TupleType& tuple, const SharedComponentsInfo&,
@@ -366,6 +372,7 @@ namespace mustache {
                 next_slot_ = entities_[id].id();
                 entity.reset(id, version, this_world_id_);
                 entities_[id] = entity;
+                locations_[id] = EntityLocationInWorld{};
                 --empty_slots_;
             }
             return entity;
@@ -376,7 +383,7 @@ namespace mustache {
     Entity EntityManager::create(Archetype& archetype) {
         if (!isLocked()) {
             const Entity entity = createWithOutInit();
-            updateLocation(entity, archetype.id(), archetype.insert(entity));
+            archetype.insert(entity);
             return entity;
         }
         return createLocked(&archetype);
@@ -438,7 +445,7 @@ namespace mustache {
     Archetype& EntityManager::getArchetype(ArchetypeIndex index) noexcept (!isSafe(_Safety)) {
         if constexpr (isSafe(_Safety)) {
             if (!archetypes_.has(index)) {
-                throw std::runtime_error("Index is out of bound");
+                throw std::runtime_error("Index is out of bound: " + std::to_string(index.toInt()));
             }
         }
         return *archetypes_[index];
@@ -630,21 +637,55 @@ namespace mustache {
         initComponent<Component>(archetype, entity_index, arg.args, std::make_index_sequence<num_args>());
         return true;
     }
+    template<typename Arg>
+    bool EntityManager::initComponent(void* ptr, Arg&& arg) {
+        using ArgType = typename std::remove_reference<Arg>::type;
+        using Component = typename ArgType::Component;
+        constexpr size_t num_args = ArgType::num_args;
+        initComponent<Component>(ptr, arg.args, std::make_index_sequence<num_args>());
+        return true;
+    }
 
     template<typename TupleType, size_t... _I>
     void EntityManager::initComponents(Entity entity, TupleType& tuple, const SharedComponentsInfo& info,
                                        const std::index_sequence<_I...>&) {
-        ComponentIdMask mask = ComponentFactory::makeMask<typename std::tuple_element<_I, TupleType>::type::Component...>();
-
-        Archetype& archetype = getArchetype(mask, info);
+        if (isLocked()) {
+            auto& storage = getTemporalStorage();
+            static const std::array component_ids {
+                    ComponentFactory::registerComponent<typename std::tuple_element<_I, TupleType>::type::Component>()...
+            };
+            const auto unused_init_list = {
+                    initComponent(storage.assignComponent(entity, component_ids[_I], true), std::get<_I>(tuple))...
+            };
+            (void) unused_init_list;
+            return;
+        }
+        const auto mask = ComponentFactory::makeMask<typename std::tuple_element<_I, TupleType>::type::Component...>();
+        auto& archetype = getArchetype(mask, info);
         const auto index = archetype.insert(entity, mask);
-        auto unused_init_list = {initComponent(archetype, index, std::get<_I>(tuple))...};
+        const auto unused_init_list = {initComponent(archetype, index, std::get<_I>(tuple))...};
         (void) unused_init_list;
     }
 
     template<typename TupleType, size_t... _I>
     void EntityManager::updateComponents(const ComponentIdMask& to_remove, Entity entity, TupleType& tuple,
                                          SharedComponentsInfo shared, const std::index_sequence<_I...>&) {
+        if (isLocked()) {
+            auto& storage = getTemporalStorage();
+            if constexpr(sizeof...(_I) > 0u) {
+                static const std::array component_ids{
+                        ComponentFactory::registerComponent<typename std::tuple_element<_I, TupleType>::type::Component>()...
+                };
+                const auto unused_init_list = {
+                        initComponent(storage.assignComponent(entity, component_ids[_I], true), std::get<_I>(tuple))...
+                };
+                (void) unused_init_list;
+            }
+            to_remove.forEachItem([&storage, entity](ComponentId id) {
+                storage.removeComponent(entity, id);
+            });
+            return;
+        }
         ComponentIdMask skip_mask;
         if constexpr(sizeof...(_I) > 0) {
             skip_mask = ComponentFactory::makeMask<typename std::tuple_element<_I, TupleType>::type::Component...>();

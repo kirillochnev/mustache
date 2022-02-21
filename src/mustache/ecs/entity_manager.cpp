@@ -67,7 +67,7 @@ Archetype& EntityManager::getArchetype(const ComponentIdMask& mask, const Shared
     archetypes_.emplace_back(result, deleter);
     return *result;
 }
-
+/*
 Entity EntityManager::create() {
     const auto get_entity = [this] {
         if(!empty_slots_) {
@@ -95,7 +95,7 @@ Entity EntityManager::create() {
     getArchetype<>().insert(entity);
     return entity;
 }
-
+*/
 void EntityManager::clear() {
     entities_.clear();
     locations_.clear();
@@ -316,8 +316,12 @@ void EntityManager::onUnlock() {
         }
         auto entity = storage.actions_[begin].entity;
         const auto prev_location = locations_[entity.id()];
-        auto& prev_archetype = getArchetype(prev_location.archetype);
-        auto mask = prev_archetype.componentMask();
+        Archetype* prev_archetype = nullptr;
+        ComponentIdMask mask;
+        if (storage.actions_[begin].action != TemporalStorage::Action::kCreateEntity) {
+            prev_archetype = &getArchetype(prev_location.archetype);
+            mask = prev_archetype->componentMask();
+        }
         size_t assign_begin = end;
         // update component mask to find new archetype
         for (size_t i = begin; i < end; ++i) {
@@ -342,17 +346,23 @@ void EntityManager::onUnlock() {
             }
         }
         // Move to new archetype
-        auto& archetype = getArchetype(mask, prev_archetype.sharedComponentInfo());
-        archetype.externalMove(entity, prev_archetype, prev_location.index, mask);
+        Archetype* archetype = nullptr;
+        if (prev_archetype != nullptr) {
+            archetype = &getArchetype(mask, prev_archetype->sharedComponentInfo());
+            archetype->externalMove(entity, *prev_archetype, prev_location.index, mask);
+        } else {
+            archetype = &getArchetype(mask, {});
+            archetype->insert(entity, mask);
+        }
 
         if (assign_begin < end) {
             // Init new components
             const auto index = locations_[entity.id()].index;
-            auto view = archetype.getElementView(index);
+            auto view = archetype->getElementView(index);
             for (size_t i = assign_begin; i < end; ++i) {
                 auto& info = storage.commands_.assign[storage.actions_[i].index];
                 const auto& component_info = ComponentFactory::componentInfo(info.component_id);
-                const auto component_index = archetype.getComponentIndex(info.component_id);
+                const auto component_index = archetype->getComponentIndex(info.component_id);
                 auto dest = view.getData(component_index);
                 auto src = info.ptr;
                 component_info.functions.move_constructor(dest, src);
