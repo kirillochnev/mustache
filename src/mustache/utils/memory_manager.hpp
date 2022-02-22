@@ -41,8 +41,29 @@ class MUSTACHE_EXPORT MemoryManager : mustache::Uncopiable {
     public:
         Allocator() = default;
 
+        Allocator(const Allocator& oth):
+            manager_{oth.manager_} {
+
+        }
+        Allocator(Allocator&& oth):
+            manager_{oth.manager_} {
+
+        }
+
+        Allocator& operator=(const Allocator& rhs) {
+            return manager_ = rhs.manager_;
+        }
+
+        Allocator& operator=(Allocator&& rhs) {
+            return manager_ = rhs.manager_;
+        }
+
         bool operator==(const Allocator& rhs) const {
             return manager_ == rhs.manager_;
+        }
+
+        bool operator!=(const Allocator& rhs) const {
+            return manager_ != rhs.manager_;
         }
 
         constexpr Allocator(MemoryManager& manager):
