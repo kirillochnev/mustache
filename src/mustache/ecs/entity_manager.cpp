@@ -315,10 +315,11 @@ void EntityManager::onUnlock() {
             return;
         }
         auto entity = storage.actions_[begin].entity;
-        const auto prev_location = locations_[entity.id()];
+        EntityLocationInWorld prev_location;
         Archetype* prev_archetype = nullptr;
         ComponentIdMask mask;
         if (storage.actions_[begin].action != TemporalStorage::Action::kCreateEntity) {
+            prev_location = locations_[entity.id()];
             prev_archetype = &getArchetype(prev_location.archetype);
             mask = prev_archetype->componentMask();
         }
