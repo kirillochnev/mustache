@@ -1,6 +1,7 @@
-#include <mustache/ecs/entity_manager.hpp>
-#include <mustache/ecs/world.hpp>
+#include <mustache/ecs/ecs.hpp>
+
 #include <gtest/gtest.h>
+
 #include <map>
 
 namespace {

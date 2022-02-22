@@ -15,6 +15,8 @@
 
 namespace mustache {
 
+    class World;
+
     struct MUSTACHE_EXPORT JobInvocationIndex {
         ParallelTaskId task_index;
         ParallelTaskItemIndexInTask entity_index_in_task;
@@ -36,6 +38,11 @@ namespace mustache {
     template <typename T>
     struct IsArgComponentArraySize {
         static constexpr bool value = IsOneOfTypes<T, ComponentArraySize, const ComponentArraySize&>::value;
+    };
+
+    template <typename T>
+    struct IsArgWorld {
+        static constexpr bool value = IsOneOfTypes<T, World&, const World&>::value;
     };
 
     template <typename Element, typename... ARGS>
@@ -67,7 +74,8 @@ namespace mustache {
                 kSharedComponent = 1,
                 kEntity = 2,
                 kInvocationIndex = 3,
-                kArraySize = 4
+                kArraySize = 4,
+                kWorld = 5
             };
             ArgType type;
             uint32_t position;
@@ -89,10 +97,15 @@ namespace mustache {
             if constexpr(IsArgComponentArraySize<ArgType>::value) {
                 return ArgInfo(ArgInfo::kArraySize, _I);
             }
+            if constexpr(IsArgWorld<ArgType>::value) {
+                return ArgInfo(ArgInfo::kWorld, _I);
+            }
 
+            // Arg is component
             if constexpr (isComponentShared<ArgType>()) {
                 return ArgInfo(ArgInfo::kSharedComponent, _I);
             }
+
             return ArgInfo(ArgInfo::kComponent, _I);
         }
 

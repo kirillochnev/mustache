@@ -3,6 +3,7 @@
 #include <mustache/utils/logger.hpp>
 
 #include <map>
+#include <mutex>
 
 using namespace mustache;
 
@@ -17,7 +18,10 @@ namespace {
         std::map<std::string, Element> type_map;
         IdType next_component_id{IdType::make(0)};
         std::vector<TypeInfo> components_info;
+        mutable std::mutex mutex;
+
         IdType getId(const TypeInfo& info) {
+            std::unique_lock lock {mutex};
             const auto find_res = type_map.find(info.name);
 
             if (find_res != type_map.end()) {
@@ -44,6 +48,7 @@ namespace {
             return return_value;
         }
         const TypeInfo& componentInfo(IdType id) const noexcept {
+            std::unique_lock lock {mutex};
             return components_info[id.toInt()];
         }
 

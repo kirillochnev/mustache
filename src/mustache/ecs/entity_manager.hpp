@@ -9,6 +9,7 @@
 #include <mustache/ecs/archetype.hpp>
 #include <mustache/ecs/component_mask.hpp>
 #include <mustache/ecs/entity_builder.hpp>
+#include <mustache/ecs/temporal_storage.hpp>
 #include <mustache/ecs/component_factory.hpp>
 
 #include <map>
@@ -34,27 +35,24 @@ namespace mustache {
     public:
         explicit EntityManager(World& world);
 
-        [[nodiscard]] Entity create();
+        /// iteration safe
+        [[nodiscard]] MUSTACHE_INLINE Entity create() {
+            return create<>();
+        }
 
         void update();
 
         // Checks if entity is valid for this World
-        [[nodiscard]] MUSTACHE_INLINE bool isEntityValid(Entity entity) const noexcept {
-            const auto id = entity.id();  // it is ok to get id for no-valid entity, null id will be returned
-            if (entity.isNull() || entity.worldId() != this_world_id_ ||
-                !entities_.has(id) || entities_[id].version() != entity.version()) {
-                return false;
-            }
-
-            return true;
-        }
-
+        /// iteration safe
+        [[nodiscard]] MUSTACHE_INLINE bool isEntityValid(Entity entity) const noexcept;
 
         template<typename _F>
         MUSTACHE_INLINE void forEachArchetype(_F&& func) MUSTACHE_COPY_NOEXCEPT (func);
 
+        /// iteration safe
         [[nodiscard]] MUSTACHE_INLINE Entity create(Archetype& archetype);
 
+        /// iteration safe
         template<typename... Components>
         [[nodiscard]] MUSTACHE_INLINE Entity create();
 
@@ -62,67 +60,76 @@ namespace mustache {
 
         void clearArchetype(Archetype& archetype);
 
+        /// iteration safe
         MUSTACHE_INLINE void destroy(Entity entity);
 
+        /// iteration safe
+        [[nodiscard]] MUSTACHE_INLINE bool isMarkedForDestroy(Entity entity) const noexcept;
+
+        /// iteration safe
         template<FunctionSafety _Safety = FunctionSafety::kSafe>
         MUSTACHE_INLINE void destroyNow(Entity entity);
 
         Archetype& getArchetype(const ComponentIdMask&, const SharedComponentsInfo& shared_component_mask);
 
+        /// iteration safe
         Archetype* getArchetypeOf(Entity entity) const noexcept;
 
         template<typename... ARGS>
         MUSTACHE_INLINE Archetype& getArchetype();
 
+        /// iteration safe
         [[nodiscard]] size_t MUSTACHE_INLINE getArchetypesCount() const noexcept;
 
+        /// iteration safe
         template<FunctionSafety _Safety = FunctionSafety::kDefault>
         [[nodiscard]] MUSTACHE_INLINE  Archetype& getArchetype(ArchetypeIndex index) noexcept (!isSafe(_Safety));
 
+        /// iteration safe
         template<bool _Const = false, FunctionSafety _Safety = FunctionSafety::kSafe>
         MUSTACHE_INLINE auto getComponent(Entity entity, ComponentId) const noexcept;
 
+        /// iteration safe
         template<typename T, FunctionSafety _Safety = FunctionSafety::kSafe>
         MUSTACHE_INLINE T* getComponent(Entity entity) const noexcept;
 
+        /// iteration safe
         template<typename T>
         MUSTACHE_INLINE const T* getSharedComponent(Entity entity) const noexcept;
 
+        /// iteration safe
         template<typename T, FunctionSafety _Safety = FunctionSafety::kSafe>
-        MUSTACHE_INLINE bool removeComponent(Entity entity);
+        MUSTACHE_INLINE void removeComponent(Entity entity);
 
-        bool removeComponent(Entity entity, ComponentId component);
+        /// iteration safe
+        void removeComponent(Entity entity, ComponentId component);
 
+        /// NOT iteration safe
         template<typename T, FunctionSafety _Safety = FunctionSafety::kSafe>
         MUSTACHE_INLINE bool removeSharedComponent(Entity entity);
 
+        /// NOT iteration safe
         bool removeSharedComponent(Entity entity, SharedComponentId component);
 
 
+        /// iteration safe
         template<typename T, typename... _ARGS>
         MUSTACHE_INLINE decltype(auto) assign(Entity e, _ARGS&&... args);
 
+        /// iteration safe
         MUSTACHE_INLINE void* assign(Entity e, ComponentId id, bool skip_constructor);
 
+        /// iteration safe
         template<typename T, FunctionSafety _Safety = FunctionSafety::kDefault>
         [[nodiscard]] MUSTACHE_INLINE bool hasComponent(Entity entity) const noexcept;
 
+        /// iteration safe
         template<FunctionSafety _Safety = FunctionSafety::kDefault, typename _ComponentId>
         [[nodiscard]] MUSTACHE_INLINE bool hasComponent(Entity entity, _ComponentId id) const noexcept;
 
+        /// iteration safe
         template<typename T, FunctionSafety _Safety = FunctionSafety::kSafe>
-        [[nodiscard]] MUSTACHE_INLINE WorldVersion getWorldVersionOfLastComponentUpdate(Entity entity) const noexcept {
-            const auto id = entity.id();
-            if constexpr (isSafe(_Safety)) {
-                if (entity.isNull() || !locations_.has(id)) {
-                    return WorldVersion::null();
-                }
-            }
-            const auto location = locations_[entity.id()];
-            const auto& archetype = archetypes_[location.archetype];
-            const auto component_id = ComponentFactory::registerComponent<T>();
-            return archetype->getComponentVersion(location.index, component_id);
-        }
+        [[nodiscard]] MUSTACHE_INLINE WorldVersion getWorldVersionOfLastComponentUpdate(Entity entity) const noexcept;
 
         template<typename _F, typename... ARGS>
         MUSTACHE_INLINE void forEachWithArgsTypes(_F&& function, JobRunMode mode);
@@ -139,7 +146,7 @@ namespace mustache {
             forEach(std::forward<_F>(function), mode, std::make_index_sequence<args_count>());
         }
 
-        EntityBuilder<void> begin(Entity entity = {}) noexcept {
+        EntityBuilder<void> begin(Entity entity = {}) {
             return EntityBuilder<void>{this, entity};
         }
 
@@ -178,26 +185,73 @@ namespace mustache {
         template<typename T, typename... _ARGS>
         MUSTACHE_INLINE const T& assignShared(Entity e, _ARGS&&... args);
 
+        /// iteration safe
         template<typename T, typename... _ARGS>
         MUSTACHE_INLINE T& assignUnique(Entity e, _ARGS&&... args);
 
         MUSTACHE_INLINE SharedComponentPtr assignShared(Entity e, const SharedComponentPtr&, SharedComponentId id);
 
+        /// iteration safe
         template<typename T>
         void markDirty(Entity entity) noexcept {
             markDirty<ComponentFactory::registerComponent<T>()>(entity);
         }
 
+        /// iteration safe
         void markDirty(Entity entity, ComponentId component_id) noexcept;
+
+        [[nodiscard]] MUSTACHE_INLINE bool isLocked() const noexcept {
+            return lock_counter_ > 0u;
+        }
+
+        MUSTACHE_INLINE void lock() noexcept {
+            ++lock_counter_;
+            if (lock_counter_ == 1u) {
+                onLock();
+            }
+        }
+
+        MUSTACHE_INLINE bool unlock() noexcept {
+            if (lock_counter_ > 0u) {
+                --lock_counter_;
+            }
+            if (lock_counter_ == 0u) {
+                onUnlock();
+            }
+            return lock_counter_ < 1u;
+        }
     private:
+
+        void onLock();
+        void onUnlock();
+
+        Entity createLocked(Archetype* archetype) noexcept {
+            const auto id = EntityId::make(next_entity_id_++);
+            Entity entity;
+            entity.reset(id, EntityVersion::make(0u), this_world_id_);
+            getTemporalStorage().create(entity, archetype);
+            return entity;
+        }
+
+        [[nodiscard]] ThreadId threadId() const noexcept;
+
+        [[nodiscard]] TemporalStorage& getTemporalStorage() noexcept {
+            static thread_local const auto thread_id = threadId();
+            return temporal_storages_[thread_id];
+        }
 
         [[nodiscard]] MUSTACHE_INLINE Entity createWithOutInit() noexcept;
 
         SharedComponentPtr getCreatedSharedComponent(const SharedComponentPtr& ptr, SharedComponentId id);
 
         template<typename Component, typename TupleType, size_t... _I>
-        void initComponent(Archetype& archetype, ArchetypeEntityIndex entity_index,
-                           TupleType& tuple, std::index_sequence<_I...>&&) {
+        void initComponent(void* ptr, TupleType& tuple, std::index_sequence<_I...>&&) {
+            ComponentFactory::initComponent<Component>(ptr,std::get<_I>(tuple)...);
+        }
+
+        template<typename Component, typename TupleType, size_t... _I>
+        void initComponent([[maybe_unused]] Archetype& archetype, [[maybe_unused]] ArchetypeEntityIndex entity_index,
+                           [[maybe_unused]] TupleType& tuple, std::index_sequence<_I...>&&) {
             if constexpr (std::tuple_size<TupleType>::value > 0 ||
                           !std::is_trivially_default_constructible<Component>::value) {
                 static const auto component_id = ComponentFactory::registerComponent<Component>();
@@ -209,6 +263,9 @@ namespace mustache {
 
         template<typename Arg>
         bool initComponent(Archetype& archetype, ArchetypeEntityIndex entity_index, Arg&& arg);
+
+        template<typename Arg>
+        bool initComponent(void* ptr, Arg&& arg);
 
         template<typename TupleType, size_t... _I>
         void initComponents(Entity entity, TupleType& tuple, const SharedComponentsInfo&,
@@ -244,7 +301,9 @@ namespace mustache {
         };
 
         World& world_;
-
+        uint32_t lock_counter_{0u};
+        std::atomic<uint32_t > next_entity_id_; // for create entity with locked EntityManager
+        ArrayWrapper<TemporalStorage, ThreadId, false> temporal_storages_;
         ArrayWrapper<SharedComponentsData, SharedComponentId, false> shared_components_;
         using ArchetypeMap = std::map<SharedComponentsData, Archetype*>;
         std::map<ArchetypeComponents, ArchetypeMap> mask_to_arch_;
@@ -271,6 +330,28 @@ namespace mustache {
         std::vector<ArchetypeChunkSizeFunction> get_chunk_size_functions_;
     };
 
+    bool EntityManager::isEntityValid(Entity entity) const noexcept {
+        const auto id = entity.id();  // it is ok to get id for no-valid entity, null id will be returned
+        if (entity.isNull() || entity.worldId() != this_world_id_ ||
+            !entities_.has(id) || entities_[id].version() != entity.version()) {
+            return false;
+        }
+        return true;
+    }
+    template<typename T, FunctionSafety _Safety>
+    WorldVersion EntityManager::getWorldVersionOfLastComponentUpdate(Entity entity) const noexcept {
+        const auto id = entity.id();
+        if constexpr (isSafe(_Safety)) {
+            if (entity.isNull() || !locations_.has(id)) {
+                return WorldVersion::null();
+            }
+        }
+        const auto location = locations_[entity.id()];
+        const auto& archetype = archetypes_[location.archetype];
+        const auto component_id = ComponentFactory::registerComponent<T>();
+        return archetype->getComponentVersion(location.index, component_id);
+    }
+
     template<typename _F>
     void EntityManager::forEachArchetype(_F&& func) MUSTACHE_COPY_NOEXCEPT(func) {
         for (auto& arh : archetypes_) {
@@ -279,26 +360,33 @@ namespace mustache {
     }
 
     Entity EntityManager::createWithOutInit() noexcept {
-        Entity entity;
-        if(!empty_slots_) {
-            entity.reset(EntityId::make(entities_.size()), EntityVersion::make(0), this_world_id_);
-            entities_.push_back(entity);
-            locations_.emplace_back();
-        } else {
-            const auto id = next_slot_;
-            const auto version = entities_[id].version();
-            next_slot_ = entities_[id].id();
-            entity.reset(id, version, this_world_id_);
-            entities_[id] = entity;
-            --empty_slots_;
+        if (!isLocked()) {
+            Entity entity;
+            if (!empty_slots_) {
+                entity.reset(EntityId::make(entities_.size()), EntityVersion::make(0), this_world_id_);
+                entities_.push_back(entity);
+                locations_.emplace_back();
+            } else {
+                const auto id = next_slot_;
+                const auto version = entities_[id].version();
+                next_slot_ = entities_[id].id();
+                entity.reset(id, version, this_world_id_);
+                entities_[id] = entity;
+                locations_[id] = EntityLocationInWorld{};
+                --empty_slots_;
+            }
+            return entity;
         }
-        return entity;
+        return createLocked(nullptr);
     }
 
     Entity EntityManager::create(Archetype& archetype) {
-        const Entity entity = createWithOutInit();
-        updateLocation(entity, archetype.id(), archetype.insert(entity));
-        return entity;
+        if (!isLocked()) {
+            const Entity entity = createWithOutInit();
+            archetype.insert(entity);
+            return entity;
+        }
+        return createLocked(&archetype);
     }
 
     template<typename... Components>
@@ -307,11 +395,24 @@ namespace mustache {
     }
 
     void EntityManager::destroy(Entity entity) {
-        marked_for_delete_.insert(entity);
+        if (isLocked()) {
+            getTemporalStorage().destroy(entity);
+        } else {
+            marked_for_delete_.insert(entity);
+        }
+    }
+
+    bool EntityManager::isMarkedForDestroy(Entity entity) const noexcept {
+        return marked_for_delete_.count(entity) > 0u;
     }
 
     template<FunctionSafety _Safety>
     void EntityManager::destroyNow(Entity entity) {
+        if (isLocked()) {
+            getTemporalStorage().destroyNow(entity);
+            return;
+        }
+
         if constexpr (isSafe(_Safety)) {
             if (!isEntityValid(entity)) {
                 return;
@@ -344,7 +445,7 @@ namespace mustache {
     Archetype& EntityManager::getArchetype(ArchetypeIndex index) noexcept (!isSafe(_Safety)) {
         if constexpr (isSafe(_Safety)) {
             if (!archetypes_.has(index)) {
-                throw std::runtime_error("Index is out of bound");
+                throw std::runtime_error("Index is out of bound: " + std::to_string(index.toInt()));
             }
         }
         return *archetypes_[index];
@@ -419,48 +520,41 @@ namespace mustache {
     }
 
     template<typename T, FunctionSafety _Safety>
-    bool EntityManager::removeComponent(Entity entity) {
+    void EntityManager::removeComponent(Entity entity) {
         static const auto component_id = ComponentFactory::registerComponent<T>();
         if constexpr (isSafe(_Safety)) {
             if (!isEntityValid(entity)) {
-                return false;
+                return;
             }
         }
 
-        return removeComponent(entity, component_id);
+        removeComponent(entity, component_id);
     }
 
     void* EntityManager::assign(Entity e, ComponentId component_id, bool skip_constructor) {
-        const auto& location = locations_[e.id()];
-        auto& prev_arch = *archetypes_[location.archetype];
-        ComponentIdMask mask = prev_arch.mask_;
-        mask.add(component_id);
-        auto& arch = getArchetype(mask, prev_arch.sharedComponentInfo());
-        const auto prev_index = location.index;
-        arch.externalMove(e, prev_arch, prev_index, skip_constructor ? mask : ComponentIdMask{});
-        const auto component_index = arch.getComponentIndex<FunctionSafety::kUnsafe>(component_id);
-        return arch.getComponent<FunctionSafety::kUnsafe>(component_index, location.index);
+        if (!isLocked()) {
+            const auto& location = locations_[e.id()];
+            auto& prev_arch = *archetypes_[location.archetype];
+            ComponentIdMask mask = prev_arch.mask_;
+            mask.add(component_id);
+            auto& arch = getArchetype(mask, prev_arch.sharedComponentInfo());
+            const auto prev_index = location.index;
+            arch.externalMove(e, prev_arch, prev_index, skip_constructor ? mask : ComponentIdMask{});
+            const auto component_index = arch.getComponentIndex<FunctionSafety::kUnsafe>(component_id);
+            return arch.getComponent<FunctionSafety::kUnsafe>(component_index, location.index);
+        } else {
+            return getTemporalStorage().assignComponent(e, component_id, skip_constructor);
+        }
     }
 
     template<typename T, typename... _ARGS>
     T& EntityManager::assignUnique(Entity e, _ARGS&&... args) {
         static const auto component_id = ComponentFactory::registerComponent<T>();
-        const auto& location = locations_[e.id()];
         constexpr bool use_custom_constructor = sizeof...(_ARGS) > 0;
-
-        auto& prev_arch = *archetypes_[location.archetype];
-        ComponentIdMask mask = prev_arch.mask_;
-        mask.add(component_id);
-        auto& arch = getArchetype(mask, prev_arch.sharedComponentInfo());
-        const auto prev_index = location.index;
-        const auto skip_init_mask = use_custom_constructor ? ComponentIdMask{component_id} : ComponentIdMask{};
-        arch.externalMove(e, prev_arch, prev_index, skip_init_mask);
-        const auto component_index = arch.getComponentIndex<FunctionSafety::kUnsafe>(component_id);
-        auto component_ptr = arch.getComponent<FunctionSafety::kUnsafe>(component_index, location.index);
-        if constexpr (use_custom_constructor) {
+        auto component_ptr = assign(e, component_id, use_custom_constructor);
+        if constexpr(use_custom_constructor) {
             *new(component_ptr) T{std::forward<_ARGS>(args)...};
         }
-
         return *reinterpret_cast<T*>(component_ptr);
     }
 
@@ -543,21 +637,55 @@ namespace mustache {
         initComponent<Component>(archetype, entity_index, arg.args, std::make_index_sequence<num_args>());
         return true;
     }
+    template<typename Arg>
+    bool EntityManager::initComponent(void* ptr, Arg&& arg) {
+        using ArgType = typename std::remove_reference<Arg>::type;
+        using Component = typename ArgType::Component;
+        constexpr size_t num_args = ArgType::num_args;
+        initComponent<Component>(ptr, arg.args, std::make_index_sequence<num_args>());
+        return true;
+    }
 
     template<typename TupleType, size_t... _I>
     void EntityManager::initComponents(Entity entity, TupleType& tuple, const SharedComponentsInfo& info,
                                        const std::index_sequence<_I...>&) {
-        ComponentIdMask mask = ComponentFactory::makeMask<typename std::tuple_element<_I, TupleType>::type::Component...>();
-
-        Archetype& archetype = getArchetype(mask, info);
+        if (isLocked()) {
+            auto& storage = getTemporalStorage();
+            static const std::array component_ids {
+                    ComponentFactory::registerComponent<typename std::tuple_element<_I, TupleType>::type::Component>()...
+            };
+            const auto unused_init_list = {
+                    initComponent(storage.assignComponent(entity, component_ids[_I], true), std::get<_I>(tuple))...
+            };
+            (void) unused_init_list;
+            return;
+        }
+        const auto mask = ComponentFactory::makeMask<typename std::tuple_element<_I, TupleType>::type::Component...>();
+        auto& archetype = getArchetype(mask, info);
         const auto index = archetype.insert(entity, mask);
-        auto unused_init_list = {initComponent(archetype, index, std::get<_I>(tuple))...};
+        const auto unused_init_list = {initComponent(archetype, index, std::get<_I>(tuple))...};
         (void) unused_init_list;
     }
 
     template<typename TupleType, size_t... _I>
     void EntityManager::updateComponents(const ComponentIdMask& to_remove, Entity entity, TupleType& tuple,
                                          SharedComponentsInfo shared, const std::index_sequence<_I...>&) {
+        if (isLocked()) {
+            auto& storage = getTemporalStorage();
+            if constexpr(sizeof...(_I) > 0u) {
+                static const std::array component_ids{
+                        ComponentFactory::registerComponent<typename std::tuple_element<_I, TupleType>::type::Component>()...
+                };
+                const auto unused_init_list = {
+                        initComponent(storage.assignComponent(entity, component_ids[_I], true), std::get<_I>(tuple))...
+                };
+                (void) unused_init_list;
+            }
+            to_remove.forEachItem([&storage, entity](ComponentId id) {
+                storage.removeComponent(entity, id);
+            });
+            return;
+        }
         ComponentIdMask skip_mask;
         if constexpr(sizeof...(_I) > 0) {
             skip_mask = ComponentFactory::makeMask<typename std::tuple_element<_I, TupleType>::type::Component...>();

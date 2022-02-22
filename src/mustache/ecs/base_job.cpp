@@ -99,13 +99,13 @@ void BaseJob::run(World& world, JobRunMode mode) {
         world.incrementVersion();
 
         onJobBegin(world, task_count, JobSize::make(entities_count), mode);
-
+        world.entities().lock();
         if (mode == JobRunMode::kCurrentThread) {
             runCurrentThread(world);
         } else {
             runParallel(world, task_count);
         }
-
+        world.entities().unlock();
         onJobEnd(world, task_count, JobSize::make(entities_count), mode);
     }
 }

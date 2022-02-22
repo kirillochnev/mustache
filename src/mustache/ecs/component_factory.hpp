@@ -94,14 +94,31 @@ namespace mustache {
         static void moveComponent(const TypeInfo& info, void* source, void* dest);
         static void copyComponent(const TypeInfo& info, const void* source, void* dest);
 
+        template<typename T, typename...  ARGS>
+        static T* initComponent(void* data, ARGS&&... args) {
+            const static auto id = registerComponent<T>();
+            if constexpr(sizeof...(ARGS) > 0) {
+                if constexpr(!std::is_trivially_default_constructible<T>::value) {
+                    data = new(data) T {std::forward<ARGS>(args)...};
+                }
+            } else {
+                initComponents(id, data, 1);
+            }
+            return static_cast<T*>(data);
+        }
+
         static void initComponents(ComponentId id, void* data, size_t count) {
             initComponents(componentInfo(id), data, count);
         }
         static void destroyComponents(ComponentId id, void* data, size_t count) {
             destroyComponents(componentInfo(id), data, count);
         }
-        static void moveComponent(ComponentId id, void* source, void* dest) {
-            moveComponent(componentInfo(id), source, dest);
+        static void moveComponent(ComponentId id, void* source, void* dest, bool destroy_source) {
+            const auto& info = componentInfo(id);
+            moveComponent(info, source, dest);
+            if (destroy_source) {
+                destroyComponents(info, source, 1);
+            }
         }
         static void copyComponent(ComponentId id, const void* source, void* dest) {
             copyComponent(componentInfo(id), source, dest);

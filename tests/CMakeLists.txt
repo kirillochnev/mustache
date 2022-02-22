@@ -24,6 +24,7 @@ add_executable(${PROJECT_NAME}
         event_manager.cpp
         world_storage.cpp
         shared_component.cpp
+        mutate_while_iteration.cpp
         c_api.cpp
 )
 

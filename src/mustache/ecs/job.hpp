@@ -46,16 +46,17 @@ namespace mustache {
     protected:
 
         template<typename... _ARGS>
-        MUSTACHE_INLINE void forEachArrayGenerated(ComponentArraySize count, JobInvocationIndex& invocation_index,
+        MUSTACHE_INLINE void forEachArrayGenerated(World& world, ComponentArraySize count,
+                                                   JobInvocationIndex& invocation_index,
                                                    _ARGS MUSTACHE_RESTRICT_PTR ... pointers) noexcept(Info::is_noexcept) {
             using TargetType = typename std::conditional<Info ::is_const_this, const T, T>::type;
             TargetType& self = *static_cast<TargetType*>(this);
             if constexpr (Info::has_for_each_array) {
-                invokeMethod(self, &T::forEachArray, count, invocation_index, pointers...);
+                invokeMethod(self, &T::forEachArray, world, count, invocation_index, pointers...);
             } else {
                 const auto size = count.toInt();
                 for(uint32_t i = 0u; i < size; ++i) {
-                    invoke(self, invocation_index, pointers[i]...);
+                    invoke(self, world, invocation_index, pointers[i]...);
                     if constexpr(Info::FunctionInfo::Position::job_invocation >= 0) {
                         ++invocation_index.entity_index_in_task;
                         ++invocation_index.entity_index;
@@ -92,7 +93,7 @@ namespace mustache {
         }
 
         template<size_t... _I, size_t... _SI>
-        MUSTACHE_INLINE void singleTask(World&, ArchetypeGroup archetype_group, JobInvocationIndex invocation_index,
+        MUSTACHE_INLINE void singleTask(World& world, ArchetypeGroup archetype_group, JobInvocationIndex invocation_index,
                                         const std::index_sequence<_I...>&, const std::index_sequence<_SI...>&) {
             auto shared_components = std::make_tuple(
                     getNullptr<_SI>()...
@@ -112,12 +113,12 @@ namespace mustache {
                                                   info.first_entity, info.current_size)) {
 
                     if constexpr (Info::FunctionInfo::Position::entity >= 0) {
-                        forEachArrayGenerated(array.arraySize(), invocation_index,
+                        forEachArrayGenerated(world, array.arraySize(), invocation_index,
                                               RequiredComponent<Entity>(array.template getEntity<FunctionSafety::kUnsafe>()),
                                               getComponentHandler<_I>(array, component_indexes[_I])...,
                                               makeShared(std::get<_SI>(shared_components))...);
                     } else {
-                        forEachArrayGenerated(array.arraySize(), invocation_index,
+                        forEachArrayGenerated(world, array.arraySize(), invocation_index,
                                               getComponentHandler<_I>(array, component_indexes[_I])...,
                                               makeShared(std::get<_SI>(shared_components))...);
                     }
