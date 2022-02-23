@@ -1,5 +1,7 @@
 #include "system_manager.hpp"
 
+#include <mustache/utils/profiler.hpp>
+
 #include <mustache/ecs/system.hpp>
 
 #include <map>
@@ -33,15 +35,18 @@ struct SystemManager::Data {
 
 SystemManager::SystemManager(World& world) :
         data_{new Data{world}} {
+    MUSTACHE_PROFILER_BLOCK_LVL_0(__FUNCTION__ );
 }
 
 SystemManager::~SystemManager() {
+    MUSTACHE_PROFILER_BLOCK_LVL_0(__FUNCTION__ );
     for (const auto& system : data_->ordered_systems) {
         system->destroy(data_->world);
     }
 }
 
 void SystemManager::update() {
+    MUSTACHE_PROFILER_BLOCK_LVL_0(__FUNCTION__ );
     if (!data_->was_init) {
         return;
     }
@@ -61,6 +66,8 @@ void SystemManager::update() {
 }
 
 void mustache::SystemManager::init() {
+    MUSTACHE_PROFILER_BLOCK_LVL_0(__FUNCTION__ );
+
     if (data_->was_init) {
         return;
     }
@@ -82,6 +89,8 @@ void mustache::SystemManager::init() {
 }
 
 void mustache::SystemManager::addSystem(SystemManager::SystemPtr system) {
+    MUSTACHE_PROFILER_BLOCK_LVL_0(__FUNCTION__ );
+
     const auto index = data_->systems_info.size();
     data_->systems_info.emplace_back();
 
@@ -100,6 +109,8 @@ void mustache::SystemManager::addSystem(SystemManager::SystemPtr system) {
 }
 
 void mustache::SystemManager::reorderSystems() {
+    MUSTACHE_PROFILER_BLOCK_LVL_0(__FUNCTION__ );
+
     auto systems_cpy = data_->systems_info;
     std::set<std::string> unplaced_systems_names;
     {
@@ -164,20 +175,25 @@ void mustache::SystemManager::reorderSystems() {
 }
 
 int32_t mustache::SystemManager::getGroupPriority(const std::string& group_name) const noexcept {
+    MUSTACHE_PROFILER_BLOCK_LVL_3(__FUNCTION__ );
+
     const auto find_res = data_->group_priorities.find(group_name);
     return find_res == data_->group_priorities.end() ? 0 : find_res->second;
 }
 
 void mustache::SystemManager::setGroupPriority(const std::string& group_name, int32_t priority) noexcept {
+    MUSTACHE_PROFILER_BLOCK_LVL_3(__FUNCTION__ );
     data_->group_priorities[group_name] = priority;
 }
 
 SystemManager::SystemPtr mustache::SystemManager::findSystem(const std::string& system_name) noexcept {
+    MUSTACHE_PROFILER_BLOCK_LVL_3(__FUNCTION__ );
     const auto find_res = data_->system_by_name.find(system_name);
     return find_res == data_->system_by_name.end() ? nullptr : find_res->second;
 }
 
 void mustache::SystemManager::removeSystem(const std::string& system_name) noexcept {
+    MUSTACHE_PROFILER_BLOCK_LVL_0(__FUNCTION__ );
     const auto find_res = data_->system_by_name.find(system_name);
     if (find_res == data_->system_by_name.end()) {
         return;

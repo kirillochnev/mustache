@@ -33,8 +33,10 @@ namespace mustache {
             return Info::updateMask();
         }
 
-        virtual std::string name() const noexcept override {
-            return type_name<T>();
+        virtual const char* nameCStr() const noexcept override {
+            static const auto job_type_name = type_name<T>();
+            static const auto result = job_type_name.c_str();
+            return result;
         }
 
         void singleTask(World& world, ArchetypeGroup task, JobInvocationIndex invocation_index) override {

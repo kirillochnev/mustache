@@ -1,6 +1,6 @@
 #include "memory_manager.hpp"
-
 #include <mustache/utils/logger.hpp>
+#include <mustache/utils/profiler.hpp>
 
 #include <map>
 #include <cstdlib>
@@ -19,6 +19,7 @@ namespace {
 #endif
 
 void* mustache::MemoryManager::allocate(size_t size, size_t align MEMORY_MANAGER_STATISTICS_ARG_DECL) noexcept {
+    MUSTACHE_PROFILER_BLOCK_LVL_3("MemoryManager::allocate");
 #ifdef _MSC_BUILD
     #define ALIGNED_ALLOC(size, align) _aligned_malloc(size, align)
 #elif defined(ANDROID)
@@ -41,12 +42,14 @@ void* mustache::MemoryManager::allocate(size_t size, size_t align MEMORY_MANAGER
 }
 
 void* mustache::MemoryManager::allocateAndClear(size_t size, size_t align) noexcept {
+    MUSTACHE_PROFILER_BLOCK_LVL_3("MemoryManager::allocateAndClear");
     void* result = allocate(size, align);
     memset(result, 0, size);
     return result;
 }
 
 void mustache::MemoryManager::deallocate(void* ptr MEMORY_MANAGER_STATISTICS_ARG_DECL) noexcept {
+    MUSTACHE_PROFILER_BLOCK_LVL_3("MemoryManager::deallocate");
     if (ptr) {
 #if MEMORY_MANAGER_COLLECT_STATISTICS
         (void )file;
@@ -66,6 +69,7 @@ void mustache::MemoryManager::deallocate(void* ptr MEMORY_MANAGER_STATISTICS_ARG
 }
 
 void mustache::MemoryManager::showStatistic() const noexcept {
+    MUSTACHE_PROFILER_BLOCK_LVL_3("MemoryManager::showStatistic");
 #if MEMORY_MANAGER_COLLECT_STATISTICS
     for (const auto& pair : file_to_size) {
         if (pair.second > 0) {

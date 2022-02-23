@@ -1,8 +1,9 @@
 #include "new_component_data_storage.hpp"
 
-#include <mustache/ecs/component_factory.hpp>
-
 #include <mustache/utils/logger.hpp>
+#include <mustache/utils/profiler.hpp>
+
+#include <mustache/ecs/component_factory.hpp>
 
 using namespace mustache;
 
@@ -52,6 +53,7 @@ struct NewComponentDataStorage::ComponentDataHolder {
 NewComponentDataStorage::NewComponentDataStorage(const ComponentIdMask& mask, MemoryManager& memory_manager):
     components_{memory_manager},
     memory_manager_{&memory_manager} {
+    MUSTACHE_PROFILER_BLOCK_LVL_0(__FUNCTION__);
     components_.reserve(mask.componentsCount());
 
     ComponentIndex index = ComponentIndex::make(0);
@@ -71,6 +73,7 @@ NewComponentDataStorage::NewComponentDataStorage(const ComponentIdMask& mask, Me
 NewComponentDataStorage::~NewComponentDataStorage() = default;
 
 void NewComponentDataStorage::clear(bool free_chunks) {
+    MUSTACHE_PROFILER_BLOCK_LVL_0(__FUNCTION__);
     size_ = 0;
     if (free_chunks) {
         components_.clear();
@@ -79,6 +82,7 @@ void NewComponentDataStorage::clear(bool free_chunks) {
 }
 
 void NewComponentDataStorage::reserve(size_t new_capacity) {
+    MUSTACHE_PROFILER_BLOCK_LVL_3(__FUNCTION__);
     if (capacity_ >= new_capacity) {
         return;
     }
@@ -89,6 +93,7 @@ void NewComponentDataStorage::reserve(size_t new_capacity) {
 }
 
 void* NewComponentDataStorage::getDataSafe(ComponentIndex component_index, ComponentStorageIndex index) const noexcept {
+    MUSTACHE_PROFILER_BLOCK_LVL_3(__FUNCTION__);
     if (index.toInt() >= size_ || !components_.has(component_index)) {
         return nullptr;
     }
@@ -96,15 +101,18 @@ void* NewComponentDataStorage::getDataSafe(ComponentIndex component_index, Compo
 }
 
 void* NewComponentDataStorage::getDataUnsafe(ComponentIndex component_index, ComponentStorageIndex index) const noexcept {
+    MUSTACHE_PROFILER_BLOCK_LVL_3(__FUNCTION__);
     return components_[component_index].get(index);
 }
 
 void NewComponentDataStorage::allocateBlock() {
+    MUSTACHE_PROFILER_BLOCK_LVL_1(__FUNCTION__);
     for (auto& component : components_) {
         component.allocate();
     }
     capacity_ += chunkCapacity().toInt();
 }
 ChunkCapacity NewComponentDataStorage::chunkCapacity() noexcept {
+    MUSTACHE_PROFILER_BLOCK_LVL_3(__FUNCTION__);
     return ChunkCapacity::make(kComponentBlockSize);
 }

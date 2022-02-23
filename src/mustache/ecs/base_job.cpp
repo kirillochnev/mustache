@@ -1,5 +1,7 @@
 #include "base_job.hpp"
 
+#include <mustache/utils/profiler.hpp>
+
 #include <mustache/ecs/world.hpp>
 #include <mustache/ecs/world_filter.hpp>
 
@@ -8,7 +10,7 @@ using namespace mustache;
 namespace {
     void filterArchetype(Archetype& archetype, const ArchetypeFilterParam& check, const ArchetypeFilterParam& set,
                          WorldFilterResult& result, BaseJob& job) {
-
+        MUSTACHE_PROFILER_BLOCK_LVL_0(__FUNCTION__ );
         WorldFilterResult::ArchetypeFilterResult item;
         item.archetype = &archetype;
         item.entities_count = 0u;
@@ -49,6 +51,7 @@ namespace {
 
     bool apply(World& world, const FilterCheckParam& check, const FilterSetParam& set,
                WorldFilterResult& result, BaseJob& job) {
+        MUSTACHE_PROFILER_BLOCK_LVL_0(__FUNCTION__ );
 
         auto& entities = world.entities();
         const auto num_archetypes = entities.getArchetypesCount();
@@ -81,10 +84,12 @@ namespace {
 }
 
 TasksCount BaseJob::taskCount(World& world, uint32_t entity_count) const noexcept {
+    MUSTACHE_PROFILER_BLOCK_LVL_3(__FUNCTION__ );
     return TasksCount::make(std::min(entity_count, world.dispatcher().threadCount() + 1));
 }
 
 void BaseJob::run(World& world, JobRunMode mode) {
+    MUSTACHE_PROFILER_BLOCK_LVL_0(nameCStr());
     const auto entities_count = applyFilter(world);
     if (entities_count < 1u) {
         return;
@@ -111,6 +116,8 @@ void BaseJob::run(World& world, JobRunMode mode) {
 }
 
 uint32_t BaseJob::applyFilter(World& world) noexcept {
+    MUSTACHE_PROFILER_BLOCK_LVL_0(__FUNCTION__ );
+
     filter_result_.clear();
 
     const auto cur_world_version = world.version();
@@ -147,6 +154,8 @@ void BaseJob::onTaskEnd(World&, TaskSize, ParallelTaskId) noexcept {
 }
 
 void BaseJob::runParallel(World& world, TasksCount task_count) {
+    MUSTACHE_PROFILER_BLOCK_LVL_0(__FUNCTION__ );
+
     auto& dispatcher = world.dispatcher();
     JobInvocationIndex invocation_index;
     invocation_index.entity_index = ParallelTaskGlobalItemIndex::make(0);
@@ -157,8 +166,15 @@ void BaseJob::runParallel(World& world, TasksCount task_count) {
         dispatcher.addParallelTask([task, this, invocation_index, &world](ThreadId thread_id) mutable {
             invocation_index.thread_id = thread_id;
             const auto task_size = TaskSize::make(task.taskSize());
-            onTaskBegin(world, task_size, invocation_index.task_index);
-            singleTask(world, task, invocation_index);
+            {
+                MUSTACHE_PROFILER_BLOCK_LVL_0("onTaskBegin");
+                onTaskBegin(world, task_size, invocation_index.task_index);
+            }
+            {
+                MUSTACHE_PROFILER_BLOCK_LVL_0("singleTask");
+                singleTask(world, task, invocation_index);
+            }
+            MUSTACHE_PROFILER_BLOCK_LVL_0("onTaskEnd");
             onTaskEnd(world, task_size, invocation_index.task_index);
         });
         ++invocation_index.task_index;
@@ -168,6 +184,7 @@ void BaseJob::runParallel(World& world, TasksCount task_count) {
 }
 
 void BaseJob::runCurrentThread(World& world) {
+    MUSTACHE_PROFILER_BLOCK_LVL_0(__FUNCTION__ );
     auto& dispatcher = world.dispatcher();
     JobInvocationIndex invocation_index;
     invocation_index.task_index = ParallelTaskId::make(0);
@@ -177,8 +194,16 @@ void BaseJob::runCurrentThread(World& world) {
 
     for (auto task : TaskGroup::make(filter_result_, TasksCount::make(1))) {
         const auto task_size = TaskSize::make(task.taskSize());
-        onTaskBegin(world, task_size, invocation_index.task_index);
-        singleTask(world, task, invocation_index);
+        {
+            MUSTACHE_PROFILER_BLOCK_LVL_0("onTaskBegin");
+            onTaskBegin(world, task_size, invocation_index.task_index);
+        }
+        {
+            MUSTACHE_PROFILER_BLOCK_LVL_0("singleTask");
+            singleTask(world, task, invocation_index);
+        }
+
+        MUSTACHE_PROFILER_BLOCK_LVL_0("onTaskEnd");
         onTaskEnd(world, task_size, invocation_index.task_index);
         ++invocation_index.task_index;
     }

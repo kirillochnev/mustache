@@ -1,6 +1,7 @@
 #include "component_factory.hpp"
 
 #include <mustache/utils/logger.hpp>
+#include <mustache/utils/profiler.hpp>
 
 #include <map>
 #include <mutex>
@@ -21,6 +22,7 @@ namespace {
         mutable std::mutex mutex;
 
         IdType getId(const TypeInfo& info) {
+            MUSTACHE_PROFILER_BLOCK_LVL_3(__FUNCTION__);
             std::unique_lock lock {mutex};
             const auto find_res = type_map.find(info.name);
 
@@ -48,6 +50,7 @@ namespace {
             return return_value;
         }
         const TypeInfo& componentInfo(IdType id) const noexcept {
+            MUSTACHE_PROFILER_BLOCK_LVL_3(__FUNCTION__);
             std::unique_lock lock {mutex};
             return components_info[id.toInt()];
         }
@@ -60,6 +63,7 @@ namespace {
     template<typename _F>
     static void applyFunction(void* data, _F&& f, size_t count, size_t size) {
         if (f) {
+            MUSTACHE_PROFILER_BLOCK_LVL_3(__FUNCTION__);
             std::byte *ptr = static_cast<std::byte *>(data);
             for (uint32_t i = 0; i < count; ++i) {
                 f(static_cast<void *>(ptr));
@@ -70,34 +74,42 @@ namespace {
 }
 
 SharedComponentId ComponentFactory::sharedComponentId(const TypeInfo& info) {
+    MUSTACHE_PROFILER_BLOCK_LVL_3(__FUNCTION__);
     return shared_component_id_storage.getId(info);
 }
 
 ComponentId ComponentFactory::componentId(const TypeInfo& info) {
+    MUSTACHE_PROFILER_BLOCK_LVL_3(__FUNCTION__);
     return component_id_storage.getId(info);
 }
 
 const TypeInfo& ComponentFactory::componentInfo(ComponentId id) {
+    MUSTACHE_PROFILER_BLOCK_LVL_3(__FUNCTION__);
     return component_id_storage.componentInfo(id);
 }
 
 void ComponentFactory::initComponents(const TypeInfo& info, void* data, size_t count) {
+    MUSTACHE_PROFILER_BLOCK_LVL_2(__FUNCTION__);
     applyFunction(data, info.functions.create, count, info.size);
 }
 
 void ComponentFactory::destroyComponents(const TypeInfo& info, void* data, size_t count) {
+    MUSTACHE_PROFILER_BLOCK_LVL_2(__FUNCTION__);
     applyFunction(data, info.functions.destroy, count, info.size);
 }
 
 ComponentId ComponentFactory::nextComponentId() noexcept {
+    MUSTACHE_PROFILER_BLOCK_LVL_3(__FUNCTION__);
     return component_id_storage.next_component_id;
 }
 
 bool ComponentFactory::isEq(const SharedComponentTag* c0,const SharedComponentTag* c1, SharedComponentId id) {
+    MUSTACHE_PROFILER_BLOCK_LVL_3(__FUNCTION__);
     return shared_component_id_storage.componentInfo(id).functions.compare(c0, c1);
 }
 
 void ComponentFactory::moveComponent(const TypeInfo& info, void* source, void* dest) {
+    MUSTACHE_PROFILER_BLOCK_LVL_2(__FUNCTION__);
     if (!info.functions.move) {
         throw std::runtime_error("Invalid move function for: " + info.name);
     }
@@ -105,6 +117,7 @@ void ComponentFactory::moveComponent(const TypeInfo& info, void* source, void* d
 }
 
 void ComponentFactory::copyComponent(const TypeInfo& info, const void* source, void* dest) {
+    MUSTACHE_PROFILER_BLOCK_LVL_2(__FUNCTION__);
     if (!info.functions.copy) {
         throw std::runtime_error("Invalid copy function for: " + info.name);
     }

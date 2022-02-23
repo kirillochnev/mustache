@@ -1,6 +1,7 @@
 #include "default_component_data_storage.hpp"
 
 #include <mustache/utils/logger.hpp>
+#include <mustache/utils/profiler.hpp>
 
 #include <mustache/ecs/component_factory.hpp>
 
@@ -16,6 +17,7 @@ DefaultComponentDataStorage::DefaultComponentDataStorage(const ComponentIdMask& 
     component_getter_info_{memory_manager},
     chunk_capacity_{kChunkCapacity},
     chunks_{memory_manager} {
+    MUSTACHE_PROFILER_BLOCK_LVL_0(__FUNCTION__);
     if (!mask.isEmpty()) {
         component_getter_info_.reserve(mask.componentsCount());
 
@@ -39,6 +41,7 @@ DefaultComponentDataStorage::DefaultComponentDataStorage(const ComponentIdMask& 
 }
 
 void DefaultComponentDataStorage::allocateChunk() {
+    MUSTACHE_PROFILER_BLOCK_LVL_1(__FUNCTION__);
     auto chunk = static_cast<ChunkPtr>(memory_manager_->allocate(chunk_size_, chunk_align_));
     if (chunk == nullptr) {
         throw std::runtime_error("Can not allocate memory for chunk: " + std::to_string(chunks_.size()));
@@ -47,20 +50,24 @@ void DefaultComponentDataStorage::allocateChunk() {
 }
 
 void DefaultComponentDataStorage::freeChunk(ChunkPtr chunk) noexcept {
+    MUSTACHE_PROFILER_BLOCK_LVL_1(__FUNCTION__);
     memory_manager_->deallocate(chunk);
 }
 
 uint32_t DefaultComponentDataStorage::capacity() const noexcept {
+    MUSTACHE_PROFILER_BLOCK_LVL_3(__FUNCTION__);
     return static_cast<uint32_t>(chunk_capacity_.toInt() * chunks_.size());
 }
 
 void DefaultComponentDataStorage::reserve(size_t new_capacity) {
+    MUSTACHE_PROFILER_BLOCK_LVL_3(__FUNCTION__);
     while (chunk_size_ > 0u && capacity() < new_capacity) {
         allocateChunk();
     }
 }
 
 void DefaultComponentDataStorage::clear(bool free_chunks) {
+    MUSTACHE_PROFILER_BLOCK_LVL_0(__FUNCTION__);
     if (free_chunks) {
         for (auto chunk : chunks_) {
             freeChunk(chunk);
@@ -72,6 +79,7 @@ void DefaultComponentDataStorage::clear(bool free_chunks) {
 }
 
 uint32_t DefaultComponentDataStorage::distToChunkEnd(ComponentStorageIndex global_index) const noexcept {
+    MUSTACHE_PROFILER_BLOCK_LVL_3(__FUNCTION__);
     const auto diff = [](const auto a, const auto b) noexcept{
         return b > a ? b - a : 0;
     };
@@ -85,6 +93,7 @@ uint32_t DefaultComponentDataStorage::distToChunkEnd(ComponentStorageIndex globa
 
 void* DefaultComponentDataStorage::getDataSafe(ComponentIndex component_index,
                                                ComponentStorageIndex index) const noexcept {
+    MUSTACHE_PROFILER_BLOCK_LVL_3(__FUNCTION__);
     if (component_index.isNull() || index.isNull() ||
         !component_getter_info_.has(component_index) || index.toInt() >= size_) {
         return nullptr;
@@ -98,6 +107,7 @@ void* DefaultComponentDataStorage::getDataSafe(ComponentIndex component_index,
 
 void* DefaultComponentDataStorage::getDataUnsafe(ComponentIndex component_index,
                                                  ComponentStorageIndex index) const noexcept {
+    MUSTACHE_PROFILER_BLOCK_LVL_3(__FUNCTION__);
     const auto chunk_index = index % chunk_capacity_;
     const auto& info = component_getter_info_[component_index];
     const auto offset = info.offset.add(info.size * chunk_index.toInt<size_t>());
