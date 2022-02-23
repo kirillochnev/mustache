@@ -19,6 +19,8 @@ jobs:
         run: vcpkg.exe install gtest:x64-windows
 
       - uses: actions/checkout@v2
+      - name: Update submodule
+        run: git submodule update --init
 
       - name: Configure CMake
         # Note the current convention is to use the -S and -B options here to specify source
