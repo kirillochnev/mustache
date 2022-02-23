@@ -1,5 +1,7 @@
 #pragma once
 
+#include <mustache/utils/dll_export.h>
+
 #include <mustache/ecs/entity.hpp>
 #include <mustache/ecs/component_factory.hpp>
 
@@ -8,7 +10,7 @@
 namespace mustache {
     class Archetype;
 
-    struct TemporalStorage {
+    struct MUSTACHE_EXPORT TemporalStorage {
         enum class Action : uint32_t {
             kDestroyEntityNow = 0,
             kCreateEntity = 1,
@@ -49,13 +51,6 @@ namespace mustache {
             std::byte* ptr;
         };
 
-        std::vector<ActionInfo> actions_;
-        struct {
-            std::vector<AssignComponentWithArgs> assign;
-            std::vector<RemoveComponent> remove;
-            std::vector<Archetype*> create;
-        } commands_;
-
         struct DataChunk {
             DataChunk(uint32_t size):
                 free_space{size},
@@ -72,6 +67,12 @@ namespace mustache {
 
         std::byte* allocate(uint32_t size);
 
+        std::vector<ActionInfo> actions_;
+        struct {
+            std::vector<AssignComponentWithArgs> assign;
+            std::vector<RemoveComponent> remove;
+            std::vector<Archetype*> create;
+        } commands_;
         std::vector<DataChunk> chunks_;
         uint32_t target_chunk_size_ = 4096u;
         uint32_t total_size_ = 0u;
