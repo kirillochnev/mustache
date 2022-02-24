@@ -22,18 +22,6 @@ option(MUSTACHE_USE_SANITIZER "Enable sanitizers by adding -fsanitize=address -f
 option(MUSTACHE_WARNINGS_AS_ERROR "Enable -Werror and some of extra warnings" ON)
 option(MUSTACHE_BUILD_SHARED "Build shared libraries?" ON)
 
-if (MUSTACHE_WARNINGS_AS_ERROR)
-    if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-        include(cmake/gcc_warnings.cmake)
-    elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-        include(cmake/clang_warnings.cmake)
-    elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-        include(cmake/msvc_warnings.cmake)
-    endif()
-else()
-    message(WARNING "If you have disabled compiler warnings because your compiler throws errors, please let me know.")
-endif()
-
 if(MUSTACHE_USE_SANITIZER)
     set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-omit-frame-pointer -fsanitize=address")
     set (CMAKE_LINKER_FLAGS "${CMAKE_LINKER_FLAGS} -fno-omit-frame-pointer -fsanitize=address")
@@ -72,12 +60,14 @@ add_library(${PROJECT_NAME} ${MUSTACHE_LIB_TYPE}
     ${mustache_SOURCE_DIR}/src/mustache/ecs/archetype_operation_helper.cpp
     ${mustache_SOURCE_DIR}/src/mustache/ecs/archetype_operation_helper.hpp
     ${mustache_SOURCE_DIR}/src/mustache/ecs/temporal_storage.hpp
+    ${mustache_SOURCE_DIR}/src/mustache/ecs/temporal_storage.cpp
     ${mustache_SOURCE_DIR}/src/mustache/ecs/entity_manager.cpp
     ${mustache_SOURCE_DIR}/src/mustache/ecs/entity_manager.hpp
     ${mustache_SOURCE_DIR}/src/mustache/ecs/base_job.cpp
     ${mustache_SOURCE_DIR}/src/mustache/ecs/base_job.hpp
     ${mustache_SOURCE_DIR}/src/mustache/ecs/job.hpp
     ${mustache_SOURCE_DIR}/src/mustache/ecs/non_template_job.hpp
+    ${mustache_SOURCE_DIR}/src/mustache/ecs/non_template_job.cpp
     ${mustache_SOURCE_DIR}/src/mustache/ecs/system.cpp
     ${mustache_SOURCE_DIR}/src/mustache/ecs/system.hpp
     ${mustache_SOURCE_DIR}/src/mustache/ecs/system_manager.cpp
@@ -113,6 +103,22 @@ add_library(${PROJECT_NAME} ${MUSTACHE_LIB_TYPE}
     ${mustache_SOURCE_DIR}/src/mustache/c_api.cpp
     ${mustache_SOURCE_DIR}/src/mustache/c_api.h
 )
+if (MUSTACHE_WARNINGS_AS_ERROR)
+    if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+        include(cmake/gcc_warnings.cmake)
+    elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+        include(cmake/clang_warnings.cmake)
+    elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+        include(cmake/msvc_warnings.cmake)
+    endif()
+    
+    set_property(TARGET ${PROJECT_NAME} PROPERTY COMPILE_FLAGS "${CMAKE_CXX_FLAGS} ${MUSTACHE_WARNINGS}")
+else()
+    message(WARNING "If you have disabled compiler warnings because your compiler throws errors, please let me know.")
+endif()
+
+add_subdirectory(third_party)
+target_link_libraries(${PROJECT_NAME} mustache_profiler)
 
 if (MUSTACHE_BUILD_SHARED)
     target_compile_definitions(${PROJECT_NAME} PRIVATE MAKE_MUSTACHE_DLL)

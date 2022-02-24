@@ -19,12 +19,14 @@ jobs:
         run: vcpkg.exe install gtest:x64-windows
 
       - uses: actions/checkout@v2
+      - name: Update submodule
+        run: git submodule update --init
 
       - name: Configure CMake
         # Note the current convention is to use the -S and -B options here to specify source
         # and build directories, but this is only available with CMake 3.13 and higher.
         # The CMake binaries on the Github Actions machines are (as of this writing) 3.12
-        run: cmake $GITHUB_WORKSPACE -B"${{runner.workspace}}/build" -DMUSTACHE_BUILD_TESTS=ON -DCMAKE_TOOLCHAIN_FILE="C:/vcpkg/scripts/buildsystems/vcpkg.cmake"
+        run: cmake $GITHUB_WORKSPACE -B"${{runner.workspace}}/build" -DBUILD_SHARED_LIBS=OFF -DMUSTACHE_BUILD_TESTS=ON -DMUSTACHE_BUILD_WITH_EASY_PROFILER=ON -DCMAKE_TOOLCHAIN_FILE="C:/vcpkg/scripts/buildsystems/vcpkg.cmake"
 
       - name: Build
         working-directory: ${{runner.workspace}}

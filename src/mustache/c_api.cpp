@@ -170,7 +170,7 @@ struct CSystem : mustache::ASystem {
             descriptor_.free_user_data(descriptor_.user_data);
         }
     }
-    std::string name() const noexcept override {
+    const char* nameCStr() const noexcept override {
         return descriptor_.name;
     }
 protected:

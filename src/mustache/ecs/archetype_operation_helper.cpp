@@ -1,5 +1,7 @@
 #include "archetype_operation_helper.hpp"
 
+#include <mustache/utils/profiler.hpp>
+
 #include <mustache/ecs/entity.hpp>
 #include <mustache/ecs/component_factory.hpp>
 
@@ -13,6 +15,7 @@ ArchetypeOperationHelper::ArchetypeOperationHelper(MemoryManager& memory_manager
         destroy{memory_manager},
         external_move{memory_manager},
         internal_move{memory_manager} {
+    MUSTACHE_PROFILER_BLOCK_LVL_0(__FUNCTION__);
 
     for (auto component_id : mask.items()) {
         component_index_to_component_id.push_back(component_id);

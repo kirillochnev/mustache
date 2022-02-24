@@ -1,1 +1,1 @@
-add_compile_options(/WX)
+set(MUSTACHE_WARNINGS "/WX")

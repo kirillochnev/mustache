@@ -71,7 +71,11 @@ namespace mustache {
         [[nodiscard]] SystemState state() const noexcept {
             return state_;
         }
-        virtual std::string name() const noexcept = 0;
+        virtual std::string name() const noexcept {
+            return nameCStr();
+        }
+
+        virtual const char* nameCStr() const noexcept = 0;
 
     protected:
         virtual void onCreate(World&); // after constructor call
@@ -95,8 +99,9 @@ namespace mustache {
             return result;
         }
 
-        std::string name() const noexcept override {
-            return systemName();
+        const char* nameCStr() const noexcept override {
+            static auto result = systemName().c_str();
+            return result;
         }
     };
 }

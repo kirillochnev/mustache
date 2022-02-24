@@ -1,5 +1,7 @@
 #include "entity_manager.hpp"
 
+#include <mustache/utils/profiler.hpp>
+
 #include <mustache/ecs/world.hpp>
 
 using namespace mustache;
@@ -18,10 +20,11 @@ EntityManager::EntityManager(World& world):
         this_world_id_{world.id()},
         world_version_{world.version()},
         archetypes_{world.memoryManager()} {
-
+    MUSTACHE_PROFILER_BLOCK_LVL_0(__FUNCTION__ );
 }
 
 Archetype& EntityManager::getArchetype(const ComponentIdMask& mask, const SharedComponentsInfo& shared) {
+    MUSTACHE_PROFILER_BLOCK_LVL_2(__FUNCTION__ );
     const ComponentIdMask arch_mask = mask.merge(getExtraComponents(mask));
     ArchetypeComponents archetype_components;
     archetype_components.unique = arch_mask;
@@ -31,44 +34,51 @@ Archetype& EntityManager::getArchetype(const ComponentIdMask& mask, const Shared
     if(result) {
         return *result;
     }
-    auto deleter = [this](Archetype* archetype) {
-        clearArchetype(*archetype);
-        delete archetype;
-    };
+    {
+        MUSTACHE_PROFILER_BLOCK_LVL_0("Create archetype");
+        auto deleter = [this](Archetype* archetype) {
+            clearArchetype(*archetype);
+            delete archetype;
+        };
 
-    auto min = archetype_chunk_size_info_.min_size;
-    auto max = archetype_chunk_size_info_.max_size;
+        auto min = archetype_chunk_size_info_.min_size;
+        auto max = archetype_chunk_size_info_.max_size;
 
-    for (const auto& func : get_chunk_size_functions_) {
-        const auto size = func(arch_mask);
-        if (min == 0 || size.min > min) {
-            min = size.min;
+        for (const auto& func: get_chunk_size_functions_) {
+            const auto size = func(arch_mask);
+            if (min == 0 || size.min > min) {
+                min = size.min;
+            }
+
+            if (max == 0 || (size.max > 0 && size.max < max)) {
+                max = size.max;
+            }
+        }
+        auto chunk_size = archetype_chunk_size_info_.default_size;
+
+        if (max < min) {
+            throw std::runtime_error("Can not create archetype: "
+                                     + std::to_string(max) + " < " + std::to_string(min));
         }
 
-        if (max == 0 || (size.max > 0 && size.max < max)) {
-            max = size.max;
+        if (chunk_size < min) {
+            chunk_size = min;
         }
-    }
-    auto chunk_size = archetype_chunk_size_info_.default_size;
 
-    if (max < min) {
-        throw std::runtime_error("Can not create archetype: " + std::to_string(max) + " < " + std::to_string(min));
-    }
+        if (max > 0 && chunk_size > max) {
+            chunk_size = max;
+        }
 
-    if (chunk_size < min) {
-        chunk_size = min;
+        result = new Archetype(world_, archetypes_.back_index().next(),
+                               arch_mask, shared, chunk_size);
+        archetypes_.emplace_back(result, deleter);
     }
-
-    if (max > 0 && chunk_size > max) {
-        chunk_size = max;
-    }
-
-    result = new Archetype(world_, archetypes_.back_index().next(), arch_mask, shared, chunk_size);
-    archetypes_.emplace_back(result, deleter);
     return *result;
 }
 
 void EntityManager::clear() {
+    MUSTACHE_PROFILER_BLOCK_LVL_0(__FUNCTION__ );
+
     entities_.clear();
     locations_.clear();
     next_slot_ = EntityId::make(0);
@@ -79,6 +89,8 @@ void EntityManager::clear() {
 }
 
 void EntityManager::update() {
+    MUSTACHE_PROFILER_BLOCK_LVL_0(__FUNCTION__ );
+
     if (isLocked()) {
         throw std::runtime_error("Can not update locked EntityManager");
     }
@@ -90,6 +102,8 @@ void EntityManager::update() {
 }
 
 void EntityManager::clearArchetype(Archetype& archetype) {
+    MUSTACHE_PROFILER_BLOCK_LVL_0(__FUNCTION__ );
+
     for (const auto entity : archetype.entities()) {
         const auto id = entity.id();
         auto& location = locations_[id];
@@ -102,11 +116,15 @@ void EntityManager::clearArchetype(Archetype& archetype) {
 }
 
 void EntityManager::addDependency(ComponentId component, const ComponentIdMask& extra) noexcept {
+    MUSTACHE_PROFILER_BLOCK_LVL_3(__FUNCTION__ );
+
     auto& dependency = dependencies_[component];
     dependency = dependency.merge(extra.merge(getExtraComponents(extra)));
 }
 
 void EntityManager::addChunkSizeFunction(const ArchetypeChunkSizeFunction& function) {
+    MUSTACHE_PROFILER_BLOCK_LVL_0(__FUNCTION__ );
+
     if (function) {
         /// TODO: update archetypes
         get_chunk_size_functions_.push_back(function);
@@ -114,11 +132,15 @@ void EntityManager::addChunkSizeFunction(const ArchetypeChunkSizeFunction& funct
 }
 
 void EntityManager::setDefaultArchetypeVersionChunkSize(uint32_t value) noexcept {
+    MUSTACHE_PROFILER_BLOCK_LVL_3(__FUNCTION__ );
+
     /// TODO: update archetypes
     archetype_chunk_size_info_.default_size = value;
 }
 
 ComponentIdMask EntityManager::getExtraComponents(const ComponentIdMask& mask) const noexcept {
+    MUSTACHE_PROFILER_BLOCK_LVL_3(__FUNCTION__ );
+
     ComponentIdMask result;
     auto cur_mask = mask;
     if (!dependencies_.empty()) {
@@ -138,6 +160,8 @@ ComponentIdMask EntityManager::getExtraComponents(const ComponentIdMask& mask) c
 }
 
 SharedComponentPtr EntityManager::getCreatedSharedComponent(const SharedComponentPtr& ptr, SharedComponentId id) {
+    MUSTACHE_PROFILER_BLOCK_LVL_3(__FUNCTION__ );
+
     if (!shared_components_.has(id)) {
         shared_components_.resize(id.next().toInt());
     }
@@ -152,6 +176,8 @@ SharedComponentPtr EntityManager::getCreatedSharedComponent(const SharedComponen
 }
 
 void EntityManager::removeComponent(Entity entity, ComponentId component) {
+    MUSTACHE_PROFILER_BLOCK_LVL_2(__FUNCTION__ );
+
     if (isLocked()) {
         getTemporalStorage().removeComponent(entity, component);
         return;
@@ -179,6 +205,8 @@ void EntityManager::removeComponent(Entity entity, ComponentId component) {
 }
 
 bool EntityManager::removeSharedComponent(Entity entity, SharedComponentId component) {
+    MUSTACHE_PROFILER_BLOCK_LVL_2(__FUNCTION__ );
+
     const auto& location = locations_[entity.id()];
     if (location.archetype.isNull()) {
             return false;
@@ -205,6 +233,8 @@ bool EntityManager::removeSharedComponent(Entity entity, SharedComponentId compo
 }
 
 Archetype* EntityManager::getArchetypeOf(Entity entity) const noexcept {
+    MUSTACHE_PROFILER_BLOCK_LVL_3(__FUNCTION__ );
+
     if (!isEntityValid(entity)) {
         return nullptr;
     }
@@ -213,6 +243,8 @@ Archetype* EntityManager::getArchetypeOf(Entity entity) const noexcept {
 }
 
 void EntityManager::markDirty(Entity entity, ComponentId component_id) noexcept {
+    MUSTACHE_PROFILER_BLOCK_LVL_3(__FUNCTION__ );
+
     if (isEntityValid(entity)) {
         const auto location = locations_[entity.id()];
         const auto arch = archetypes_[location.archetype];
@@ -224,18 +256,23 @@ void EntityManager::markDirty(Entity entity, ComponentId component_id) noexcept 
 }
 
 void EntityManager::onLock() {
+    MUSTACHE_PROFILER_BLOCK_LVL_0(__FUNCTION__ );
+
     const auto thread_count = world_.dispatcher().maxThreadCount();
     temporal_storages_.resize(thread_count);
     next_entity_id_ = static_cast<uint32_t >(entities_.size());
 }
 
 void EntityManager::onUnlock() {
+    MUSTACHE_PROFILER_BLOCK_LVL_0(__FUNCTION__ );
+
     if (isLocked()) {
         throw std::runtime_error("Entity manager must be unlocked");
     }
 
     const auto doAction = [this](TemporalStorage& storage,
             const TemporalStorage::ActionInfo& info) {
+        MUSTACHE_PROFILER_BLOCK_LVL_3("do single action");
         const auto entity = info.entity;
         switch (info.action) {
             case TemporalStorage::Action::kDestroyEntityNow:
@@ -280,6 +317,7 @@ void EntityManager::onUnlock() {
     };
     const auto apply_pack = [&doAction, this](TemporalStorage& storage,
             size_t begin, size_t end) {
+        MUSTACHE_PROFILER_BLOCK_LVL_2("apply action pack");
         const bool can_be_optimized = (end - begin) > 1u &&
                 storage.actions_[begin].action != TemporalStorage::Action::kDestroyEntityNow;
         if (!can_be_optimized) {
@@ -347,6 +385,7 @@ void EntityManager::onUnlock() {
     };
 
     const auto apply_storage = [&apply_pack](TemporalStorage& storage) {
+        MUSTACHE_PROFILER_BLOCK_LVL_2("merge storage");
         size_t begin = 0u;
         for (size_t i = 1; i < storage.actions_.size(); ++i) {
             const auto entity = storage.actions_[i].entity;
@@ -368,11 +407,14 @@ void EntityManager::onUnlock() {
 
     constexpr bool parallel_sort = true;
     if constexpr(parallel_sort) {
+        MUSTACHE_PROFILER_BLOCK_LVL_1("Sort actions");
         world_.dispatcher().parallelFor([this, &comparator](size_t i){
+            MUSTACHE_PROFILER_BLOCK_LVL_1("Sort storage");
             auto& storage = temporal_storages_[ThreadId::make(i)];
             std::sort(storage.actions_.begin(), storage.actions_.end(), comparator);
         }, 0u, temporal_storages_.size());
     } else {
+        MUSTACHE_PROFILER_BLOCK_LVL_1("Sort actions");
         for (auto& storage : temporal_storages_) {
             std::sort(storage.actions_.begin(), storage.actions_.end(), comparator);
         }
@@ -387,5 +429,6 @@ void EntityManager::onUnlock() {
 }
 
 [[nodiscard]] ThreadId EntityManager::threadId() const noexcept {
+    MUSTACHE_PROFILER_BLOCK_LVL_3(__FUNCTION__ );
     return world_.dispatcher().currentThreadId();
 }

@@ -1,6 +1,7 @@
 #include "world_storage.hpp"
 
 #include <mustache/utils/logger.hpp>
+#include <mustache/utils/profiler.hpp>
 
 #include <map>
 
@@ -19,10 +20,11 @@ namespace {
 
 WorldStorage::WorldStorage(MemoryManager& manager):
     singletons_{manager} {
-
+    MUSTACHE_PROFILER_BLOCK_LVL_0(__FUNCTION__);
 }
 
 SingletonId WorldStorage::getSingletonId(const TypeInfo& info) noexcept {
+    MUSTACHE_PROFILER_BLOCK_LVL_3(__FUNCTION__);
     const auto find_res = type_map.find(info.type_id_hash_code);
     if(find_res != type_map.end()) {
         return find_res->second.id;

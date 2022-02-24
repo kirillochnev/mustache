@@ -6,6 +6,7 @@
 * [Multithreading support out of the box](#Multithreading)
 * Fully runtime: you can describe Components and Systems without using templates
 * Has C-API and can be used with other programing languages like ex: [mustache-lua](https://github.com/kirillochnev/mustache-lua)
+* Has integration with [profiler](#Profiling)
 
 ## Introduction
 
@@ -343,3 +344,13 @@ _(lower is faster)_
 Update time:
 ![Create time](doc/update.png "Benchmark Results: Create entities")
 _(lower is faster)_
+
+## Profiling
+
+Mustache has integration with [EasyProfiler](https://github.com/yse/easy_profiler).
+To enable profiling build mustache with cmake option `MUSTACHE_BUILD_WITH_EASY_PROFILER=ON`.
+You can choose profile depth by set `MUSTACHE_PROFILER_LVL` to 0, 1, 2 or 3.
+
+This profiling result of mustache unit-tests:
+
+![Profiling result](doc/test_frofiling_result.png "Tests profiling result")

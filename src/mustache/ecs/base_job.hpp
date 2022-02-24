@@ -30,7 +30,10 @@ namespace mustache {
                                         JobInvocationIndex invocation_index) = 0;
         virtual ComponentIdMask checkMask() const noexcept = 0;
         virtual ComponentIdMask updateMask() const noexcept = 0;
-        [[nodiscard]] virtual std::string name() const noexcept = 0;
+        [[nodiscard]] virtual std::string name() const noexcept {
+            return nameCStr();
+        }
+        [[nodiscard]] virtual const char* nameCStr() const noexcept = 0;
 
         [[nodiscard]] virtual bool extraArchetypeFilterCheck(const Archetype&) const noexcept {
             return true;

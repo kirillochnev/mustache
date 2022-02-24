@@ -1,6 +1,7 @@
 #include "event_manager.hpp"
 
 #include <mustache/utils/logger.hpp>
+#include <mustache/utils/profiler.hpp>
 
 #include <map>
 
@@ -12,6 +13,7 @@ namespace {
 }
 
 EventId EventManager::registerEventType(const std::string& name) noexcept {
+    MUSTACHE_PROFILER_BLOCK_LVL_1(__FUNCTION__);
     const auto find_res = type_map.find(name);
     if(find_res != type_map.end()) {
         return find_res->second;
