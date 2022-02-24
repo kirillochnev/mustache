@@ -14,16 +14,16 @@ World::World(const WorldContext& context, WorldId id):
     context_{context},
     entities_{*this},
     world_storage_{*context.memory_manager} {
-    MUSTACHE_PROFILER_BLOCK_LVL_0(("World() id:" + std::to_string(id_.toInt())).c_str());
+    MUSTACHE_PROFILER_BLOCK_LVL_0("World::World()");
 }
 
 World::~World() {
-    MUSTACHE_PROFILER_BLOCK_LVL_0(("~World() id:" + std::to_string(id_.toInt())).c_str());
+    MUSTACHE_PROFILER_BLOCK_LVL_0("World::~World()");
     used_world_ids.erase(id_);
 }
 
 void World::init() {
-    MUSTACHE_PROFILER_BLOCK_LVL_0(__FUNCTION__ );
+    MUSTACHE_PROFILER_BLOCK_LVL_0("World::init()");
 
     version_ = WorldVersion::make(0);
 
@@ -33,7 +33,8 @@ void World::init() {
 }
 
 void World::update() {
-    MUSTACHE_PROFILER_BLOCK_LVL_0(__FUNCTION__ );
+    MUSTACHE_PROFILER_BLOCK_LVL_0("World::update()");
+
     incrementVersion();
 
     if (systems_) {
@@ -44,7 +45,7 @@ void World::update() {
 }
 
 WorldId World::nextWorldId() noexcept {
-    MUSTACHE_PROFILER_BLOCK_LVL_3(__FUNCTION__ );
+    MUSTACHE_PROFILER_BLOCK_LVL_3("World::nextWorldId()");
 
     if (!used_world_ids.empty()) {
         auto result = *used_world_ids.begin();

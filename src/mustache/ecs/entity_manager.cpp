@@ -176,7 +176,7 @@ SharedComponentPtr EntityManager::getCreatedSharedComponent(const SharedComponen
 }
 
 void EntityManager::removeComponent(Entity entity, ComponentId component) {
-    MUSTACHE_PROFILER_BLOCK_LVL_1(__FUNCTION__ );
+    MUSTACHE_PROFILER_BLOCK_LVL_2(__FUNCTION__ );
 
     if (isLocked()) {
         getTemporalStorage().removeComponent(entity, component);
@@ -205,7 +205,7 @@ void EntityManager::removeComponent(Entity entity, ComponentId component) {
 }
 
 bool EntityManager::removeSharedComponent(Entity entity, SharedComponentId component) {
-    MUSTACHE_PROFILER_BLOCK_LVL_1(__FUNCTION__ );
+    MUSTACHE_PROFILER_BLOCK_LVL_2(__FUNCTION__ );
 
     const auto& location = locations_[entity.id()];
     if (location.archetype.isNull()) {

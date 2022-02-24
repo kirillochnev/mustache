@@ -8,7 +8,8 @@ using namespace mustache;
 
 // TODO: make this functions execute all patch from current state to target state
 void ASystem::checkState(SystemState expected_state) const {
-    MUSTACHE_PROFILER_BLOCK_LVL_3((name() + " | " + __FUNCTION__ ).c_str());
+    [[maybe_unused]] const auto profiler_msg = name() + " | " + __FUNCTION__;
+    MUSTACHE_PROFILER_BLOCK_LVL_3(profiler_msg.c_str());
 
     if (state_ != expected_state) {
         throw std::runtime_error("Invalid state");
@@ -16,7 +17,8 @@ void ASystem::checkState(SystemState expected_state) const {
 }
 
 void ASystem::create(World& world) {
-    MUSTACHE_PROFILER_BLOCK_LVL_0((name() + " | " + __FUNCTION__ ).c_str());
+    [[maybe_unused]] const auto profiler_msg = name() + " | " + __FUNCTION__;
+    MUSTACHE_PROFILER_BLOCK_LVL_0(profiler_msg.c_str());
 
     checkState(SystemState::kUninit);
     if (state_ != SystemState::kUninit) {
@@ -27,7 +29,8 @@ void ASystem::create(World& world) {
 }
 
 void ASystem::configure(World& world, SystemConfig& config) {
-    MUSTACHE_PROFILER_BLOCK_LVL_0((name() + " | " + __FUNCTION__ ).c_str());
+    [[maybe_unused]] const auto profiler_msg = name() + " | " + __FUNCTION__;
+    MUSTACHE_PROFILER_BLOCK_LVL_0(profiler_msg.c_str());
 
     checkState(SystemState::kInited);
     onConfigure(world, config);
@@ -35,7 +38,8 @@ void ASystem::configure(World& world, SystemConfig& config) {
 }
 
 void ASystem::start(World& world) {
-    MUSTACHE_PROFILER_BLOCK_LVL_0((name() + " | " + __FUNCTION__ ).c_str());
+    [[maybe_unused]] const auto profiler_msg = name() + " | " + __FUNCTION__;
+    MUSTACHE_PROFILER_BLOCK_LVL_0(profiler_msg.c_str());
 
     checkState(SystemState::kConfigured);
     onStart(world);
@@ -43,14 +47,16 @@ void ASystem::start(World& world) {
 }
 
 void ASystem::update(World& world) {
-    MUSTACHE_PROFILER_BLOCK_LVL_0((name() + " | " + __FUNCTION__ ).c_str());
+    [[maybe_unused]] const auto profiler_msg = name() + " | " + __FUNCTION__;
+    MUSTACHE_PROFILER_BLOCK_LVL_0(profiler_msg.c_str());
 
     checkState(SystemState::kActive);
     onUpdate(world);
 }
 
 void ASystem::pause(World& world) {
-    MUSTACHE_PROFILER_BLOCK_LVL_0((name() + " | " + __FUNCTION__ ).c_str());
+    [[maybe_unused]] const auto profiler_msg = name() + " | " + __FUNCTION__;
+    MUSTACHE_PROFILER_BLOCK_LVL_0(profiler_msg.c_str());
 
     checkState(SystemState::kActive);
     onPause(world);
@@ -58,7 +64,8 @@ void ASystem::pause(World& world) {
 }
 
 void ASystem::stop(World& world) {
-    MUSTACHE_PROFILER_BLOCK_LVL_0((name() + " | " + __FUNCTION__ ).c_str());
+    [[maybe_unused]] const auto profiler_msg = name() + " | " + __FUNCTION__;
+    MUSTACHE_PROFILER_BLOCK_LVL_0(profiler_msg.c_str());
 
     checkState(SystemState::kPaused);
     onStop(world);
@@ -66,7 +73,8 @@ void ASystem::stop(World& world) {
 }
 
 void ASystem::resume(World& world) {
-    MUSTACHE_PROFILER_BLOCK_LVL_0((name() + " | " + __FUNCTION__ ).c_str());
+    [[maybe_unused]] const auto profiler_msg = name() + " | " + __FUNCTION__;
+    MUSTACHE_PROFILER_BLOCK_LVL_0(profiler_msg.c_str());;
 
     checkState(SystemState::kPaused);
     onResume(world);
@@ -74,7 +82,8 @@ void ASystem::resume(World& world) {
 }
 
 void ASystem::destroy(World& world) {
-    MUSTACHE_PROFILER_BLOCK_LVL_0((name() + " | " + __FUNCTION__ ).c_str());
+    [[maybe_unused]] const auto profiler_msg = name() + " | " + __FUNCTION__;
+    MUSTACHE_PROFILER_BLOCK_LVL_0(profiler_msg.c_str());
 
     if (state_ == SystemState::kActive) {
         pause(world);
