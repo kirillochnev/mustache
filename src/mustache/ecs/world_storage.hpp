@@ -43,11 +43,11 @@ namespace mustache {
 
         template<typename _Singleton>
         [[nodiscard]] static SingletonId registerSingleton() noexcept {
-            static const SingletonId id = getSingletonId(makeTypeInfo<_Singleton>());
+            static const SingletonId id = getSingletonId(type_name<_Singleton>());
             return id;
         }
 
-        [[nodiscard]] static SingletonId getSingletonId(const TypeInfo& info) noexcept;
+        [[nodiscard]] static SingletonId getSingletonId(const std::string& name) noexcept;
 
         [[nodiscard]] std::shared_ptr<void> getInstanceOf(SingletonId id) const noexcept {
             if (!singletons_.has(id)) {
