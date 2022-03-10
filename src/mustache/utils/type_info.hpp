@@ -13,6 +13,9 @@
 #define MUSTACHE_FUNCTION_SIGNATURE __PRETTY_FUNCTION__
 #endif
 namespace mustache {
+    class World;
+    struct Entity;
+
     namespace detail {
         MUSTACHE_EXPORT std::string make_type_name_from_func_name(const char* func_name) noexcept;
         template<typename C>
@@ -35,7 +38,7 @@ namespace mustache {
     using Functor = _Sign* ;//std::function<_Sign>;
 
     struct MUSTACHE_EXPORT TypeInfo {
-        using Constructor = Functor<void (void*) >;
+        using Constructor = Functor<void (void*, const Entity&, World&) >;
         using CopyFunction = Functor<void (void*, const void*) >;
         using MoveFunction = Functor<void (void*, void*) >;
         using Destructor = Functor<void (void*) >;
@@ -54,6 +57,30 @@ namespace mustache {
             IsEqual compare;
         } functions;
         std::vector<std::byte> default_value; // this array will be used to init component in case of empty constructor
+
+        template<typename T>
+        static void ComponentConstructor(void *ptr, [[maybe_unused]] const Entity& entity, [[maybe_unused]] World& world) {
+            if constexpr(std::is_constructible<T, World&, Entity>::value) {
+                new(ptr) T {world, entity};
+                return;
+            }
+            if constexpr(std::is_constructible<T, Entity, World&>::value) {
+                new(ptr) T {entity, world};
+                return;
+            }
+            if constexpr(std::is_constructible<T, World&>::value) {
+                new(ptr) T {world};
+                return;
+            }
+            if constexpr(std::is_constructible<T, const Entity&>::value) {
+                new(ptr) T {entity};
+                return;
+            }
+            if constexpr(std::is_constructible<T>::value) {
+                new(ptr) T {};
+                return;
+            }
+        }
     };
 
     template <typename T>
@@ -64,11 +91,8 @@ namespace mustache {
                 type_name<T>(),
                 typeid(T).hash_code(),
                 TypeInfo::FunctionSet {
-                        std::is_trivially_default_constructible<T>::value ? TypeInfo::Constructor{} : [](void *ptr) {
-                            if constexpr(!std::is_abstract<T>::value) {
-                                new(ptr) T;
-                            }
-                        },
+                        std::is_trivially_default_constructible<T>::value ? TypeInfo::Constructor{} :
+                                                                            TypeInfo::ComponentConstructor<T>,
                         [](void* dest, const void* source) {
                             if constexpr (std::is_copy_constructible_v<T>) {
                                 new(dest) T{*static_cast<const T *>(source)};

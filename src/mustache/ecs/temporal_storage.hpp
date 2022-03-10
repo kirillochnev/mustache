@@ -23,7 +23,7 @@ namespace mustache {
         ~TemporalStorage() {
             clear();
         }
-        void* assignComponent(Entity entity, ComponentId id, bool skip_constructor);
+        void* assignComponent(World& world, Entity entity, ComponentId id, bool skip_constructor);
 
         void create(Entity entity, Archetype* archetype);
 

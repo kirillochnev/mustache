@@ -83,7 +83,9 @@ namespace converter {
         type_info.align = info.align;
         type_info.type_id_hash_code = std::hash<std::string>{}(info.name);
 
-        type_info.functions.create = info.functions.create;
+        void* tmp = reinterpret_cast<void*>(info.functions.create);
+        type_info.functions.create = reinterpret_cast<mustache::TypeInfo::Constructor>(tmp);
+
         type_info.functions.copy = info.functions.copy;
         type_info.functions.move = info.functions.move;
         type_info.functions.move_constructor = info.functions.move_constructor;

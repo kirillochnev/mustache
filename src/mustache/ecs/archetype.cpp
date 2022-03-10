@@ -147,7 +147,7 @@ void Archetype::externalMove(Entity entity, Archetype& prev_archetype, Archetype
             info.move(component_ptr, prev_ptr);
         } else if (info.hasConstructor() && !skip_constructor.has(info.id)) {
             auto component_ptr = dest_view.getData<FunctionSafety::kUnsafe>(component_index);
-            info.constructor(component_ptr);
+            info.constructor(component_ptr, world_, entity);
         }
         ++component_index;
     }
@@ -168,7 +168,7 @@ ArchetypeEntityIndex Archetype::insert(Entity entity, const ComponentIdMask& ski
             const auto& component_id = operation_helper_.component_index_to_component_id[info.component_index];
             if (is_skip_mask_empty || !skip_constructor.has(component_id)) {
                 auto component_ptr = view.getData<FunctionSafety::kUnsafe>(info.component_index);
-                info.constructor(component_ptr);
+                info.constructor(component_ptr, entity, world_);
             }
         }
         for (const auto& info : operation_helper_.create_with_value) {

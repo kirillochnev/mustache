@@ -852,3 +852,73 @@ TEST(EntityManager, indirect_dependency) {
     ASSERT_TRUE(entities.hasComponent<Component1>(e));
     ASSERT_FALSE(entities.hasComponent<UnusedComponent>(e));
 }
+
+TEST(EntityManager, custom_constructor) {
+    struct CreateWithWorldAndEntity{
+        CreateWithWorldAndEntity(mustache::World&, mustache::Entity e):
+            entity{e} {
+
+        }
+        mustache::Entity entity;
+    };
+    struct CreateWithEntityAndWorld{
+        CreateWithEntityAndWorld(mustache::Entity e, mustache::World&):
+                entity{e} {
+
+        }
+        mustache::Entity entity;
+    };
+    struct CreateWithEntity {
+        CreateWithEntity(mustache::Entity e):
+                entity{e} {
+
+        }
+        mustache::Entity entity;
+    };
+    struct CreateWithWorld {
+        CreateWithWorld(mustache::World& w):
+            world{&w} {
+
+        }
+        mustache::World* world;
+    };
+    mustache::World world;
+    for (uint32_t i = 0; i < 10000; ++i) {
+        auto entity = world.entities().create();
+        if (i % 2) {
+            world.entities().assign<CreateWithWorld>(entity);
+        }
+        if (i % 3) {
+            world.entities().assign<CreateWithWorldAndEntity>(entity);
+        }
+        if (i % 5) {
+            world.entities().assign<CreateWithEntity>(entity);
+        }
+        if (i % 7) {
+            world.entities().assign<CreateWithEntityAndWorld>(entity);
+        }
+    }
+    world.entities().begin()
+        .assign<CreateWithEntityAndWorld>()
+        .assign<CreateWithEntity>()
+    .end();
+    auto& archetype = world.entities().getArchetype<CreateWithEntity, CreateWithEntityAndWorld,
+                                                    CreateWithWorld, CreateWithWorldAndEntity>();
+    (void) world.entities().create(archetype);
+    world.entities().forEach([](mustache::World& world, mustache::Entity entity, const CreateWithEntity* e,
+                                        const CreateWithEntityAndWorld* ew, const CreateWithWorld* w,
+                                        const CreateWithWorldAndEntity* we) {
+        if (w) {
+            ASSERT_EQ(w->world, &world);
+        }
+        if (e) {
+            ASSERT_EQ(e->entity, entity);
+        }
+        if (we) {
+            ASSERT_EQ(we->entity, entity);
+        }
+        if (ew) {
+            ASSERT_EQ(ew->entity, entity);
+        }
+    });
+}
