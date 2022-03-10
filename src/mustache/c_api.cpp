@@ -76,6 +76,15 @@ namespace converter {
             callback(job, convert(&world), tasks_count.toInt(), job_size.toInt(), convert(mode));
         };
     }
+    mustache::TypeInfo::Constructor convert(void(*create)(void*)) {
+        if (create == nullptr) {
+            return mustache::TypeInfo::Constructor{};
+        }
+        return [create](void* ptr, const mustache::Entity&, mustache::World&) {
+            create(ptr);
+        };
+    }
+
     mustache::TypeInfo convert(const TypeInfo& info) noexcept {
         mustache::TypeInfo type_info;
         type_info.name = info.name;
@@ -83,8 +92,7 @@ namespace converter {
         type_info.align = info.align;
         type_info.type_id_hash_code = std::hash<std::string>{}(info.name);
 
-        void* tmp = reinterpret_cast<void*>(info.functions.create);
-        type_info.functions.create = reinterpret_cast<mustache::TypeInfo::Constructor>(tmp);
+        type_info.functions.create = convert(info.functions.create);
 
         type_info.functions.copy = info.functions.copy;
         type_info.functions.move = info.functions.move;

@@ -57,7 +57,7 @@ namespace mustache {
             size_t size;
 
             MUSTACHE_INLINE bool hasConstructor() const noexcept {
-                return constructor_ptr != nullptr || default_data != nullptr;
+                return constructor_ptr || default_data != nullptr;
             }
 
             MUSTACHE_INLINE void constructor(void* ptr, World& world, const Entity& entity) const {

@@ -678,7 +678,7 @@ namespace mustache {
         if (isLocked()) {
             auto& storage = getTemporalStorage();
             if constexpr(sizeof...(_I) > 0u) {
-                static const std::array component_ids{
+                static const std::array component_ids {
                         ComponentFactory::registerComponent<typename std::tuple_element<_I, TupleType>::type::Component>()...
                 };
                 const auto unused_init_list = {

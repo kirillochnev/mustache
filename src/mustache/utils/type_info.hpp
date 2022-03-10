@@ -35,7 +35,7 @@ namespace mustache {
         return result;
     }
     template<typename _Sign>
-    using Functor = _Sign* ;//std::function<_Sign>;
+    using Functor = std::function<_Sign>;
 
     struct MUSTACHE_EXPORT TypeInfo {
         using Constructor = Functor<void (void*, const Entity&, World&) >;
@@ -76,8 +76,9 @@ namespace mustache {
                 new(ptr) T {entity};
                 return;
             }
-            if constexpr(std::is_constructible<T>::value) {
-                new(ptr) T {};
+            if constexpr(std::is_default_constructible<T>::value &&
+                        !std::is_trivially_default_constructible<T>::value) {
+                new(ptr) T();
                 return;
             }
         }
