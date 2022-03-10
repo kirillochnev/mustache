@@ -13,6 +13,18 @@ namespace {
         result.functions.create = [](void* ptr) {
             new(ptr) T ();
         };
+        result.functions.copy = [](void* dest, const void* src) {
+            *static_cast<T*>(dest) = *static_cast<const T*>(src);
+        };
+        result.functions.move_constructor = [](void* dest, void* src) {
+            new (dest) T {std::move(*static_cast<T*>(src))};
+        };
+        result.functions.move = [](void* dest, void* src) {
+            *static_cast<T*>(dest) = std::move(*static_cast<T*>(src));
+        };
+        result.functions.destroy = [](void* ptr) {
+            static_cast<T*>(ptr)->~T();
+        };
         return result;
     }
     enum : uint32_t {

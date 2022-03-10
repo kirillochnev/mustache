@@ -81,7 +81,11 @@ namespace converter {
             return mustache::TypeInfo::Constructor{};
         }
         return [create](void* ptr, const mustache::Entity&, mustache::World&) {
-            create(ptr);
+            if (create != nullptr) {
+                create(ptr);
+            } else {
+                mustache::Logger{}.error("Create function is null!");
+            }
         };
     }
 
