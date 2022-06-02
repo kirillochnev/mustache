@@ -2,6 +2,7 @@
 #include <queue>
 #include <map>
 #include <set>
+#include <string>
 
 #ifdef __EMSCRIPTEN__
 #include<emscripten/threading.h>
