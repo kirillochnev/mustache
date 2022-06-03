@@ -120,6 +120,9 @@ endif()
 add_subdirectory(third_party)
 target_link_libraries(${PROJECT_NAME} mustache_profiler)
 
+
+include(GenerateExportHeader)
+generate_export_header(${PROJECT_NAME})
 if (MUSTACHE_BUILD_SHARED)
     target_compile_definitions(${PROJECT_NAME} PRIVATE MAKE_MUSTACHE_DLL)
 endif()
@@ -127,17 +130,19 @@ endif()
 target_include_directories(${PROJECT_NAME} PUBLIC
         $<BUILD_INTERFACE:${mustache_SOURCE_DIR}/src>
         $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+        $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}>
 )
 
 target_link_libraries(${PROJECT_NAME} ${CMAKE_THREAD_LIBS_INIT})
 target_compile_features(${PROJECT_NAME} PUBLIC ${MUSTACHE_CXX_STD})
 
-
+option(MUSTACHE_BUILD_TESTS "Build mustache Tests" OFF)
 if (MUSTACHE_BUILD_TESTS)
     enable_testing()
     add_subdirectory(tests)
 endif()
 
+option(MUSTACHE_BUILD_EXAMPLES "Build mustache Examples" OFF)
 if (MUSTACHE_BUILD_EXAMPLES)
     add_subdirectory(example)
 endif()
@@ -159,6 +164,11 @@ install(
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
         FILES_MATCHING PATTERN "*.h"
 )
+# TODO: add mustache_export.h to install files
+#install(
+#        FILES ${PROJECT_BINARY_DIR}/mustache_export.h 
+#        DESTINATION ${INCLUDE_INSTALL_DIR}
+#)
 
 install(
         DIRECTORY src/

@@ -74,7 +74,7 @@ int main() {
 
     const auto run_mode = mustache::JobRunMode::kCurrentThread; // or kParallel
 
-    world.entities().forEach([](Position& pos, const Velocity& vel, const Rotation& rot) {
+    world.entities().forEach([dt](Position& pos, const Velocity& vel, const Rotation& rot) {
         const float dist = dt * vel.value;
         const auto dir = forward(rot.value);
         pos.value.x += dist * dir.x;
