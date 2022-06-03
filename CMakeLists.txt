@@ -124,7 +124,7 @@ target_link_libraries(${PROJECT_NAME} mustache_profiler)
 include(GenerateExportHeader)
 generate_export_header(${PROJECT_NAME})
 if (MUSTACHE_BUILD_SHARED)
-    target_compile_definitions(${PROJECT_NAME} PRIVATE MAKE_MUSTACHE_DLL)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE mustache_EXPORTS)
 endif()
 
 target_include_directories(${PROJECT_NAME} PUBLIC
@@ -167,7 +167,7 @@ install(
 # TODO: add mustache_export.h to install files
 #install(
 #        FILES ${PROJECT_BINARY_DIR}/mustache_export.h 
-#        DESTINATION ${INCLUDE_INSTALL_DIR}
+#        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
 #)
 
 install(

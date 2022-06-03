@@ -61,5 +61,5 @@ else()
     endif()
 endif(MSVC)
 
-include(GoogleTest)
-gtest_discover_tests(mustache_test)
+#include(GoogleTest)
+#gtest_discover_tests(mustache_test)
