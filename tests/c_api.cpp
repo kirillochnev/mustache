@@ -77,7 +77,7 @@ TEST(C_API_EntityManager, assign) {
     }
     destroyWorld(world);
 }
-
+#include <mustache/utils/logger.hpp>
 TEST(C_API_Job, iterate_singlethread_with_required_componen) {
     struct {
         uint32_t count = 0;
@@ -88,7 +88,9 @@ TEST(C_API_Job, iterate_singlethread_with_required_componen) {
         }
     } static static_data;
 
+    mustache::Logger{}.info("...");
     static_data.reset();
+    mustache::Logger{}.info("...");
 
     struct Position {
         uint32_t x = 0u;
@@ -103,15 +105,19 @@ TEST(C_API_Job, iterate_singlethread_with_required_componen) {
         uint32_t y = 0u;
         uint32_t z = 0u;
     };
+    mustache::Logger{}.info("...");
 
     const auto pos_id = registerComponent(makeTypeInfo<Position>("Position"));
     const auto vel_id = registerComponent(makeTypeInfo<Velocity>("Velocity"));
     const auto rot_id = registerComponent(makeTypeInfo<Orientation>("Orientation"));
+    mustache::Logger{}.info("...");
 
 
 
     JobDescriptor update_descriptor;
+    mustache::Logger{}.info("...");
     memset(&update_descriptor, 0, sizeof(JobDescriptor));
+    mustache::Logger{}.info("...");
 
     update_descriptor.name = "Update Job";
     update_descriptor.component_info_arr_size = 3;
@@ -120,56 +126,84 @@ TEST(C_API_Job, iterate_singlethread_with_required_componen) {
             JobArgInfo{vel_id, true, true},
             JobArgInfo{rot_id, true, true}
     };
+    mustache::Logger{}.info("...");
     update_descriptor.callback = [](Job*, JobForEachArrayArg* arg) {
         auto pos_arr = static_cast<Position*>(arg->components[0]);
         auto vel_arr = static_cast<const Velocity*>(arg->components[1]);
         auto rot_arr = static_cast<const Orientation*>(arg->components[2]);
+        mustache::Logger{}.info("...");
         ASSERT_NE(pos_arr, nullptr);
         ASSERT_NE(vel_arr, nullptr);
         ASSERT_NE(rot_arr, nullptr);
+        mustache::Logger{}.info("...");
         for (uint32_t i = 0; i < arg->array_size; ++i) {
             pos_arr[i].x += vel_arr[i].value * rot_arr[i].x;
+            mustache::Logger{}.info("...");
             pos_arr[i].y += vel_arr[i].value * rot_arr[i].y;
+            mustache::Logger{}.info("...");
             pos_arr[i].z += vel_arr[i].value * rot_arr[i].z;
+            mustache::Logger{}.info("...");
             ++static_data.count;
+            mustache::Logger{}.info("...");
         }
     };
+    mustache::Logger{}.info("...");
 
     JobDescriptor check_descriptor;
+    mustache::Logger{}.info("...");
     memset(&check_descriptor, 0, sizeof(JobDescriptor));
+    mustache::Logger{}.info("...");
     check_descriptor.name = "Check Job";
+    mustache::Logger{}.info("...");
     check_descriptor.callback = [](Job*, JobForEachArrayArg* arg) {
         auto pos_arr = static_cast<const Position*>(arg->components[0]);
+        mustache::Logger{}.info("...");
         auto vel_arr = static_cast<const Velocity*>(arg->components[1]);
+        mustache::Logger{}.info("...");
         auto rot_arr = static_cast<const Orientation*>(arg->components[2]);
+        mustache::Logger{}.info("...");
         ASSERT_NE(pos_arr, nullptr);
+        mustache::Logger{}.info("...");
         ASSERT_NE(vel_arr, nullptr);
+        mustache::Logger{}.info("...");
         ASSERT_NE(rot_arr, nullptr);
+        mustache::Logger{}.info("...");
         for (uint32_t i = 0; i < arg->array_size; ++i) {
             --static_data.count;
+            mustache::Logger{}.info("...");
 
             if (pos_arr[i].x != static_data.cur_iteration * vel_arr[i].value * rot_arr[i].x) {
+                mustache::Logger{}.info("...");
                 throw std::runtime_error("invalid position");
             }
+            mustache::Logger{}.info("...");
             if (pos_arr[i].y != static_data.cur_iteration * vel_arr[i].value * rot_arr[i].y) {
+                mustache::Logger{}.info("...");
                 throw std::runtime_error("invalid position");
             }
+            mustache::Logger{}.info("...");
             if (pos_arr[i].z != static_data.cur_iteration * vel_arr[i].value * rot_arr[i].z) {
+                mustache::Logger{}.info("...");
                 throw std::runtime_error("invalid position");
             }
         }
+        mustache::Logger{}.info("...");
     };
 
     check_descriptor.component_info_arr_size = 3;
+    mustache::Logger{}.info("...");
     check_descriptor.component_info_arr = new JobArgInfo[3]{
             JobArgInfo{pos_id, true, true},
             JobArgInfo{vel_id, true, true},
             JobArgInfo{rot_id, true, true}
     };
+    mustache::Logger{}.info("...");
 
     std::vector<Entity> entities(kNumObjects);
+    mustache::Logger{}.info("...");
 
     auto world = createWorld(0);
+    mustache::Logger{}.info("...");
     auto archetype = getArchetypeByBitsetMask(world, (1ull << pos_id) | (1ull << vel_id) | (1ull << rot_id));
     createEntityGroup(world, archetype, entities.data(), kNumObjects);
     for (uint32_t i = 0; i < kNumObjects; ++i) {
@@ -178,19 +212,26 @@ TEST(C_API_Job, iterate_singlethread_with_required_componen) {
         *static_cast<Orientation*>(getComponent(world, entity, rot_id, false)) = Orientation{1, 2, 3};
     }
 
+    mustache::Logger{}.info("...");
     auto job_update = makeJob(update_descriptor);
+    mustache::Logger{}.info("...");
     auto job_check = makeJob(check_descriptor);
     for (uint32_t i = 0; i < kNumIteration; ++i) {
         ++static_data.cur_iteration;
+        mustache::Logger{}.info("...");
 
         runJob(job_update, world, kCurrentThread);
+        mustache::Logger{}.info("...");
         ASSERT_EQ(static_data.count, kNumObjects);
 
+        mustache::Logger{}.info("...");
         runJob(job_check, world, kCurrentThread);
         ASSERT_EQ(static_data.count, 0);
 
+        mustache::Logger{}.info("...");
         for (auto entity : entities) {
             ASSERT_EQ(entity % 128, static_cast<Velocity*>(getComponent(world, entity, vel_id, true))->value);
+            mustache::Logger{}.info("...");
             const auto& position = *static_cast<const Position*>(getComponent(world, entity, pos_id, true));
             const auto& velocity = *static_cast<const Velocity*>(getComponent(world, entity, vel_id, true));
             const auto& orientation = *static_cast<const Orientation*>(getComponent(world, entity, rot_id, true));
@@ -199,9 +240,14 @@ TEST(C_API_Job, iterate_singlethread_with_required_componen) {
             ASSERT_EQ(static_data.cur_iteration * velocity.value * orientation.z, position.z);
         }
     }
+    mustache::Logger{}.info("...");
     destroyJob(job_check);
+    mustache::Logger{}.info("...");
     destroyJob(job_update);
+    mustache::Logger{}.info("...");
     destroyWorld(world);
+    mustache::Logger{}.info("...");
     delete[] update_descriptor.component_info_arr;
     delete[] check_descriptor.component_info_arr;
+    mustache::Logger{}.info("...");
 }
