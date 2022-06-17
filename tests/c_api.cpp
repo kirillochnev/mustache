@@ -1,7 +1,6 @@
 #include <gtest/gtest.h>
 
 #include <mustache/c_api.h>
-#include <mustache/utils/logger.hpp>
 
 namespace {
     template<typename T>
@@ -50,7 +49,6 @@ TEST(C_API_EntityManager, assign) {
     const auto c0_id = registerComponent(makeTypeInfo<UIntComponent0>("UIntComponent0"));
     const auto c1_id = registerComponent(makeTypeInfo<UIntComponent1>("UIntComponent1"));
     const auto unused_id = registerComponent(makeTypeInfo<UnusedComponent>("UnusedComponent"));
-    mustache::Logger{}.info("%d, %d, %d", c0_id, c1_id, unused_id);
 
     auto world = createWorld(0u);
 
@@ -59,43 +57,25 @@ TEST(C_API_EntityManager, assign) {
     createEntityGroup(world, archetype, entities.data(), kNumObjects);
 
     for (uint32_t i = 0; i < entities.size(); ++i) {
-        mustache::Logger{}.info("...");
         auto e = entities[i];
-        mustache::Logger{}.info("%s", hasComponent(world, e, c0_id) ? "true" : "false");
         ASSERT_FALSE(hasComponent(world, e, c0_id));
-        mustache::Logger{}.info("%s", hasComponent(world, e, c1_id) ? "true" : "false");
         ASSERT_FALSE(hasComponent(world, e, c1_id));
-        mustache::Logger{}.info("%s", hasComponent(world, e, unused_id) ? "true" : "false");
         ASSERT_FALSE(hasComponent(world, e, unused_id));
-        mustache::Logger{}.info("...");
         assignComponent(world, e, c0_id, false);
-        mustache::Logger{}.info("...");
 
         ASSERT_TRUE(hasComponent(world, e, c0_id));
-        mustache::Logger{}.info("...");
         ASSERT_FALSE(hasComponent(world, e, c1_id));
-        mustache::Logger{}.info("...");
         ASSERT_FALSE(hasComponent(world, e, unused_id));
-        mustache::Logger{}.info("...");
         ASSERT_EQ(static_cast<const UIntComponent0*>(getComponent(world, e, c0_id, true))->value, 777 + num_0);
-        mustache::Logger{}.info("...");
 
         assignComponent(world, e, c1_id, false);
-        mustache::Logger{}.info("...");
         ASSERT_TRUE(hasComponent(world, e, c0_id));
-        mustache::Logger{}.info("...");
         ASSERT_TRUE(hasComponent(world, e, c1_id));
-        mustache::Logger{}.info("...");
         ASSERT_FALSE(hasComponent(world, e, unused_id));
-        mustache::Logger{}.info("...");
         ASSERT_EQ(static_cast<const UIntComponent0*>(getComponent(world, e, c0_id, true))->value, 777 + num_0);
-        mustache::Logger{}.info("...");
         ASSERT_EQ(static_cast<const UIntComponent1*>(getComponent(world, e, c1_id, true))->value, 999 + num_1);
-        mustache::Logger{}.info("...");
     }
-    mustache::Logger{}.info("...");
     destroyWorld(world);
-    mustache::Logger{}.info("...");
 }
 
 TEST(C_API_Job, iterate_singlethread_with_required_componen) {

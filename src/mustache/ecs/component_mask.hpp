@@ -121,12 +121,12 @@ namespace mustache {
         std::bitset<_MaxElements> value_;
     };
 
-    struct MUSTACHE_EXPORT ComponentIdMask : public ComponentMask<ComponentId, 64> {
-        ComponentIdMask(const ComponentMask<ComponentId, 64>& oth):
+    struct MUSTACHE_EXPORT ComponentIdMask : public ComponentMask<ComponentId, 128> {
+        ComponentIdMask(const ComponentMask<ComponentId, 128>& oth):
                 ComponentMask{oth} {
 
         }
-        ComponentIdMask(ComponentMask<ComponentId, 64>&& oth):
+        ComponentIdMask(ComponentMask<ComponentId, 128>&& oth):
                 ComponentMask{std::move(oth)} {
 
         }
@@ -135,12 +135,12 @@ namespace mustache {
         using ComponentMask::ComponentMask;
     };
 
-    struct SharedComponentIdMask : public ComponentMask<SharedComponentId, 64> {
-        SharedComponentIdMask(const ComponentMask<SharedComponentId, 64>& oth):
+    struct SharedComponentIdMask : public ComponentMask<SharedComponentId, 128> {
+        SharedComponentIdMask(const ComponentMask<SharedComponentId, 128>& oth):
                 ComponentMask{oth} {
 
         }
-        SharedComponentIdMask(ComponentMask<SharedComponentId, 64>&& oth):
+        SharedComponentIdMask(ComponentMask<SharedComponentId, 128>&& oth):
                 ComponentMask{std::move(oth)} {
 
         }
