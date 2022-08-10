@@ -65,7 +65,7 @@ namespace mustache {
         }
 
         [[nodiscard]] bool isMatch(const ComponentMask& rhs) const noexcept {
-            return (toUInt64() & rhs.toUInt64()) == rhs.toUInt64();
+            return (value_ & rhs.value_) == rhs.value_;
         }
 
         [[nodiscard]] bool has(_ItemType item) const noexcept{
