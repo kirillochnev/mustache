@@ -61,12 +61,12 @@ namespace {
     ComponentIdStorage<SharedComponentId> shared_component_id_storage;
 
     template<typename _F>
-    static void applyFunction(void* data, _F&& f, size_t count, size_t size) {
+    static void applyFunction(void* data, _F&& f, size_t count, size_t size, World& world, const Entity& entity) {
         if (f) {
             MUSTACHE_PROFILER_BLOCK_LVL_3(__FUNCTION__);
             std::byte *ptr = static_cast<std::byte *>(data);
             for (uint32_t i = 0; i < count; ++i) {
-                f(static_cast<void *>(ptr));
+                invoke(f, static_cast<void *>(ptr), world, entity);
                 ptr += size;
             }
         }
@@ -88,14 +88,14 @@ const TypeInfo& ComponentFactory::componentInfo(ComponentId id) {
     return component_id_storage.componentInfo(id);
 }
 
-void ComponentFactory::initComponents(const TypeInfo& info, void* data, size_t count) {
+void ComponentFactory::initComponents(World& world, Entity entity, const TypeInfo& info, void* data, size_t count) {
     MUSTACHE_PROFILER_BLOCK_LVL_2(__FUNCTION__);
-    applyFunction(data, info.functions.create, count, info.size);
+    applyFunction(data, info.functions.create, count, info.size, world, entity);
 }
 
-void ComponentFactory::destroyComponents(const TypeInfo& info, void* data, size_t count) {
+void ComponentFactory::destroyComponents(World& world, Entity entity, const TypeInfo& info, void* data, size_t count) {
     MUSTACHE_PROFILER_BLOCK_LVL_2(__FUNCTION__);
-    applyFunction(data, info.functions.destroy, count, info.size);
+    applyFunction(data, info.functions.destroy, count, info.size, world, entity);
 }
 
 ComponentId ComponentFactory::nextComponentId() noexcept {
@@ -108,7 +108,7 @@ bool ComponentFactory::isEq(const SharedComponentTag* c0,const SharedComponentTa
     return shared_component_id_storage.componentInfo(id).functions.compare(c0, c1);
 }
 
-void ComponentFactory::moveComponent(const TypeInfo& info, void* source, void* dest) {
+void ComponentFactory::moveComponent(World&, Entity, const TypeInfo& info, void* source, void* dest) {
     MUSTACHE_PROFILER_BLOCK_LVL_2(__FUNCTION__);
     if (!info.functions.move) {
         throw std::runtime_error("Invalid move function for: " + info.name);
@@ -116,7 +116,7 @@ void ComponentFactory::moveComponent(const TypeInfo& info, void* source, void* d
     info.functions.move(dest, source);
 }
 
-void ComponentFactory::copyComponent(const TypeInfo& info, const void* source, void* dest) {
+void ComponentFactory::copyComponent(World&, Entity, const TypeInfo& info, const void* source, void* dest) {
     MUSTACHE_PROFILER_BLOCK_LVL_2(__FUNCTION__);
     if (!info.functions.copy) {
         throw std::runtime_error("Invalid copy function for: " + info.name);

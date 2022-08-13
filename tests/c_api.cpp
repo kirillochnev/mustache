@@ -13,6 +13,18 @@ namespace {
         result.functions.create = [](void* ptr) {
             new(ptr) T ();
         };
+        result.functions.copy = [](void* dest, const void* src) {
+            *static_cast<T*>(dest) = *static_cast<const T*>(src);
+        };
+        result.functions.move_constructor = [](void* dest, void* src) {
+            new (dest) T {std::move(*static_cast<T*>(src))};
+        };
+        result.functions.move = [](void* dest, void* src) {
+            *static_cast<T*>(dest) = std::move(*static_cast<T*>(src));
+        };
+        result.functions.destroy = [](void* ptr) {
+            static_cast<T*>(ptr)->~T();
+        };
         return result;
     }
     enum : uint32_t {
@@ -65,7 +77,7 @@ TEST(C_API_EntityManager, assign) {
     }
     destroyWorld(world);
 }
-
+#include <mustache/utils/logger.hpp>
 TEST(C_API_Job, iterate_singlethread_with_required_componen) {
     struct {
         uint32_t count = 0;
@@ -95,8 +107,6 @@ TEST(C_API_Job, iterate_singlethread_with_required_componen) {
     const auto pos_id = registerComponent(makeTypeInfo<Position>("Position"));
     const auto vel_id = registerComponent(makeTypeInfo<Velocity>("Velocity"));
     const auto rot_id = registerComponent(makeTypeInfo<Orientation>("Orientation"));
-
-
 
     JobDescriptor update_descriptor;
     memset(&update_descriptor, 0, sizeof(JobDescriptor));
@@ -140,9 +150,11 @@ TEST(C_API_Job, iterate_singlethread_with_required_componen) {
                 throw std::runtime_error("invalid position");
             }
             if (pos_arr[i].y != static_data.cur_iteration * vel_arr[i].value * rot_arr[i].y) {
+                mustache::Logger{}.info("...");
                 throw std::runtime_error("invalid position");
             }
             if (pos_arr[i].z != static_data.cur_iteration * vel_arr[i].value * rot_arr[i].z) {
+                mustache::Logger{}.info("...");
                 throw std::runtime_error("invalid position");
             }
         }
@@ -158,7 +170,10 @@ TEST(C_API_Job, iterate_singlethread_with_required_componen) {
     std::vector<Entity> entities(kNumObjects);
 
     auto world = createWorld(0);
-    auto archetype = getArchetypeByBitsetMask(world, (1ull << pos_id) | (1ull << vel_id) | (1ull << rot_id));
+
+    std::vector<ComponentId> ids {pos_id, vel_id, rot_id};
+    ComponentMask component_mask { static_cast<uint32_t>(ids.size()), ids.data() };
+    auto archetype = getArchetype(world, component_mask);
     createEntityGroup(world, archetype, entities.data(), kNumObjects);
     for (uint32_t i = 0; i < kNumObjects; ++i) {
         auto entity = entities[i];

@@ -63,7 +63,7 @@ namespace mustache {
         }
         template <typename T>
         EventId registerEventType() noexcept {
-            static EventId result = registerEventType(makeTypeInfo<T>().name);
+            static EventId result = registerEventType(type_name<T>());
             if(!subscriptions_.has(result) || !subscriptions_[result]) {
                 subscriptions_.resize(result.toInt() + 1);
                 subscriptions_[result].reset(new Receivers<T>{});

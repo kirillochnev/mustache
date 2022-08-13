@@ -89,39 +89,39 @@ namespace mustache {
             return mask;
         }
 
-        static void initComponents(const TypeInfo& info, void* data, size_t count);
-        static void destroyComponents(const TypeInfo& info, void* data, size_t count);
-        static void moveComponent(const TypeInfo& info, void* source, void* dest);
-        static void copyComponent(const TypeInfo& info, const void* source, void* dest);
+        static void initComponents(World&, Entity entity, const TypeInfo& info, void* data, size_t count);
+        static void destroyComponents(World&, Entity entity, const TypeInfo& info, void* data, size_t count);
+        static void moveComponent(World&, Entity entity, const TypeInfo& info, void* source, void* dest);
+        static void copyComponent(World&, Entity entity, const TypeInfo& info, const void* source, void* dest);
 
         template<typename T, typename...  ARGS>
-        static T* initComponent(void* data, ARGS&&... args) {
+        static T* initComponent(void* data, World& world, const Entity& e, ARGS&&... args) {
             const static auto id = registerComponent<T>();
             if constexpr(sizeof...(ARGS) > 0) {
                 if constexpr(!std::is_trivially_default_constructible<T>::value) {
                     data = new(data) T {std::forward<ARGS>(args)...};
                 }
             } else {
-                initComponents(id, data, 1);
+                initComponents(world, e, id, data, 1);
             }
             return static_cast<T*>(data);
         }
 
-        static void initComponents(ComponentId id, void* data, size_t count) {
-            initComponents(componentInfo(id), data, count);
+        static void initComponents(World& world, Entity entity, ComponentId id, void* data, size_t count) {
+            initComponents(world, entity, componentInfo(id), data, count);
         }
-        static void destroyComponents(ComponentId id, void* data, size_t count) {
-            destroyComponents(componentInfo(id), data, count);
+        static void destroyComponents(World& world, Entity entity, ComponentId id, void* data, size_t count) {
+            destroyComponents(world, entity, componentInfo(id), data, count);
         }
-        static void moveComponent(ComponentId id, void* source, void* dest, bool destroy_source) {
+        static void moveComponent(World& world, Entity entity, ComponentId id, void* source, void* dest, bool destroy_source) {
             const auto& info = componentInfo(id);
-            moveComponent(info, source, dest);
+            moveComponent(world, entity, info, source, dest);
             if (destroy_source) {
-                destroyComponents(info, source, 1);
+                destroyComponents(world, entity, info, source, 1);
             }
         }
-        static void copyComponent(ComponentId id, const void* source, void* dest) {
-            copyComponent(componentInfo(id), source, dest);
+        static void copyComponent(World& world, Entity entity, ComponentId id, const void* source, void* dest) {
+            copyComponent(world, entity, componentInfo(id), source, dest);
         }
 
         static ComponentId nextComponentId() noexcept;

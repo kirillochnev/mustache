@@ -2,7 +2,7 @@
 
 using namespace mustache;
 
-void* TemporalStorage::assignComponent(Entity entity, ComponentId id, bool skip_constructor) {
+void* TemporalStorage::assignComponent(World& world, Entity entity, ComponentId id, bool skip_constructor) {
     const auto& component_info = ComponentFactory::componentInfo(id);
     auto& info = actions_.emplace_back();
     info.action = Action::kAssignComponent;
@@ -13,7 +13,7 @@ void* TemporalStorage::assignComponent(Entity entity, ComponentId id, bool skip_
     command.component_id = id;
     command.ptr = allocate(static_cast<uint32_t >(component_info.size));
     if (!skip_constructor && component_info.functions.create) {
-        component_info.functions.create(command.ptr);
+        component_info.functions.create(command.ptr, entity, world);
     }
     return command.ptr;
 }

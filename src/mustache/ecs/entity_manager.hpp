@@ -245,8 +245,8 @@ namespace mustache {
         SharedComponentPtr getCreatedSharedComponent(const SharedComponentPtr& ptr, SharedComponentId id);
 
         template<typename Component, typename TupleType, size_t... _I>
-        void initComponent(void* ptr, TupleType& tuple, std::index_sequence<_I...>&&) {
-            ComponentFactory::initComponent<Component>(ptr,std::get<_I>(tuple)...);
+        void initComponent(void* ptr, World& world, const Entity& e, TupleType& tuple, std::index_sequence<_I...>&&) {
+            ComponentFactory::initComponent<Component>(ptr, world, e,std::get<_I>(tuple)...);
         }
 
         template<typename Component, typename TupleType, size_t... _I>
@@ -257,7 +257,11 @@ namespace mustache {
                 static const auto component_id = ComponentFactory::registerComponent<Component>();
                 const auto component_index = archetype.getComponentIndex<FunctionSafety::kUnsafe>(component_id);
                 auto ptr = archetype.getComponent<FunctionSafety::kUnsafe>(component_index, entity_index);
-                new(ptr) Component{std::get<_I>(tuple)...};
+                if constexpr(sizeof...(_I) > 0) {
+                    new(ptr) Component{std::get<_I>(tuple)...};
+                } else {
+                    TypeInfo::ComponentConstructor<Component>(ptr, *archetype.entityAt(entity_index), world_);
+                }
             }
         }
 
@@ -265,7 +269,7 @@ namespace mustache {
         bool initComponent(Archetype& archetype, ArchetypeEntityIndex entity_index, Arg&& arg);
 
         template<typename Arg>
-        bool initComponent(void* ptr, Arg&& arg);
+        bool initComponent(void* ptr, World& world, const Entity& e, Arg&& arg);
 
         template<typename TupleType, size_t... _I>
         void initComponents(Entity entity, TupleType& tuple, const SharedComponentsInfo&,
@@ -543,7 +547,7 @@ namespace mustache {
             const auto component_index = arch.getComponentIndex<FunctionSafety::kUnsafe>(component_id);
             return arch.getComponent<FunctionSafety::kUnsafe>(component_index, location.index);
         } else {
-            return getTemporalStorage().assignComponent(e, component_id, skip_constructor);
+            return getTemporalStorage().assignComponent(world_, e, component_id, skip_constructor);
         }
     }
 
@@ -638,11 +642,11 @@ namespace mustache {
         return true;
     }
     template<typename Arg>
-    bool EntityManager::initComponent(void* ptr, Arg&& arg) {
+    bool EntityManager::initComponent(void* ptr, World& world, const Entity& e, Arg&& arg) {
         using ArgType = typename std::remove_reference<Arg>::type;
         using Component = typename ArgType::Component;
         constexpr size_t num_args = ArgType::num_args;
-        initComponent<Component>(ptr, arg.args, std::make_index_sequence<num_args>());
+        initComponent<Component>(ptr, world, e, arg.args, std::make_index_sequence<num_args>());
         return true;
     }
 
@@ -655,7 +659,8 @@ namespace mustache {
                     ComponentFactory::registerComponent<typename std::tuple_element<_I, TupleType>::type::Component>()...
             };
             const auto unused_init_list = {
-                    initComponent(storage.assignComponent(entity, component_ids[_I], true), std::get<_I>(tuple))...
+                    initComponent(storage.assignComponent(world_, entity, component_ids[_I], true),
+                                  world_, entity, std::get<_I>(tuple))...
             };
             (void) unused_init_list;
             return;
@@ -673,11 +678,12 @@ namespace mustache {
         if (isLocked()) {
             auto& storage = getTemporalStorage();
             if constexpr(sizeof...(_I) > 0u) {
-                static const std::array component_ids{
+                static const std::array component_ids {
                         ComponentFactory::registerComponent<typename std::tuple_element<_I, TupleType>::type::Component>()...
                 };
                 const auto unused_init_list = {
-                        initComponent(storage.assignComponent(entity, component_ids[_I], true), std::get<_I>(tuple))...
+                        initComponent(storage.assignComponent(world_, entity, component_ids[_I], true),
+                                      world_, entity, std::get<_I>(tuple))...
                 };
                 (void) unused_init_list;
             }
