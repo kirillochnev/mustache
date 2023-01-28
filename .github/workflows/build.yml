@@ -10,20 +10,20 @@ jobs:
     strategy:
       matrix:
         compiler:
-          - pkg: g++-7
-            exe: g++-7
-          - pkg: g++-8
-            exe: g++-8
           - pkg: g++-9
             exe: g++-9
+          - pkg: g++-10
+            exe: g++-10
+          - pkg: g++-11
+            exe: g++-11
           - pkg: g++
             exe: g++
-          - pkg: clang-8
-            exe: clang++-8
-          - pkg: clang-9
-            exe: clang++-9
-          - pkg: clang-10
-            exe: clang++-10
+          - pkg: clang-12
+            exe: clang++-12
+          - pkg: clang-13
+            exe: clang++-13
+          - pkg: clang-14
+            exe: clang++-14
           - pkg: clang
             exe: clang++
 
