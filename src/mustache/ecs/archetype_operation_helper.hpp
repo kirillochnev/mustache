@@ -1,10 +1,10 @@
 #pragma once
 
-#include <mustache/utils/type_info.hpp>
 #include <mustache/utils/array_wrapper.hpp>
 #include <mustache/utils/default_settings.hpp>
 
 #include <mustache/ecs/id_deff.hpp>
+#include <mustache/ecs/component_info.hpp>
 
 #include <cstring>
 #include <vector>
@@ -22,7 +22,7 @@ namespace mustache {
         static std::vector<ComponentOffset> offsetsFor(const std::vector<ComponentId>& components);
 
         struct InsertInfo {
-            TypeInfo::Constructor constructor;
+            ComponentInfo::Constructor constructor;
             ComponentIndex component_index;
         };
 
@@ -33,12 +33,12 @@ namespace mustache {
         };
 
         struct DestroyInfo {
-            TypeInfo::Destructor destructor;
+            ComponentInfo::Destructor destructor;
             ComponentIndex component_index;
         };
 
         struct InternalMoveInfo {
-            TypeInfo::MoveFunction move_ptr;
+            ComponentInfo::MoveFunction move_ptr;
             size_t size;
             MUSTACHE_INLINE void move(void* dest, void* src) const {
                 if (move_ptr) {
@@ -50,8 +50,8 @@ namespace mustache {
         };
 
         struct ExternalMoveInfo {
-            TypeInfo::Constructor constructor_ptr;
-            TypeInfo::MoveFunction move_ptr;
+            ComponentInfo::Constructor constructor_ptr;
+            ComponentInfo::MoveFunction move_ptr;
             ComponentId id;
             const std::byte* default_data = nullptr;
             size_t size;

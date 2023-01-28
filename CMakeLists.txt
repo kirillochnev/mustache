@@ -80,6 +80,8 @@ add_library(${PROJECT_NAME} ${MUSTACHE_LIB_TYPE}
     ${mustache_SOURCE_DIR}/src/mustache/ecs/component_mask.hpp
     ${mustache_SOURCE_DIR}/src/mustache/ecs/world.cpp
     ${mustache_SOURCE_DIR}/src/mustache/ecs/world.hpp
+    ${mustache_SOURCE_DIR}/src/mustache/ecs/component_info.cpp
+    ${mustache_SOURCE_DIR}/src/mustache/ecs/component_info.hpp
     ${mustache_SOURCE_DIR}/src/mustache/ecs/component_factory.cpp
     ${mustache_SOURCE_DIR}/src/mustache/ecs/component_factory.hpp
     ${mustache_SOURCE_DIR}/src/mustache/ecs/entity_group.cpp

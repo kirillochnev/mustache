@@ -788,6 +788,15 @@ TEST(EntityManager, dependency) {
 
         ASSERT_TRUE(entities.hasComponent<Component0>(e));
         ASSERT_EQ(entities.getComponent<Component0>(e)->value, 0xDEADBEEF);
+
+        entities.removeComponent<DependentComponent>(e); // nothing will happend. DependentComponent can not be removed before MainComponent
+        ASSERT_TRUE(entities.hasComponent<MainComponent>(e));
+        ASSERT_EQ(entities.getComponent<MainComponent>(e)->value, 123);
+        ASSERT_TRUE(entities.hasComponent<DependentComponent>(e));
+        ASSERT_EQ(entities.getComponent<DependentComponent>(e)->value, 0xB00B5);
+
+        ASSERT_TRUE(entities.hasComponent<Component0>(e));
+        ASSERT_EQ(entities.getComponent<Component0>(e)->value, 0xDEADBEEF);
     }
 
     for (uint32_t i = 0; i < 1000; ++i) {

@@ -76,9 +76,9 @@ namespace converter {
             callback(job, convert(&world), tasks_count.toInt(), job_size.toInt(), convert(mode));
         };
     }
-    mustache::TypeInfo::Constructor convert(void(*create)(void*)) {
+    mustache::ComponentInfo::Constructor convert(void(*create)(void*)) {
         if (create == nullptr) {
-            return mustache::TypeInfo::Constructor{};
+            return mustache::ComponentInfo::Constructor{};
         }
         return [create](void* ptr, const mustache::Entity&, mustache::World&) {
             if (create != nullptr) {
@@ -89,8 +89,8 @@ namespace converter {
         };
     }
 
-    mustache::TypeInfo convert(const TypeInfo& info) noexcept {
-        mustache::TypeInfo type_info;
+    mustache::ComponentInfo convert(const TypeInfo& info) noexcept {
+        mustache::ComponentInfo type_info;
         type_info.name = info.name;
         type_info.size = info.size;
         type_info.align = info.align;

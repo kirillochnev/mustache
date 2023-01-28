@@ -13,15 +13,15 @@ namespace {
     template <typename IdType>
     struct ComponentIdStorage {
         struct Element {
-            TypeInfo info{};
+            ComponentInfo info{};
             IdType id = IdType::null();
         };
         std::map<std::string, Element> type_map;
         IdType next_component_id{IdType::make(0)};
-        std::vector<TypeInfo> components_info;
+        std::vector<ComponentInfo> components_info;
         mutable std::mutex mutex;
 
-        IdType getId(const TypeInfo& info) {
+        IdType getId(const ComponentInfo& info) {
             MUSTACHE_PROFILER_BLOCK_LVL_3(__FUNCTION__);
             std::unique_lock lock {mutex};
             const auto find_res = type_map.find(info.name);
@@ -49,7 +49,7 @@ namespace {
             ++next_component_id;
             return return_value;
         }
-        const TypeInfo& componentInfo(IdType id) const noexcept {
+        const ComponentInfo& componentInfo(IdType id) const noexcept {
             MUSTACHE_PROFILER_BLOCK_LVL_3(__FUNCTION__);
             std::unique_lock lock {mutex};
             return components_info[id.toInt()];
@@ -73,27 +73,27 @@ namespace {
     }
 }
 
-SharedComponentId ComponentFactory::sharedComponentId(const TypeInfo& info) {
+SharedComponentId ComponentFactory::sharedComponentId(const ComponentInfo& info) {
     MUSTACHE_PROFILER_BLOCK_LVL_3(__FUNCTION__);
     return shared_component_id_storage.getId(info);
 }
 
-ComponentId ComponentFactory::componentId(const TypeInfo& info) {
+ComponentId ComponentFactory::componentId(const ComponentInfo& info) {
     MUSTACHE_PROFILER_BLOCK_LVL_3(__FUNCTION__);
     return component_id_storage.getId(info);
 }
 
-const TypeInfo& ComponentFactory::componentInfo(ComponentId id) {
+const ComponentInfo& ComponentFactory::componentInfo(ComponentId id) {
     MUSTACHE_PROFILER_BLOCK_LVL_3(__FUNCTION__);
     return component_id_storage.componentInfo(id);
 }
 
-void ComponentFactory::initComponents(World& world, Entity entity, const TypeInfo& info, void* data, size_t count) {
+void ComponentFactory::initComponents(World& world, Entity entity, const ComponentInfo& info, void* data, size_t count) {
     MUSTACHE_PROFILER_BLOCK_LVL_2(__FUNCTION__);
     applyFunction(data, info.functions.create, count, info.size, world, entity);
 }
 
-void ComponentFactory::destroyComponents(World& world, Entity entity, const TypeInfo& info, void* data, size_t count) {
+void ComponentFactory::destroyComponents(World& world, Entity entity, const ComponentInfo& info, void* data, size_t count) {
     MUSTACHE_PROFILER_BLOCK_LVL_2(__FUNCTION__);
     applyFunction(data, info.functions.destroy, count, info.size, world, entity);
 }
@@ -108,7 +108,7 @@ bool ComponentFactory::isEq(const SharedComponentTag* c0,const SharedComponentTa
     return shared_component_id_storage.componentInfo(id).functions.compare(c0, c1);
 }
 
-void ComponentFactory::moveComponent(World&, Entity, const TypeInfo& info, void* source, void* dest) {
+void ComponentFactory::moveComponent(World&, Entity, const ComponentInfo& info, void* source, void* dest) {
     MUSTACHE_PROFILER_BLOCK_LVL_2(__FUNCTION__);
     if (!info.functions.move) {
         throw std::runtime_error("Invalid move function for: " + info.name);
@@ -116,7 +116,7 @@ void ComponentFactory::moveComponent(World&, Entity, const TypeInfo& info, void*
     info.functions.move(dest, source);
 }
 
-void ComponentFactory::copyComponent(World&, Entity, const TypeInfo& info, const void* source, void* dest) {
+void ComponentFactory::copyComponent(World&, Entity, const ComponentInfo& info, const void* source, void* dest) {
     MUSTACHE_PROFILER_BLOCK_LVL_2(__FUNCTION__);
     if (!info.functions.copy) {
         throw std::runtime_error("Invalid copy function for: " + info.name);

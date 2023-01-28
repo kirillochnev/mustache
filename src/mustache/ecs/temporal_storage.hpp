@@ -9,6 +9,7 @@
 
 namespace mustache {
     class Archetype;
+    struct ComponentInfo;
 
     struct MUSTACHE_EXPORT TemporalStorage {
         enum class Action : uint32_t {
@@ -47,7 +48,7 @@ namespace mustache {
 
         struct AssignComponentWithArgs {
             ComponentId component_id;
-            const TypeInfo* type_info;
+            const ComponentInfo* type_info;
             std::byte* ptr;
         };
 
