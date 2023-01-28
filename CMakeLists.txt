@@ -115,7 +115,7 @@ if (MUSTACHE_WARNINGS_AS_ERROR)
         include(cmake/msvc_warnings.cmake)
     endif()
     
-    set_property(TARGET ${PROJECT_NAME} PROPERTY COMPILE_FLAGS "${CMAKE_CXX_FLAGS} ${MUSTACHE_WARNINGS}")
+	target_compile_options(${PROJECT_NAME} PRIVATE ${MUSTACHE_WARNINGS})
 else()
     message(WARNING "If you have disabled compiler warnings because your compiler throws errors, please let me know.")
 endif()
