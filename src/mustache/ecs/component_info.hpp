@@ -31,7 +31,7 @@ namespace mustache {
         using Constructor = Functor<void (void*, const Entity&, World&) >;
         using CopyFunction = Functor<void (void*, const void*) >;
         using MoveFunction = Functor<void (void*, void*) >;
-        using Destructor = Functor<void (void*) >;
+        using Destructor = Functor<void (void*/*, const Entity&, World&*/) >;
         using IsEqual = Functor<bool (const void*, const void*)>;
 
         size_t size{0};
@@ -50,7 +50,7 @@ namespace mustache {
         std::vector<std::byte> default_value; // this array will be used to init component in case of empty constructor
 
         template<typename T>
-        static void ComponentConstructor(void *ptr, [[maybe_unused]] const Entity& entity, [[maybe_unused]] World& world) {
+        static void componentConstructor(void *ptr, [[maybe_unused]] const Entity& entity, [[maybe_unused]] World& world) {
             if constexpr(std::is_constructible<T, World&, Entity>::value) {
                 new(ptr) T {world, entity};
                 return;
@@ -73,6 +73,52 @@ namespace mustache {
                 return;
             }
         }
+
+        template<typename T>
+        static void componentDestructor(void* ptr/*, [[maybe_unused]] const Entity& entity, [[maybe_unused]] World& world*/) {
+            static_cast<T*>(ptr)->~T();
+        }
+        template<typename T>
+        static void copyComponent([[maybe_unused]] void* dest, [[maybe_unused]] const void* source) {
+            if constexpr (std::is_copy_constructible_v<T>) {
+                new(dest) T{ *static_cast<const T*>(source) };
+            }
+            else {
+                error(type_name<T>() + " is not copy constructible");
+            }
+        }
+
+        template<typename T>
+        static void moveComponent(void* dest, void* source) {
+            *static_cast<T*>(dest) = std::move(*static_cast<T*>(source));
+        }    
+
+        template<typename T>
+        static void componentMoveConstructor([[maybe_unused]] void* dest, [[maybe_unused]] void* source) {
+            if constexpr (std::is_move_constructible_v<T>) {
+                new(dest) T{ std::move(*static_cast<T*>(source)) };
+            }
+            else {
+                if constexpr (std::is_default_constructible_v<T>) {
+                    T* ptr = new(dest) T{};
+                    *std::launder(ptr) = std::move(*static_cast<T*>(source));
+                }
+                else {
+                    error(type_name<T>() + " is not move constructible");
+                }
+            }
+        }
+        template<typename T>
+        static bool componentComparator([[maybe_unused]] const void* lhs, [[maybe_unused]] const void* rhs) {
+            if constexpr (detail::testOperatorEq<T>(nullptr)) {
+                return *static_cast<const T*>(lhs) == *static_cast<const T*>(rhs);
+            }
+            else {
+                error("Not implemented");
+                return false;
+            }
+        }
+
         template <typename T>
         static ComponentInfo make() {
             static ComponentInfo result {
@@ -82,46 +128,12 @@ namespace mustache {
                 typeid(T).hash_code(),
                 ComponentInfo::FunctionSet {
                         std::is_trivially_default_constructible<T>::value ? ComponentInfo::Constructor{} :
-                                                                            ComponentInfo::ComponentConstructor<T>,
-                        [](void* dest, const void* source) {
-                            if constexpr (std::is_copy_constructible_v<T>) {
-                                new(dest) T{*static_cast<const T *>(source)};
-                            }else {
-                                (void)dest;
-                                (void)source;
-                                error(type_name<T>() + " is not copy constructible");
-                            }
-                        },
-                        [](void* dest, void* source) {
-                            *static_cast<T*>(dest) = std::move(*static_cast<T *>(source));
-                        },
-                        [](void* dest, void* source) {
-                            if constexpr (std::is_move_constructible_v<T>) {
-                                new(dest) T{std::move(*static_cast<T *>(source))};
-                            } else {
-                                if constexpr (std::is_default_constructible_v<T>) {
-                                    T* ptr = new(dest) T{};
-                                    *std::launder(ptr) = std::move(*static_cast<T *>(source));
-                                } else {
-                                    (void)dest;
-                                    (void) source;
-                                    error(type_name<T>() + " is not move constructible");
-                                }
-                            }
-                        },
-                        std::is_trivially_destructible<T>::value ? ComponentInfo::Destructor{} : [](void *ptr) {
-                            static_cast<T *>(ptr)->~T();
-                        },
-                        [](const void* lhs, const void* rhs)-> bool {
-                            if constexpr (detail::testOperatorEq<T>(nullptr)) {
-                                return *static_cast<const T*>(lhs) == *static_cast<const T*>(rhs);
-                            } else {
-                                (void) lhs;
-                                (void) rhs;
-                                error("Not implemented");
-                                return false;
-                            }
-                        }
+                                                                            ComponentInfo::componentConstructor<T>,
+                        &copyComponent<T>,
+                        &moveComponent<T>,
+                        &componentMoveConstructor<T>,
+                        std::is_trivially_destructible<T>::value ? ComponentInfo::Destructor{} : &componentDestructor<T>,
+                        &componentComparator<T>
                 }, {}
             };
             return result;

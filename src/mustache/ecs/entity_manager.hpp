@@ -260,7 +260,7 @@ namespace mustache {
                 if constexpr(sizeof...(_I) > 0) {
                     new(ptr) Component{std::get<_I>(tuple)...};
                 } else {
-                    ComponentInfo::ComponentConstructor<Component>(ptr, *archetype.entityAt(entity_index), world_);
+                    ComponentInfo::componentConstructor<Component>(ptr, *archetype.entityAt(entity_index), world_);
                 }
             }
         }
