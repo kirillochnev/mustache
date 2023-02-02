@@ -53,6 +53,9 @@ namespace mustache {
         [[nodiscard]] MUSTACHE_INLINE Entity create(Archetype& archetype);
 
         /// iteration safe
+        [[nodiscard]] MUSTACHE_INLINE Entity create(const ComponentIdMask& components, const SharedComponentsInfo& shared);
+
+        /// iteration safe
         template<typename... Components>
         [[nodiscard]] MUSTACHE_INLINE Entity create();
 
@@ -222,14 +225,35 @@ namespace mustache {
         }
     private:
 
+        MUSTACHE_INLINE void releaseEntityIdUnsafe(Entity entity) noexcept {
+            const auto id = entity.id();
+            if (!entities_.has(id)) {
+                entities_.resize(id.next().toInt());
+            }
+            entities_[id].reset(empty_slots_ ? next_slot_ : id.next(), entity.version().next());
+            next_slot_ = id;
+            ++empty_slots_;
+        }
+
         void onLock();
         void onUnlock();
 
-        Entity createLocked(Archetype* archetype) noexcept {
+        void applyStorage(TemporalStorage& storage);
+        void applyCommandPack(TemporalStorage& storage, uint32_t begin, uint32_t end);
+        void applyCommandPackUnoptimized(TemporalStorage& storage, uint32_t begin, uint32_t end);
+
+        Entity createLocked(const ComponentIdMask& components, const SharedComponentsInfo& shared) noexcept {
+            // you need to store this entity in entities_ in onUnlock()
             const auto id = EntityId::make(next_entity_id_++);
             Entity entity;
-            entity.reset(id, EntityVersion::make(0u), this_world_id_);
-            getTemporalStorage().create(entity, archetype);
+            if (entities_.has(id)) {
+                // version array can not be resized if entity manager is locked.
+                entity.reset(id, entities_[id].version().next(), this_world_id_);
+            }
+            else {
+                entity.reset(id, EntityVersion::make(0u), this_world_id_);
+            }
+            getTemporalStorage().create(entity, components, shared);
             return entity;
         }
 
@@ -381,7 +405,14 @@ namespace mustache {
             }
             return entity;
         }
-        return createLocked(nullptr);
+        return createLocked({}, {});
+    }
+
+    Entity EntityManager::create(const ComponentIdMask& components, const SharedComponentsInfo& shared) {
+        if (!isLocked()) {
+            return create(getArchetype(components, shared));
+        }
+        return createLocked(components, shared);
     }
 
     Entity EntityManager::create(Archetype& archetype) {
@@ -390,12 +421,13 @@ namespace mustache {
             archetype.insert(entity);
             return entity;
         }
-        return createLocked(&archetype);
+        return createLocked(archetype.componentMask(), archetype.sharedComponentInfo());
     }
+
 
     template<typename... Components>
     Entity EntityManager::create() {
-        return create(getArchetype<Components...>());
+        return create(ComponentFactory::makeMask<Components...>(), ComponentFactory::makeSharedInfo<Components...>());
     }
 
     void EntityManager::destroy(Entity entity) {
@@ -422,8 +454,7 @@ namespace mustache {
                 return;
             }
         }
-        const auto id = entity.id();
-        const auto& location = locations_[id];
+        const auto& location = locations_[entity.id()];
         if (!location.archetype.isNull()) {
             if constexpr (isSafe(_Safety)) {
                 if (!archetypes_.has(location.archetype)) {
@@ -432,10 +463,9 @@ namespace mustache {
             }
             archetypes_[location.archetype]->remove(entity, location.index);
         }
-        entities_[id].reset(empty_slots_ ? next_slot_ : id.next(), entity.version().next());
-        next_slot_ = id;
-        ++empty_slots_;
+        releaseEntityIdUnsafe(entity);
     }
+
     template<typename... ARGS>
     Archetype& EntityManager::getArchetype() {
         return getArchetype(ComponentFactory::makeMask<ARGS...>(), ComponentFactory::makeSharedInfo<ARGS...>());
@@ -527,7 +557,7 @@ namespace mustache {
     void EntityManager::removeComponent(Entity entity) {
         static const auto component_id = ComponentFactory::registerComponent<T>();
         if constexpr (isSafe(_Safety)) {
-            if (!isEntityValid(entity)) {
+            if (!isLocked() && !isEntityValid(entity)) {
                 return;
             }
         }

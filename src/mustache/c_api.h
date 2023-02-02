@@ -50,7 +50,7 @@ typedef struct {
 
 
 typedef struct {
-    void (* create)(void*);
+    void (* create)(void*, Entity, World*);
 
     void (* copy)(void*, const void*);
 

@@ -21,12 +21,12 @@ namespace mustache {
         };
         TemporalStorage() = default;
         TemporalStorage(TemporalStorage&&) = default;
-        ~TemporalStorage() {
-            clear();
-        }
+        ~TemporalStorage();
+
+
         void* assignComponent(World& world, Entity entity, ComponentId id, bool skip_constructor);
 
-        void create(Entity entity, Archetype* archetype);
+        void create(Entity entity, const ComponentIdMask& mask, const SharedComponentsInfo& shared);
 
         void removeComponent(Entity entity, ComponentId id);
 
@@ -36,21 +36,6 @@ namespace mustache {
         void destroyNow(Entity entity);
 
         void clear();
-
-        struct ActionInfo {
-            Entity entity;
-            Action action;
-            uint32_t index;
-        };
-        struct RemoveComponent {
-            ComponentId component_id;
-        };
-
-        struct AssignComponentWithArgs {
-            ComponentId component_id;
-            const ComponentInfo* type_info;
-            std::byte* ptr;
-        };
 
         struct DataChunk {
             DataChunk(uint32_t size):
@@ -66,14 +51,33 @@ namespace mustache {
             std::unique_ptr<std::byte[]> data;
         };
 
+        struct ActionInfo {
+            ActionInfo() = default;
+            ActionInfo(const Entity& e, Action a) :
+                entity{ e },
+                action{ a } {
+
+            }
+            Entity entity;
+            Action action;
+            ComponentId component_id;
+            const ComponentInfo* type_info = nullptr;
+
+
+            std::byte* ptr = nullptr;
+            int32_t create_action_index = -1;
+        };
+        struct CreateAction {
+            ComponentIdMask mask;
+            SharedComponentsInfo shared;
+        };
+        std::vector<CreateAction> create_actions_;
+        std::vector<ActionInfo> actions_;
+
+        ActionInfo& emplaceItem(Entity enity, Action action);
+
         std::byte* allocate(uint32_t size);
 
-        std::vector<ActionInfo> actions_;
-        struct {
-            std::vector<AssignComponentWithArgs> assign;
-            std::vector<RemoveComponent> remove;
-            std::vector<Archetype*> create;
-        } commands_;
         std::vector<DataChunk> chunks_;
         uint32_t target_chunk_size_ = 4096u;
         uint32_t total_size_ = 0u;

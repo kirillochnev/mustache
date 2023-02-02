@@ -133,6 +133,10 @@ ChunkIndex Archetype::lastChunkIndex() const noexcept {
 
 void Archetype::externalMove(Entity entity, Archetype& prev_archetype, ArchetypeEntityIndex prev_index,
                              const ComponentIdMask& skip_constructor) {
+    if (this == &prev_archetype) {
+        std::string msg = "Moving from archetype [" + mask_.toString() + "] to itself";
+        throw std::runtime_error(msg);
+    }
     MUSTACHE_PROFILER_BLOCK_LVL_2(__FUNCTION__);
 
     const auto index = pushBack(entity);

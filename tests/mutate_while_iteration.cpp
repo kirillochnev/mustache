@@ -3,7 +3,7 @@
 #include <gtest/gtest.h>
 
 namespace {
-    constexpr uint32_t N = 1000000;//1024 * 1024;
+    constexpr uint32_t N = 1024 * 1024;
 
     struct Component0 {
         uint32_t value = 1u;
@@ -160,4 +160,148 @@ TEST(EntityManager, update_while_iteration) {
     const auto arr = create(world);
     update(world);
     check(world);
+}
+
+TEST(EntityManager, lock_unlock) {
+
+    struct Counters {
+        int32_t constructor = 0;
+        int32_t copy_constructor = 0;
+        int32_t destructor = 0;
+        int32_t move = 0;
+        int32_t move_assign = 0;
+        int32_t assign = 0;
+    };
+    static Counters counter;
+
+
+    static int32_t count = 0;
+    static bool error = false;
+    struct CheckStateComponent {
+        CheckStateComponent() {
+            ++counter.constructor;
+            ++count;
+        }
+        CheckStateComponent(const CheckStateComponent&) {
+            ++counter.copy_constructor;
+            ++count;
+        }
+        CheckStateComponent(CheckStateComponent&&) {
+            ++counter.move;
+            ++count;
+        }
+        ~CheckStateComponent() {
+            ++counter.destructor;
+            --count;
+            error = error || (count < 0);
+        }
+        CheckStateComponent& operator=(const CheckStateComponent&) {
+            ++counter.assign;
+            return *this;
+        }
+        CheckStateComponent& operator=(CheckStateComponent&&) {
+            ++counter.move_assign;
+            return *this;
+        }
+    };
+
+    ASSERT_EQ(0, count);
+    ASSERT_FALSE(error);
+    {
+        mustache::World world;
+        auto& entities = world.entities();
+        const auto check_count = [&entities](uint32_t expected) {
+            uint32_t result = 0u;
+            entities.forEach([&result](const CheckStateComponent&) {
+                ++result;
+            });
+            if (expected != result) {
+                throw std::runtime_error("Invalid count: " + std::to_string(expected) + " vs " + std::to_string(result));
+            }
+        };
+
+
+        int32_t expected_count = 0;
+        const auto on_assign = [&expected_count] {
+            ++expected_count;
+        };
+        const auto on_remove = [&expected_count] {
+            --expected_count;
+            if (expected_count < 0) {
+                throw std::runtime_error("WTF?!");
+            }
+        };
+        for (uint32_t i = 0; i < 100; ++i) {
+            auto entity = entities.create<CheckStateComponent, Component0, Component1 >();
+            on_assign();
+            entities.assign<Component2>(entity);
+            entities.assign<Component3>(entity);
+
+            check_count(expected_count);
+            ASSERT_EQ(expected_count, count);
+            ASSERT_FALSE(error);
+        }
+        ASSERT_FALSE(error);
+        auto before_lock_count = expected_count;
+        entities.lock();
+        for (uint32_t i = 0; i < 100; ++i) {
+            auto entity = entities.create<Component0, Component1 >(); 
+            on_assign();
+            entities.assign<CheckStateComponent >(entity);
+            entities.assign<Component2 >(entity);
+            entities.assign<Component3>(entity);
+
+            check_count(before_lock_count);
+            ASSERT_EQ(expected_count, count);
+            ASSERT_FALSE(error);
+        }
+        ASSERT_FALSE(error);
+        for (uint32_t i = 0; i < 100; ++i) {
+            auto entity = entities.create<CheckStateComponent, Component0, Component1 >();
+            on_assign();
+            entities.assign<Component3>(entity);
+            entities.removeComponent<CheckStateComponent >(entity);
+            on_remove();
+            entities.assign<Component2>(entity);
+
+            check_count(before_lock_count);
+            ASSERT_EQ(expected_count, count);
+            ASSERT_FALSE(error);
+        }
+
+        ASSERT_FALSE(error);
+        entities.unlock();
+
+        ASSERT_FALSE(error);
+        check_count(expected_count);
+        ASSERT_EQ(expected_count, count);
+
+        entities.forEach([&](mustache::Entity entity, const CheckStateComponent* ptr) {
+            if (ptr != nullptr) {
+                on_remove();
+                entities.removeComponent<CheckStateComponent >(entity);
+            }
+            else {
+                on_assign();
+                entities.assign<CheckStateComponent>(entity);
+            }
+        });
+
+        check_count(expected_count);
+        ASSERT_EQ(expected_count, count);
+
+        const uint32_t active_count = count;
+        uint32_t remove_count = 0;
+        entities.forEach([&](mustache::Entity entity, const CheckStateComponent&) {
+            entities.removeComponent<CheckStateComponent >(entity);
+            on_remove();
+            ++remove_count;
+        });
+
+        ASSERT_EQ(active_count, remove_count);
+        ASSERT_EQ(0, count);
+        check_count(0);
+    }
+    ASSERT_EQ(0, count);
+    ASSERT_FALSE(error);
 }

@@ -10,7 +10,7 @@ namespace {
         result.name = name;
         result.size = sizeof(T);
         result.align = alignof(T);
-        result.functions.create = [](void* ptr) {
+        result.functions.create = [](void* ptr, Entity, World*) {
             new(ptr) T ();
         };
         result.functions.copy = [](void* dest, const void* src) {

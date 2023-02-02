@@ -2,6 +2,7 @@
 
 #include <mustache/utils/dll_export.h>
 #include <mustache/utils/type_info.hpp>
+#include <mustache/utils/index_like.hpp>
 
 #include <functional>
 #include <string>
@@ -18,6 +19,16 @@ namespace mustache {
         inline constexpr bool testOperatorEq(...) noexcept {
             return false;
         }
+
+        template<typename C>
+        inline constexpr bool hasBeforeRemove(decltype(&C::beforeRemove)) noexcept {
+            return true;
+        }
+
+        template<typename C>
+        inline constexpr bool hasBeforeRemove(...) noexcept {
+            return false;
+        }
     }
 
 
@@ -30,9 +41,10 @@ namespace mustache {
     struct MUSTACHE_EXPORT ComponentInfo {
         using Constructor = Functor<void (void*, const Entity&, World&) >;
         using CopyFunction = Functor<void (void*, const void*) >;
-        using MoveFunction = Functor<void (void*, void*) >;
-        using Destructor = Functor<void (void*/*, const Entity&, World&*/) >;
+        using MoveFunction = Functor<void (void* dest, void* source) >;
+        using Destructor = Functor<void (void*) >;
         using IsEqual = Functor<bool (const void*, const void*)>;
+        using BeforeRemove = Functor<void(void*, const Entity&, World&)>;
 
         size_t size{0};
         size_t align{0};
@@ -45,6 +57,7 @@ namespace mustache {
             MoveFunction move_constructor;
             Destructor destroy;
             IsEqual compare;
+            BeforeRemove before_remove;
         } functions;
 
         std::vector<std::byte> default_value; // this array will be used to init component in case of empty constructor
@@ -75,9 +88,17 @@ namespace mustache {
         }
 
         template<typename T>
-        static void componentDestructor(void* ptr/*, [[maybe_unused]] const Entity& entity, [[maybe_unused]] World& world*/) {
+        static void beforeComponentRemove(void* ptr, [[maybe_unused]] const Entity& entity, [[maybe_unused]] World& world) {
+            if constexpr (detail::hasBeforeRemove<T>(nullptr)) {
+                const auto typed_ptr = static_cast<T*>(ptr);
+                invoke(&T::beforeRemove, typed_ptr, *typed_ptr, entity, world);
+            }
+        }        
+        template<typename T>
+        static void componentDestructor(void* ptr) {
             static_cast<T*>(ptr)->~T();
         }
+
         template<typename T>
         static void copyComponent([[maybe_unused]] void* dest, [[maybe_unused]] const void* source) {
             if constexpr (std::is_copy_constructible_v<T>) {
@@ -133,7 +154,8 @@ namespace mustache {
                         &moveComponent<T>,
                         &componentMoveConstructor<T>,
                         std::is_trivially_destructible<T>::value ? ComponentInfo::Destructor{} : &componentDestructor<T>,
-                        &componentComparator<T>
+                        &componentComparator<T>,
+                        detail::hasBeforeRemove<T>(nullptr) ? &beforeComponentRemove<T> : ComponentInfo::BeforeRemove{},
                 }, {}
             };
             return result;

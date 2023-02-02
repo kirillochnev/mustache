@@ -2,59 +2,56 @@
 
 using namespace mustache;
 
+TemporalStorage::~TemporalStorage() {
+    for (const auto& action : actions_) {
+        if (action.action == Action::kCreateEntity &&
+            action.type_info != nullptr && action.ptr != nullptr
+            && action.type_info->functions.destroy != nullptr) {
+            action.type_info->functions.destroy(action.ptr);
+        }
+    }
+    clear();
+}
+
 void* TemporalStorage::assignComponent(World& world, Entity entity, ComponentId id, bool skip_constructor) {
     const auto& component_info = ComponentFactory::componentInfo(id);
-    auto& info = actions_.emplace_back();
-    info.action = Action::kAssignComponent;
-    info.entity = entity;
-    info.index = static_cast<uint32_t >(commands_.assign.size());
-    auto& command = commands_.assign.emplace_back();
+    auto& command = emplaceItem(entity, Action::kAssignComponent);
     command.type_info = &component_info;
     command.component_id = id;
-    command.ptr = allocate(static_cast<uint32_t >(component_info.size));
+    command.ptr = allocate(static_cast<uint32_t>(component_info.size));
     if (!skip_constructor && component_info.functions.create) {
         component_info.functions.create(command.ptr, entity, world);
     }
     return command.ptr;
 }
 
-void TemporalStorage::create(Entity entity, Archetype* archetype) {
-    auto& action = actions_.emplace_back();
-    action.entity = entity;
-    action.index = static_cast<uint32_t >(commands_.create.size());
-    action.action = Action::kCreateEntity;
-    commands_.create.push_back(archetype);
+void TemporalStorage::create(Entity entity, const ComponentIdMask& mask, const SharedComponentsInfo& shared) {
+    auto& command = emplaceItem(entity, Action::kCreateEntity);
+    //command.archetype = archetype;
+    if (!mask.isEmpty() || !shared.empty()) {
+        command.create_action_index = static_cast<int32_t>(create_actions_.size());
+        auto& create_action = create_actions_.emplace_back();
+        create_action.mask = mask;
+        create_action.shared = shared;
+    }
 }
 
 void TemporalStorage::removeComponent(Entity entity, ComponentId id) {
-    auto& info = actions_.emplace_back();
-    info.action = Action::kRemoveComponent;
-    info.entity = entity;
-    info.index = static_cast<uint32_t >(commands_.remove.size());
-    commands_.remove.emplace_back().component_id = id;
+    auto& command = emplaceItem(entity, Action::kRemoveComponent);
+    command.component_id = id;
 }
 
 void TemporalStorage::destroy(Entity entity) {
-    auto& info = actions_.emplace_back();
-    info.action = Action::kDestroyEntity;
-    info.entity = entity;
+    emplaceItem(entity, Action::kDestroyEntity);
 }
 
 void TemporalStorage::destroyNow(Entity entity) {
-    auto& info = actions_.emplace_back();
-    info.action = Action::kDestroyEntityNow;
-    info.entity = entity;
+    emplaceItem(entity, Action::kDestroyEntityNow);
 }
 
 void TemporalStorage::clear() {
-    for (const auto& assign_action : commands_.assign) {
-        if (assign_action.type_info != nullptr && assign_action.type_info->functions.destroy != nullptr) {
-            assign_action.type_info->functions.destroy(assign_action.ptr);
-        }
-    }
     actions_.clear();
-    commands_.assign.clear();
-    commands_.remove.clear();
+    create_actions_.clear();
     if (chunks_.size() > 1u) {
         chunks_.clear();
     } else {
@@ -79,3 +76,8 @@ std::byte* TemporalStorage::allocate(uint32_t size) {
     total_size_ += size;
     return chunk.data.get() + offset;
 }
+
+TemporalStorage::ActionInfo& TemporalStorage::emplaceItem(Entity entity, Action action) {
+    return actions_.emplace_back(entity, action);
+}
+

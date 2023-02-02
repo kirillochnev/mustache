@@ -76,13 +76,13 @@ namespace converter {
             callback(job, convert(&world), tasks_count.toInt(), job_size.toInt(), convert(mode));
         };
     }
-    mustache::ComponentInfo::Constructor convert(void(*create)(void*)) {
+    mustache::ComponentInfo::Constructor convert(void(*create)(void*, Entity, World*)) {
         if (create == nullptr) {
             return mustache::ComponentInfo::Constructor{};
         }
-        return [create](void* ptr, const mustache::Entity&, mustache::World&) {
+        return [create](void* ptr, const mustache::Entity& e, mustache::World& w) {
             if (create != nullptr) {
-                create(ptr);
+                create(ptr, convert(e), convert(&w));
             } else {
                 mustache::Logger{}.error("Create function is null!");
             }
