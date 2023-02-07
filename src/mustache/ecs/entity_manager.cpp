@@ -286,8 +286,8 @@ void EntityManager::applyCommandPack(TemporalStorage& storage, uint32_t begin, u
     if (create) {
         const auto index = storage.actions_[begin].create_action_index;
         if (index >= 0) {
-            final_mask = storage.create_actions_[index].mask;
-            shared = storage.create_actions_[index].shared;
+            final_mask = storage.create_actions_[static_cast<size_t>(index)].mask;
+            shared = storage.create_actions_[static_cast<size_t>(index)].shared;
         }
         if (!entities_.has(entity.id())) {
             entities_.resize(entity.id().next().toInt());
@@ -377,7 +377,7 @@ void EntityManager::applyCommandPackUnoptimized(TemporalStorage& storage, uint32
                 getArchetype<>().insert(command.entity);
             }
             else {
-                const auto& [mask, shared] = storage.create_actions_[command.create_action_index];
+                const auto& [mask, shared] = storage.create_actions_[static_cast<size_t>(command.create_action_index)];
                 getArchetype(mask, shared).insert(command.entity);
             }
         }
@@ -408,7 +408,7 @@ void EntityManager::applyStorage(TemporalStorage& storage) { // optimized versio
     uint32_t begin = 0;
     uint32_t end = begin + 1;
     Entity prev_entity = storage.actions_[begin].entity;
-    for (end; end < storage.actions_.size(); ++end) {
+    for (; end < storage.actions_.size(); ++end) {
         const auto& action = storage.actions_[end];
         if (action.entity == prev_entity) {
             continue;

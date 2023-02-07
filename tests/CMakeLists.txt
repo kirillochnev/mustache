@@ -10,6 +10,7 @@ else()
     find_package(GTest)
     set(gtest_libs GTest::gtest GTest::gtest_main GTest::gmock)
 endif(MSVC)
+
 # fallback for gtest not found
 if (NOT GoogleTest_FOUND)
     include(FetchContent)
@@ -24,7 +25,7 @@ if (NOT GoogleTest_FOUND)
     set(gtest_force_shared_crt ON)
     endif()
     FetchContent_MakeAvailable(googletest)
-    set(gtest_libs gtest gtest_main)
+    set(gtest_libs gtest gmock gtest_main)
 endif()
 
 find_package(Threads REQUIRED)
