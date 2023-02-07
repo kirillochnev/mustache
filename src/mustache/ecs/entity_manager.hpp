@@ -248,8 +248,8 @@ namespace mustache {
         void onUnlock();
 
         void applyStorage(TemporalStorage& storage);
-        void applyCommandPack(TemporalStorage& storage, uint32_t begin, uint32_t end);
-        void applyCommandPackUnoptimized(TemporalStorage& storage, uint32_t begin, uint32_t end);
+        void applyCommandPack(TemporalStorage& storage, size_t begin, size_t end);
+        void applyCommandPackUnoptimized(TemporalStorage& storage, size_t begin, size_t end);
 
         Entity createLocked(const ComponentIdMask& components, const SharedComponentsInfo& shared) noexcept {
             // you need to store this entity in entities_ in onUnlock()

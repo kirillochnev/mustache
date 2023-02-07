@@ -275,7 +275,7 @@ void EntityManager::onUnlock() {
     }
 }
 
-void EntityManager::applyCommandPack(TemporalStorage& storage, uint32_t begin, uint32_t end) {
+void EntityManager::applyCommandPack(TemporalStorage& storage, size_t begin, size_t end) {
     MUSTACHE_PROFILER_BLOCK_LVL_2(__FUNCTION__);
 
     ComponentIdMask final_mask;
@@ -285,9 +285,9 @@ void EntityManager::applyCommandPack(TemporalStorage& storage, uint32_t begin, u
     const bool create = storage.actions_[begin].action == TemporalStorage::Action::kCreateEntity;
     if (create) {
         const auto index = storage.actions_[begin].create_action_index;
-        if (index >= 0) {
-            final_mask = storage.create_actions_[static_cast<size_t>(index)].mask;
-            shared = storage.create_actions_[static_cast<size_t>(index)].shared;
+        if (storage.create_actions_.has(index)) {
+            final_mask = storage.create_actions_[index].mask;
+            shared = storage.create_actions_[index].shared;
         }
         if (!entities_.has(entity.id())) {
             entities_.resize(entity.id().next().toInt());
@@ -302,7 +302,7 @@ void EntityManager::applyCommandPack(TemporalStorage& storage, uint32_t begin, u
     }
     initial_mask = final_mask;
 
-    for (uint32_t i = create ? begin + 1 : begin; i < end; ++i) {
+    for (size_t i = create ? begin + 1 : begin; i < end; ++i) {
         const auto& command = storage.actions_[i];
         switch (command.action) {
         case TemporalStorage::Action::kDestroyEntityNow:
@@ -340,7 +340,7 @@ void EntityManager::applyCommandPack(TemporalStorage& storage, uint32_t begin, u
     }
 
     auto view = archetype.getElementView(locations_[entity.id()].index);
-    for (uint32_t i = begin; i < end; ++i) {
+    for (size_t i = begin; i < end; ++i) {
         const auto& command = storage.actions_[i];
         if (command.action != TemporalStorage::Action::kAssignComponent) {
             continue;
@@ -354,10 +354,10 @@ void EntityManager::applyCommandPack(TemporalStorage& storage, uint32_t begin, u
     }
 }
 
-void EntityManager::applyCommandPackUnoptimized(TemporalStorage& storage, uint32_t begin, uint32_t end) {
+void EntityManager::applyCommandPackUnoptimized(TemporalStorage& storage, size_t begin, size_t end) {
     MUSTACHE_PROFILER_BLOCK_LVL_2(__FUNCTION__);
 
-    for (uint32_t i = begin; i < end; ++i) {
+    for (size_t i = begin; i < end; ++i) {
         const auto& command = storage.actions_[i];
         switch (command.action) {
         case TemporalStorage::Action::kDestroyEntityNow:
@@ -373,12 +373,12 @@ void EntityManager::applyCommandPackUnoptimized(TemporalStorage& storage, uint32
                 entities_.resize(index + 1);
             }
             entities_[command.entity.id()] = command.entity;
-            if (command.create_action_index < 0) {
-                getArchetype<>().insert(command.entity);
+            if (storage.create_actions_.has(command.create_action_index)) {
+                const auto& [mask, shared] = storage.create_actions_[command.create_action_index];
+                getArchetype(mask, shared).insert(command.entity);
             }
             else {
-                const auto& [mask, shared] = storage.create_actions_[static_cast<size_t>(command.create_action_index)];
-                getArchetype(mask, shared).insert(command.entity);
+                getArchetype<>().insert(command.entity);
             }
         }
         break;
@@ -405,8 +405,8 @@ void EntityManager::applyStorage(TemporalStorage& storage) { // optimized versio
         return;
     }
 
-    uint32_t begin = 0;
-    uint32_t end = begin + 1;
+    size_t begin = 0;
+    size_t end = begin + 1;
     Entity prev_entity = storage.actions_[begin].entity;
     for (; end < storage.actions_.size(); ++end) {
         const auto& action = storage.actions_[end];

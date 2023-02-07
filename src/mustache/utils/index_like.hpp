@@ -19,6 +19,12 @@ namespace mustache {
             return result;
         }
 
+        [[nodiscard]] static constexpr _Type make(T t) noexcept {
+            _Type result;
+            result.value_ = t;
+            return result;
+        }
+
         explicit constexpr IndexLike(IndexLike&& v) noexcept :
                 value_{v.value_} {
         }

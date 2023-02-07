@@ -1,6 +1,7 @@
 #pragma once
 
 #include <mustache/utils/dll_export.h>
+#include <mustache/utils/array_wrapper.hpp>
 
 #include <mustache/ecs/entity.hpp>
 #include <mustache/ecs/component_factory.hpp>
@@ -51,9 +52,12 @@ namespace mustache {
             std::unique_ptr<std::byte[]> data;
         };
 
+
+        struct CreateActionIndex : public IndexLike<size_t, CreateActionIndex> {};
+
         struct ActionInfo {
-            ActionInfo() = default;
-            ActionInfo(const Entity& e, Action a) :
+            ActionInfo() noexcept = default;
+            ActionInfo(const Entity& e, Action a)  noexcept :
                 entity{ e },
                 action{ a } {
 
@@ -65,13 +69,13 @@ namespace mustache {
 
 
             std::byte* ptr = nullptr;
-            int32_t create_action_index = -1;
+            CreateActionIndex create_action_index;
         };
         struct CreateAction {
             ComponentIdMask mask;
             SharedComponentsInfo shared;
         };
-        std::vector<CreateAction> create_actions_;
+        ArrayWrapper<CreateAction, CreateActionIndex, false> create_actions_;
         std::vector<ActionInfo> actions_;
 
         ActionInfo& emplaceItem(Entity enity, Action action);

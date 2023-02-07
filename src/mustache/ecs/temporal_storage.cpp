@@ -29,7 +29,7 @@ void TemporalStorage::create(Entity entity, const ComponentIdMask& mask, const S
     auto& command = emplaceItem(entity, Action::kCreateEntity);
     //command.archetype = archetype;
     if (!mask.isEmpty() || !shared.empty()) {
-        command.create_action_index = static_cast<int32_t>(create_actions_.size());
+        command.create_action_index = CreateActionIndex::make(create_actions_.size());
         auto& create_action = create_actions_.emplace_back();
         create_action.mask = mask;
         create_action.shared = shared;
