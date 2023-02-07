@@ -13,6 +13,7 @@ ArchetypeOperationHelper::ArchetypeOperationHelper(MemoryManager& memory_manager
         insert{memory_manager},
         create_with_value{memory_manager},
         destroy{memory_manager},
+        before_remove_functions{memory_manager},
         external_move{memory_manager},
         internal_move{memory_manager} {
     MUSTACHE_PROFILER_BLOCK_LVL_0(__FUNCTION__);
@@ -31,9 +32,10 @@ ArchetypeOperationHelper::ArchetypeOperationHelper(MemoryManager& memory_manager
         component_id_to_component_index[component_id] = component_index;
         const auto& info = ComponentFactory::componentInfo(component_id);
 
-        if (info.functions.create) {
+        if (info.functions.create || info.functions.after_assign) {
             insert.push_back(InsertInfo {
                     info.functions.create,
+                    info.functions.after_assign,
                     component_index
             });
         } else if (!info.default_value.empty()) {
@@ -55,12 +57,16 @@ ArchetypeOperationHelper::ArchetypeOperationHelper(MemoryManager& memory_manager
                     info.size
             });
         }
+        if (info.functions.before_remove) {
+            before_remove_functions.push_back({ component_index, info.functions.before_remove });
+        }
         ExternalMoveInfo& external_move_info = external_move.emplace_back();
         external_move_info.constructor_ptr = info.functions.create;
         external_move_info.move_ptr = info.functions.move_constructor;
         external_move_info.id = component_id;
         external_move_info.size = info.size;
         external_move_info.default_data = info.default_value.empty() ? nullptr : info.default_value.data();
+        external_move_info.after_assign = info.functions.after_assign;
 
         ++component_index;
     }

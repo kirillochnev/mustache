@@ -102,6 +102,7 @@ namespace mustache {
                 if constexpr(!std::is_trivially_default_constructible<T>::value) {
                     data = new(data) T {std::forward<ARGS>(args)...};
                 }
+                ComponentInfo::afterComponentAssign<T>(data, e, world);
             } else {
                 initComponents(world, e, id, data, 1);
             }

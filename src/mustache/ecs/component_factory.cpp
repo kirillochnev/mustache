@@ -91,6 +91,7 @@ const ComponentInfo& ComponentFactory::componentInfo(ComponentId id) {
 void ComponentFactory::initComponents(World& world, Entity entity, const ComponentInfo& info, void* data, size_t count) {
     MUSTACHE_PROFILER_BLOCK_LVL_2(__FUNCTION__);
     applyFunction(data, info.functions.create, count, info.size, world, entity);
+    applyFunction(data, info.functions.after_assign, count, info.size, world, entity);
 }
 
 void ComponentFactory::destroyComponents(World& world, Entity entity, const ComponentInfo& info, void* data, size_t count) {

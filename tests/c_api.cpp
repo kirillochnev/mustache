@@ -61,14 +61,14 @@ TEST(C_API_EntityManager, assign) {
         ASSERT_FALSE(hasComponent(world, e, c0_id));
         ASSERT_FALSE(hasComponent(world, e, c1_id));
         ASSERT_FALSE(hasComponent(world, e, unused_id));
-        assignComponent(world, e, c0_id, false);
+        assignComponent(world, e, c0_id);
 
         ASSERT_TRUE(hasComponent(world, e, c0_id));
         ASSERT_FALSE(hasComponent(world, e, c1_id));
         ASSERT_FALSE(hasComponent(world, e, unused_id));
         ASSERT_EQ(static_cast<const UIntComponent0*>(getComponent(world, e, c0_id, true))->value, 777 + num_0);
 
-        assignComponent(world, e, c1_id, false);
+        assignComponent(world, e, c1_id);
         ASSERT_TRUE(hasComponent(world, e, c0_id));
         ASSERT_TRUE(hasComponent(world, e, c1_id));
         ASSERT_FALSE(hasComponent(world, e, unused_id));

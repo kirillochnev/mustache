@@ -120,7 +120,13 @@ namespace mustache {
         MUSTACHE_INLINE decltype(auto) assign(Entity e, _ARGS&&... args);
 
         /// iteration safe
-        MUSTACHE_INLINE void* assign(Entity e, ComponentId id, bool skip_constructor);
+        MUSTACHE_INLINE void* assign(Entity e, ComponentId id) {
+            return assign<false>(e, id);
+        }
+
+        MUSTACHE_INLINE void* assignWithoutInit(Entity e, ComponentId id) {
+            return assign<true>(e, id);
+        }
 
         /// iteration safe
         template<typename T, FunctionSafety _Safety = FunctionSafety::kDefault>
@@ -224,6 +230,9 @@ namespace mustache {
             return lock_counter_ < 1u;
         }
     private:
+        /// iteration safe
+        template<bool _SkipConstructor>
+        MUSTACHE_INLINE void* assign(Entity e, ComponentId id);
 
         MUSTACHE_INLINE void releaseEntityIdUnsafe(Entity entity) noexcept {
             const auto id = entity.id();
@@ -276,19 +285,30 @@ namespace mustache {
         template<typename Component, typename TupleType, size_t... _I>
         void initComponent([[maybe_unused]] Archetype& archetype, [[maybe_unused]] ArchetypeEntityIndex entity_index,
                            [[maybe_unused]] TupleType& tuple, std::index_sequence<_I...>&&) {
-            if constexpr (std::tuple_size<TupleType>::value > 0 ||
-                          !std::is_trivially_default_constructible<Component>::value) {
+
+            constexpr bool call_custom_constructor = std::tuple_size<TupleType>::value > 0;
+            constexpr bool call_constructor = call_custom_constructor || !std::is_trivially_default_constructible<Component>::value;
+            constexpr bool call_default_constructor = !call_custom_constructor && !std::is_trivially_default_constructible<Component>::value;
+            constexpr bool has_event = detail::hasAfterAssign<Component>(nullptr);
+
+            if constexpr (call_constructor || has_event) {
                 static const auto component_id = ComponentFactory::registerComponent<Component>();
+                auto view = archetype.getElementView(entity_index);
                 const auto component_index = archetype.getComponentIndex<FunctionSafety::kUnsafe>(component_id);
-                auto ptr = archetype.getComponent<FunctionSafety::kUnsafe>(component_index, entity_index);
-                if constexpr(sizeof...(_I) > 0) {
-                    new(ptr) Component{std::get<_I>(tuple)...};
-                } else {
-                    ComponentInfo::componentConstructor<Component>(ptr, *archetype.entityAt(entity_index), world_);
+                auto ptr = view.getData(component_index);
+                if constexpr (call_custom_constructor) {
+                    new(ptr) Component{ std::get<_I>(tuple)... };
+                }
+                if constexpr (call_default_constructor) {
+                    ComponentInfo::componentConstructor<Component>(ptr, *view.getEntity(), world_);
+                }
+                if constexpr (has_event) {
+                    ComponentInfo::afterComponentAssign<Component>(ptr, *view.getEntity(), world_);
                 }
             }
         }
 
+        // updateComponents and initComponents calls this
         template<typename Arg>
         bool initComponent(Archetype& archetype, ArchetypeEntityIndex entity_index, Arg&& arg);
 
@@ -461,7 +481,7 @@ namespace mustache {
                     throw std::runtime_error("Invalid archetype index");
                 }
             }
-            archetypes_[location.archetype]->remove(entity, location.index);
+            archetypes_[location.archetype]->remove(entity, location.index, {});
         }
         releaseEntityIdUnsafe(entity);
     }
@@ -565,7 +585,8 @@ namespace mustache {
         removeComponent(entity, component_id);
     }
 
-    void* EntityManager::assign(Entity e, ComponentId component_id, bool skip_constructor) {
+    template<bool _SkipConstructor>
+    void* EntityManager::assign(Entity e, ComponentId component_id) {
         if (!isLocked()) {
             const auto& location = locations_[e.id()];
             auto& prev_arch = *archetypes_[location.archetype];
@@ -573,11 +594,11 @@ namespace mustache {
             mask.add(component_id);
             auto& arch = getArchetype(mask, prev_arch.sharedComponentInfo());
             const auto prev_index = location.index;
-            arch.externalMove(e, prev_arch, prev_index, skip_constructor ? mask : ComponentIdMask{});
+            arch.externalMove(e, prev_arch, prev_index, _SkipConstructor ? mask : ComponentIdMask::null());
             const auto component_index = arch.getComponentIndex<FunctionSafety::kUnsafe>(component_id);
             return arch.getComponent<FunctionSafety::kUnsafe>(component_index, location.index);
         } else {
-            return getTemporalStorage().assignComponent(world_, e, component_id, skip_constructor);
+            return getTemporalStorage().assignComponent(world_, e, component_id, _SkipConstructor);
         }
     }
 
@@ -585,9 +606,10 @@ namespace mustache {
     T& EntityManager::assignUnique(Entity e, _ARGS&&... args) {
         static const auto component_id = ComponentFactory::registerComponent<T>();
         constexpr bool use_custom_constructor = sizeof...(_ARGS) > 0;
-        auto component_ptr = assign(e, component_id, use_custom_constructor);
+        auto component_ptr = assign<use_custom_constructor>(e, component_id);
         if constexpr(use_custom_constructor) {
             *new(component_ptr) T{std::forward<_ARGS>(args)...};
+            ComponentInfo::afterComponentAssign<T>(component_ptr, e, world_);
         }
         return *reinterpret_cast<T*>(component_ptr);
     }
@@ -731,7 +753,7 @@ namespace mustache {
         const auto mask = skip_mask.merge(prev_arch->mask_).intersection(to_remove.inverse());
         shared = shared.merge(prev_arch->sharedComponentInfo());
         auto& archetype = getArchetype(mask, shared);
-        archetype.externalMove(entity, *prev_arch, prev_location.index, ComponentIdMask{});
+        archetype.externalMove(entity, *prev_arch, prev_location.index, ComponentIdMask::null());
         const auto index = locations_[entity.id()].index;
         if constexpr(sizeof...(_I) > 0) {
             auto unused_init_list = {initComponent(archetype, index, std::get<_I>(tuple))...};

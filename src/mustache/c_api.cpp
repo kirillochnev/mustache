@@ -256,10 +256,16 @@ ComponentId registerComponent(TypeInfo info) {
     return mustache::ComponentFactory::componentId(convert(info)).toInt();
 }
 
-ComponentPtr assignComponent(World* world, Entity entity, ComponentId component_id, bool skip_constructor) {
-    auto ptr = convert(world)->entities().assign(convert(entity), convert(component_id), skip_constructor);
+ComponentPtr assignComponent(World* world, Entity entity, ComponentId component_id) {
+    auto ptr = convert(world)->entities().assign(convert(entity), convert(component_id));
     return reinterpret_cast<ComponentPtr>(ptr);
 }
+
+ComponentPtr assignComponentWithoutInit(World* world, Entity entity, ComponentId component_id) {
+    auto ptr = convert(world)->entities().assignWithoutInit(convert(entity), convert(component_id));
+    return reinterpret_cast<ComponentPtr>(ptr);
+}
+
 bool hasComponent(World* world, Entity entity, ComponentId component_id) {
     return convert(world)->entities().hasComponent(convert(entity), convert(component_id));
 }

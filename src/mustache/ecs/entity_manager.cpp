@@ -346,8 +346,11 @@ void EntityManager::applyCommandPack(TemporalStorage& storage, uint32_t begin, u
             continue;
         }
         auto dest = view.getData(archetype.getComponentIndex(command.component_id));
-        const auto& move_constructor = ComponentFactory::componentInfo(command.component_id).functions.move_constructor;
-        move_constructor(dest, command.ptr);
+        const auto& component_functions = ComponentFactory::componentInfo(command.component_id).functions;
+        component_functions.move_constructor(dest, command.ptr);
+        if (component_functions.after_assign) {
+            component_functions.after_assign(dest, command.entity, world_);
+        }
     }
 }
 
@@ -386,7 +389,7 @@ void EntityManager::applyCommandPackUnoptimized(TemporalStorage& storage, uint32
             removeComponent(command.entity, command.component_id);
             break;
         case TemporalStorage::Action::kAssignComponent:
-            command.type_info->functions.move(assign(command.entity, command.component_id, false), command.ptr);
+            command.type_info->functions.move(assign(command.entity, command.component_id), command.ptr);
             break;
         default:
             break;

@@ -106,6 +106,11 @@ namespace mustache {
             return value_ != rhs.value_;
         }
 
+        [[nodiscard]] static const ComponentMask& null() noexcept {
+            static const ComponentMask instanse{};
+            return instanse;
+        }
+
         /*[[nodiscard]] bool operator<(const ComponentMask& rhs) const noexcept {
             return value_ < rhs.value_;
         }*/

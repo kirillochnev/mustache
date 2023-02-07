@@ -177,7 +177,18 @@ TEST(EntityManager, lock_unlock) {
 
     static int32_t count = 0;
     static bool error = false;
+    static int32_t assign_event_calls = 0u;
+    static int32_t remove_event_calls = 0u;
     struct CheckStateComponent {
+
+        static void afterAssign() {
+            ++assign_event_calls;
+        }
+
+        static void beforeRemove() {
+            ++remove_event_calls;
+        }
+
         CheckStateComponent() {
             ++counter.constructor;
             ++count;
@@ -217,6 +228,11 @@ TEST(EntityManager, lock_unlock) {
             });
             if (expected != result) {
                 throw std::runtime_error("Invalid count: " + std::to_string(expected) + " vs " + std::to_string(result));
+            }
+            if (expected != assign_event_calls - remove_event_calls) {
+
+                throw std::runtime_error("Invalid events count | assign_event_calls: " + 
+                    std::to_string(assign_event_calls) + " remove_event_calls: " + std::to_string(remove_event_calls));
             }
         };
 

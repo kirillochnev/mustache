@@ -29,6 +29,16 @@ namespace mustache {
         inline constexpr bool hasBeforeRemove(...) noexcept {
             return false;
         }
+
+        template<typename C>
+        inline constexpr bool hasAfterAssign(decltype(&C::afterAssign)) noexcept {
+            return true;
+        }
+
+        template<typename C>
+        inline constexpr bool hasAfterAssign(...) noexcept {
+            return false;
+        }
     }
 
 
@@ -45,6 +55,7 @@ namespace mustache {
         using Destructor = Functor<void (void*) >;
         using IsEqual = Functor<bool (const void*, const void*)>;
         using BeforeRemove = Functor<void(void*, const Entity&, World&)>;
+        using AfterAssing = Functor<void(void*, const Entity&, World&)>;
 
         size_t size{0};
         size_t align{0};
@@ -58,6 +69,7 @@ namespace mustache {
             Destructor destroy;
             IsEqual compare;
             BeforeRemove before_remove;
+            AfterAssing after_assign;
         } functions;
 
         std::vector<std::byte> default_value; // this array will be used to init component in case of empty constructor
@@ -84,6 +96,14 @@ namespace mustache {
                         !std::is_trivially_default_constructible<T>::value) {
                 new(ptr) T();
                 return;
+            }
+        }
+        
+        template<typename T>
+        static void afterComponentAssign(void *ptr, [[maybe_unused]] const Entity& entity, [[maybe_unused]] World& world) {
+            if constexpr (detail::hasAfterAssign<T>(nullptr)) {
+                const auto typed_ptr = static_cast<T*>(ptr);
+                invoke(&T::afterAssign, typed_ptr, *typed_ptr, entity, world);
             }
         }
 
@@ -156,6 +176,7 @@ namespace mustache {
                         std::is_trivially_destructible<T>::value ? ComponentInfo::Destructor{} : &componentDestructor<T>,
                         &componentComparator<T>,
                         detail::hasBeforeRemove<T>(nullptr) ? &beforeComponentRemove<T> : ComponentInfo::BeforeRemove{},
+                        detail::hasAfterAssign<T>(nullptr) ? &afterComponentAssign<T> : ComponentInfo::AfterAssing{},
                 }, {}
             };
             return result;
