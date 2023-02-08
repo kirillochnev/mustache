@@ -27,10 +27,6 @@ namespace mustache {
             return _MaxElements;
         }
 
-        [[nodiscard]] uint64_t toUInt64() const noexcept {
-            return static_cast<uint64_t>(value_.to_ullong());
-        }
-
         [[nodiscard]] bool isEmpty() const noexcept {
             return !value_.any();
         }
@@ -110,9 +106,14 @@ namespace mustache {
             return value_ != rhs.value_;
         }
 
-        [[nodiscard]] bool operator<(const ComponentMask& rhs) const noexcept {
-            return toUInt64() < rhs.toUInt64();
+        [[nodiscard]] static const ComponentMask& null() noexcept {
+            static const ComponentMask instanse{};
+            return instanse;
         }
+
+        /*[[nodiscard]] bool operator<(const ComponentMask& rhs) const noexcept {
+            return value_ < rhs.value_;
+        }*/
 
         [[nodiscard]] uint32_t componentsCount() const noexcept {
             return static_cast<uint32_t>(value_.count());
@@ -197,6 +198,10 @@ namespace mustache {
         [[nodiscard]] const SharedComponentsData& data() const noexcept {
             return data_;
         }
+        
+        [[nodiscard]] bool empty() const noexcept {
+            return data_.empty();
+        }
 
         [[nodiscard]] SharedComponentIndex indexOf(SharedComponentId id) const noexcept {
             for (uint32_t i = 0; i < ids_.size(); ++i) {
@@ -225,6 +230,11 @@ namespace mustache {
             }
 
             return result;
+        }
+
+        [[nodiscard]] static const SharedComponentsInfo& null() noexcept {
+            static const SharedComponentsInfo instanse{};
+            return instanse;
         }
     private:
         SharedComponentIdMask mask_;

@@ -153,6 +153,7 @@ TEST(SharedComponent, ReassignShared) {
     auto e0 = entities.create<SharedComponent0>();
     auto ptr0 = entities.getSharedComponent<SharedComponent0>(e0);
 
+    ASSERT_NE(ptr0, nullptr);
     ASSERT_EQ(ptr0->dead_beef, 0xDEADBEEF);
     ASSERT_EQ(ptr0->boobs, 0xB00B5);
     ASSERT_EQ(ptr0->bad_babe, 0xBADBABE);

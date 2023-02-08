@@ -76,21 +76,21 @@ namespace converter {
             callback(job, convert(&world), tasks_count.toInt(), job_size.toInt(), convert(mode));
         };
     }
-    mustache::TypeInfo::Constructor convert(void(*create)(void*)) {
+    mustache::ComponentInfo::Constructor convert(void(*create)(void*, Entity, World*)) {
         if (create == nullptr) {
-            return mustache::TypeInfo::Constructor{};
+            return mustache::ComponentInfo::Constructor{};
         }
-        return [create](void* ptr, const mustache::Entity&, mustache::World&) {
+        return [create](void* ptr, const mustache::Entity& e, mustache::World& w) {
             if (create != nullptr) {
-                create(ptr);
+                create(ptr, convert(e), convert(&w));
             } else {
                 mustache::Logger{}.error("Create function is null!");
             }
         };
     }
 
-    mustache::TypeInfo convert(const TypeInfo& info) noexcept {
-        mustache::TypeInfo type_info;
+    mustache::ComponentInfo convert(const TypeInfo& info) noexcept {
+        mustache::ComponentInfo type_info;
         type_info.name = info.name;
         type_info.size = info.size;
         type_info.align = info.align;
@@ -256,10 +256,16 @@ ComponentId registerComponent(TypeInfo info) {
     return mustache::ComponentFactory::componentId(convert(info)).toInt();
 }
 
-ComponentPtr assignComponent(World* world, Entity entity, ComponentId component_id, bool skip_constructor) {
-    auto ptr = convert(world)->entities().assign(convert(entity), convert(component_id), skip_constructor);
+ComponentPtr assignComponent(World* world, Entity entity, ComponentId component_id) {
+    auto ptr = convert(world)->entities().assign(convert(entity), convert(component_id));
     return reinterpret_cast<ComponentPtr>(ptr);
 }
+
+ComponentPtr assignComponentWithoutInit(World* world, Entity entity, ComponentId component_id) {
+    auto ptr = convert(world)->entities().assignWithoutInit(convert(entity), convert(component_id));
+    return reinterpret_cast<ComponentPtr>(ptr);
+}
+
 bool hasComponent(World* world, Entity entity, ComponentId component_id) {
     return convert(world)->entities().hasComponent(convert(entity), convert(component_id));
 }
@@ -339,7 +345,7 @@ void destroyEntities(World* world, Entity* entities, uint32_t count, bool now) {
 
 Archetype* getArchetype(World* world, ComponentMask mask) {
     auto& entities = convert(world)->entities();
-    return convert(&entities.getArchetype(convert(mask), mustache::SharedComponentsInfo{}));
+    return convert(&entities.getArchetype(convert(mask), mustache::SharedComponentsInfo::null()));
 }
 Archetype* getArchetypeByBitsetMask(World* world, uint64_t bits)
 {
@@ -349,7 +355,7 @@ Archetype* getArchetypeByBitsetMask(World* world, uint64_t bits)
         const auto is_set = ((1ull << i) & bits) != 0u;
         mask.set(mustache::ComponentId::make(i), is_set);
     }
-    return convert(&entities.getArchetype(mask, mustache::SharedComponentsInfo{}));
+    return convert(&entities.getArchetype(mask, mustache::SharedComponentsInfo::null()));
 }
 CSystem* createSystem(World* world, const SystemDescriptor* descriptor) {
     std::unique_ptr<CSystem> result{new CSystem{*descriptor}};

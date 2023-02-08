@@ -347,7 +347,7 @@ namespace mustache {
         }
         static ComponentIdMask updateMask() noexcept {
             if constexpr (FunctionInfo::components_count < 1) {
-                return ComponentIdMask{};
+                return ComponentIdMask::null();
             } else {
                 return updateMask(std::make_index_sequence<FunctionInfo::components_count>());
             }

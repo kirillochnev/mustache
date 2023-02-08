@@ -8,7 +8,7 @@ using namespace mustache;
 
 namespace mustache {
     bool operator<(const ArchetypeComponents& lhs, const ArchetypeComponents& rhs) noexcept {
-        return lhs.unique < rhs.unique;
+        return memcmp(&lhs.unique, &rhs.unique, sizeof(rhs.unique)) < 0;// lhs.unique < rhs.unique;
     }
 }
 
@@ -201,7 +201,7 @@ void EntityManager::removeComponent(Entity entity, ComponentId component) {
     }
 
     const auto prev_index = location.index;
-    archetype.externalMove(entity, prev_archetype, prev_index, ComponentIdMask{});
+    archetype.externalMove(entity, prev_archetype, prev_index, ComponentIdMask::null());
 }
 
 bool EntityManager::removeSharedComponent(Entity entity, SharedComponentId component) {
@@ -227,7 +227,7 @@ bool EntityManager::removeSharedComponent(Entity entity, SharedComponentId compo
     }
 
     const auto prev_index = location.index;
-    archetype.externalMove(entity, prev_archetype, prev_index, ComponentIdMask{});
+    archetype.externalMove(entity, prev_archetype, prev_index, ComponentIdMask::null());
 
     return true;
 }
@@ -264,166 +264,167 @@ void EntityManager::onLock() {
 }
 
 void EntityManager::onUnlock() {
-    MUSTACHE_PROFILER_BLOCK_LVL_0(__FUNCTION__ );
-
+    MUSTACHE_PROFILER_BLOCK_LVL_0(__FUNCTION__);
     if (isLocked()) {
         throw std::runtime_error("Entity manager must be unlocked");
     }
 
-    const auto doAction = [this](TemporalStorage& storage,
-            const TemporalStorage::ActionInfo& info) {
-        MUSTACHE_PROFILER_BLOCK_LVL_3("do single action");
-        const auto entity = info.entity;
-        switch (info.action) {
-            case TemporalStorage::Action::kDestroyEntityNow:
+    for (auto& storage : temporal_storages_) {
+        applyStorage(storage);
+        storage.clear();
+    }
+}
+
+void EntityManager::applyCommandPack(TemporalStorage& storage, size_t begin, size_t end) {
+    MUSTACHE_PROFILER_BLOCK_LVL_2(__FUNCTION__);
+
+    ComponentIdMask final_mask;
+    ComponentIdMask initial_mask;
+    SharedComponentsInfo shared;
+    const auto entity = storage.actions_[begin].entity;
+    const bool create = storage.actions_[begin].action == TemporalStorage::Action::kCreateEntity;
+    if (create) {
+        const auto index = storage.actions_[begin].create_action_index;
+        if (storage.create_actions_.has(index)) {
+            final_mask = storage.create_actions_[index].mask;
+            shared = storage.create_actions_[index].shared;
+        }
+        if (!entities_.has(entity.id())) {
+            entities_.resize(entity.id().next().toInt());
+            locations_.resize(entity.id().next().toInt());
+            entities_[entity.id()] = entity;
+        }
+    }
+    else {
+        auto archetype = getArchetypeOf(entity);
+        final_mask = archetype->componentMask();
+        shared = archetype->sharedComponentInfo();
+    }
+    initial_mask = final_mask;
+
+    for (size_t i = create ? begin + 1 : begin; i < end; ++i) {
+        const auto& command = storage.actions_[i];
+        switch (command.action) {
+        case TemporalStorage::Action::kDestroyEntityNow:
+            if (create) {
+                releaseEntityIdUnsafe(entity);
+            }
+            else {
                 destroyNow(entity);
-                break;
-            case TemporalStorage::Action::kCreateEntity:
-            {
-                const auto index = entity.id().toInt();
-                if (locations_.size() <= index) {
-                    locations_.resize(index + 1);
-                }
-                if (entities_.size() <= index) {
-                    entities_.resize(index + 1);
-                }
-                entities_[entity.id()] = entity;
-                auto* archetype = storage.commands_.create[info.index];
-                if (archetype) {
-                    updateLocation(entity, archetype->id(), archetype->insert(entity));
-                }
             }
-                break;
-            case TemporalStorage::Action::kDestroyEntity:
-                destroy(entity);
-                break;
-            case TemporalStorage::Action::kRemoveComponent:
-                removeComponent(entity, storage.commands_.remove[info.index].component_id);
-                break;
-            case TemporalStorage::Action::kAssignComponent:
-            {
-                auto& assign_info = storage.commands_.assign[info.index];
-                const auto& component_info = *assign_info.type_info;
-                auto dest = assign(entity, assign_info.component_id, false);
-                auto src = assign_info.ptr;
-                component_info.functions.move(dest, src);
-                if (component_info.functions.destroy) {
-                    component_info.functions.destroy(src);
-                }
-                assign_info.type_info = nullptr;
-            }
-                break;
-        }
-    };
-    const auto apply_pack = [&doAction, this](TemporalStorage& storage,
-            size_t begin, size_t end) {
-        MUSTACHE_PROFILER_BLOCK_LVL_2("apply action pack");
-        const bool can_be_optimized = (end - begin) > 1u &&
-                storage.actions_[begin].action != TemporalStorage::Action::kDestroyEntityNow;
-        if (!can_be_optimized) {
-            doAction(storage, storage.actions_[begin]);
             return;
-        }
-        auto entity = storage.actions_[begin].entity;
-        EntityLocationInWorld prev_location;
-        Archetype* prev_archetype = nullptr;
-        ComponentIdMask mask;
-        if (storage.actions_[begin].action != TemporalStorage::Action::kCreateEntity) {
-            prev_location = locations_[entity.id()];
-            prev_archetype = &getArchetype(prev_location.archetype);
-            mask = prev_archetype->componentMask();
-        }
-        size_t assign_begin = end;
-        // update component mask to find new archetype
-        for (size_t i = begin; i < end; ++i) {
-            const auto info = storage.actions_[i];
-            switch (info.action) {
-                case TemporalStorage::Action::kDestroyEntityNow:
-                    std::terminate(); // unreachable
-                    break;
-                case TemporalStorage::Action::kCreateEntity:
-                    doAction(storage, info);
-                    break;
-                case TemporalStorage::Action::kDestroyEntity:
-                    doAction(storage, info);
-                    break;
-                case TemporalStorage::Action::kRemoveComponent:
-                    mask.set(storage.commands_.remove[info.index].component_id, false);
-                    break;
-                case TemporalStorage::Action::kAssignComponent:
-                    mask.set(storage.commands_.assign[info.index].component_id, true);
-                    assign_begin = std::min(assign_begin, i);
-                    break;
-            }
-        }
-        // Move to new archetype
-        Archetype* archetype = nullptr;
-        if (prev_archetype != nullptr) {
-            archetype = &getArchetype(mask, prev_archetype->sharedComponentInfo());
-            archetype->externalMove(entity, *prev_archetype, prev_location.index, mask);
-        } else {
-            archetype = &getArchetype(mask, {});
-            archetype->insert(entity, mask);
-        }
-
-        if (assign_begin < end) {
-            // Init new components
-            const auto index = locations_[entity.id()].index;
-            auto view = archetype->getElementView(index);
-            for (size_t i = assign_begin; i < end; ++i) {
-                auto& info = storage.commands_.assign[storage.actions_[i].index];
-                const auto& component_info = ComponentFactory::componentInfo(info.component_id);
-                const auto component_index = archetype->getComponentIndex(info.component_id);
-                auto dest = view.getData(component_index);
-                auto src = info.ptr;
-                component_info.functions.move_constructor(dest, src);
-                if (component_info.functions.destroy) {
-                    component_info.functions.destroy(src);
-                }
-            }
-        }
-    };
-
-    const auto apply_storage = [&apply_pack](TemporalStorage& storage) {
-        MUSTACHE_PROFILER_BLOCK_LVL_2("merge storage");
-        size_t begin = 0u;
-        for (size_t i = 1; i < storage.actions_.size(); ++i) {
-            const auto entity = storage.actions_[i].entity;
-            const bool is_same = storage.actions_[i - 1].entity == entity;
-            if (!is_same) {
-                apply_pack(storage, begin, i);
-                begin = i;
-            }
-        }
-        apply_pack(storage, begin, storage.actions_.size());
-    };
-
-    const auto comparator = [](const auto& a, const auto& b) {
-        if (a.entity != b.entity) {
-            return a.entity.id() < b.entity.id();
-        }
-        return static_cast<uint32_t >(a.action) < static_cast<uint32_t >(b.action);
-    };
-
-    constexpr bool parallel_sort = true;
-    if constexpr(parallel_sort) {
-        MUSTACHE_PROFILER_BLOCK_LVL_1("Sort actions");
-        world_.dispatcher().parallelFor([this, &comparator](size_t i){
-            MUSTACHE_PROFILER_BLOCK_LVL_1("Sort storage");
-            auto& storage = temporal_storages_[ThreadId::make(i)];
-            std::sort(storage.actions_.begin(), storage.actions_.end(), comparator);
-        }, 0u, temporal_storages_.size());
-    } else {
-        MUSTACHE_PROFILER_BLOCK_LVL_1("Sort actions");
-        for (auto& storage : temporal_storages_) {
-            std::sort(storage.actions_.begin(), storage.actions_.end(), comparator);
+        case TemporalStorage::Action::kCreateEntity:
+            throw std::runtime_error("Create command should be first command for entity: " + std::to_string(entity.id().toInt()));
+            break;
+        case TemporalStorage::Action::kDestroyEntity:
+            destroy(command.entity);
+            break;
+        case TemporalStorage::Action::kRemoveComponent:
+            final_mask.set(command.component_id, false);
+            break;
+        case TemporalStorage::Action::kAssignComponent:
+            final_mask.set(command.component_id, true);
+            break;
+        default:
+            break;
         }
     }
 
-    for (auto& storage : temporal_storages_) {
-        if (!storage.actions_.empty()) {
-            apply_storage(storage);
-            storage.clear();
+    Archetype& archetype = getArchetype(final_mask, shared);
+    if (create) {
+        archetype.insert(entity, initial_mask.inverse());
+    }
+    else if (initial_mask != final_mask) {
+        const auto location = locations_[entity.id()];
+        archetype.externalMove(entity, getArchetype(location.archetype), location.index, final_mask);
+    }
+
+    auto view = archetype.getElementView(locations_[entity.id()].index);
+    for (size_t i = begin; i < end; ++i) {
+        const auto& command = storage.actions_[i];
+        if (command.action != TemporalStorage::Action::kAssignComponent) {
+            continue;
+        }
+        auto dest = view.getData(archetype.getComponentIndex(command.component_id));
+        const auto& component_functions = ComponentFactory::componentInfo(command.component_id).functions;
+        component_functions.move_constructor(dest, command.ptr);
+        if (component_functions.after_assign) {
+            component_functions.after_assign(dest, command.entity, world_);
+        }
+    }
+}
+
+void EntityManager::applyCommandPackUnoptimized(TemporalStorage& storage, size_t begin, size_t end) {
+    MUSTACHE_PROFILER_BLOCK_LVL_2(__FUNCTION__);
+
+    for (size_t i = begin; i < end; ++i) {
+        const auto& command = storage.actions_[i];
+        switch (command.action) {
+        case TemporalStorage::Action::kDestroyEntityNow:
+            destroyNow(command.entity);
+            break;
+        case TemporalStorage::Action::kCreateEntity:
+        {
+            const auto index = command.entity.id().toInt();
+            if (locations_.size() <= index) {
+                locations_.resize(index + 1);
+            }
+            if (entities_.size() <= index) {
+                entities_.resize(index + 1);
+            }
+            entities_[command.entity.id()] = command.entity;
+            if (storage.create_actions_.has(command.create_action_index)) {
+                const auto& [mask, shared] = storage.create_actions_[command.create_action_index];
+                getArchetype(mask, shared).insert(command.entity);
+            }
+            else {
+                getArchetype<>().insert(command.entity);
+            }
+        }
+        break;
+        case TemporalStorage::Action::kDestroyEntity:
+            destroy(command.entity);
+            break;
+        case TemporalStorage::Action::kRemoveComponent:
+            removeComponent(command.entity, command.component_id);
+            break;
+        case TemporalStorage::Action::kAssignComponent:
+            command.type_info->functions.move(assign(command.entity, command.component_id), command.ptr);
+            break;
+        default:
+            break;
+        }
+    }
+}
+
+void EntityManager::applyStorage(TemporalStorage& storage) { // optimized version
+    // TODO: this version iterates over commands 3 times, it is possible to merge 1-st and 2-nd iterations.
+    MUSTACHE_PROFILER_BLOCK_LVL_0(__FUNCTION__);
+
+    if (storage.actions_.empty()) {
+        return;
+    }
+
+    size_t begin = 0;
+    size_t end = begin + 1;
+    Entity prev_entity = storage.actions_[begin].entity;
+    for (; end < storage.actions_.size(); ++end) {
+        const auto& action = storage.actions_[end];
+        if (action.entity == prev_entity) {
+            continue;
+        }
+        applyCommandPack(storage, begin, end);
+        begin = end;
+        prev_entity = storage.actions_[end].entity;
+    }
+    applyCommandPack(storage, begin, end);
+
+    for (auto& command : storage.actions_) {
+        if (command.action == TemporalStorage::Action::kAssignComponent) {
+            const auto& info = ComponentFactory::componentInfo(command.component_id);
+            if (info.functions.destroy) {
+                info.functions.destroy(command.ptr);
+            }
         }
     }
 }

@@ -116,6 +116,19 @@ void Archetype::callDestructor(const ElementView& view) {
     popBack();
 }
 
+void Archetype::callOnRemove(ArchetypeEntityIndex entity_index, const ComponentIdMask& components_to_be_removed) {
+    if (operation_helper_.before_remove_functions.empty()) {
+        return;
+    }
+    auto view = getElementView(entity_index);
+    for (const auto& [index, function] : operation_helper_.before_remove_functions) {
+        const auto id = operation_helper_.component_index_to_component_id[index];
+        if (components_to_be_removed.has(id)) {
+            function(view.getData(index), *view.getEntity(), world_);
+        }
+    }
+}
+
 bool Archetype::isEmpty() const noexcept {
     MUSTACHE_PROFILER_BLOCK_LVL_3(__FUNCTION__);
     return entities_.empty();
@@ -133,6 +146,10 @@ ChunkIndex Archetype::lastChunkIndex() const noexcept {
 
 void Archetype::externalMove(Entity entity, Archetype& prev_archetype, ArchetypeEntityIndex prev_index,
                              const ComponentIdMask& skip_constructor) {
+    if (this == &prev_archetype) {
+        std::string msg = "Moving from archetype [" + mask_.toString() + "] to itself";
+        throw std::runtime_error(msg);
+    }
     MUSTACHE_PROFILER_BLOCK_LVL_2(__FUNCTION__);
 
     const auto index = pushBack(entity);
@@ -145,14 +162,17 @@ void Archetype::externalMove(Entity entity, Archetype& prev_archetype, Archetype
         if (prev_ptr != nullptr) {
             auto component_ptr = dest_view.getData<FunctionSafety::kUnsafe>(component_index);
             info.move(component_ptr, prev_ptr);
-        } else if (info.hasConstructor() && !skip_constructor.has(info.id)) {
-            auto component_ptr = dest_view.getData<FunctionSafety::kUnsafe>(component_index);
-            info.constructor(component_ptr, world_, entity);
+        }
+        else {
+            if (info.hasConstructorOrAfterAssign() && !skip_constructor.has(info.id)) {
+                auto component_ptr = dest_view.getData<FunctionSafety::kUnsafe>(component_index);
+                info.constructorAndAfterAssign(component_ptr, world_, entity);
+            }
         }
         ++component_index;
     }
 
-    prev_archetype.remove(*source_view.getEntity<FunctionSafety::kUnsafe>(), prev_index);
+    prev_archetype.remove(*source_view.getEntity<FunctionSafety::kUnsafe>(), prev_index, mask_);
     world_.entities().updateLocation(entity, id_, index.toArchetypeIndex());
 }
 
@@ -229,9 +249,11 @@ ComponentIndexMask Archetype::makeComponentMask(const ComponentIdMask& mask) con
     return index_mask;
 }
 
-void Archetype::remove(Entity entity_to_destroy, ArchetypeEntityIndex entity_index) {
+void Archetype::remove(Entity entity_to_destroy, ArchetypeEntityIndex entity_index, const ComponentIdMask& skip_on_remove_call) {
     MUSTACHE_PROFILER_BLOCK_LVL_2(__FUNCTION__);
 //    Logger{}.debug("Removing entity from: %s pos: %d", mask_.toString(), entity_index.toInt());
+
+    callOnRemove(entity_index, mask_.intersection(skip_on_remove_call.inverse()));
 
     const auto last_index = data_storage_->lastItemIndex().toArchetypeIndex();
     if (entity_index == last_index) {

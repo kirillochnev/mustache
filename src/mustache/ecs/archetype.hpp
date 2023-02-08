@@ -161,8 +161,9 @@ namespace mustache {
         void clear();
 
         /// Entity must belong to default(empty) archetype
-        ArchetypeEntityIndex insert(Entity entity, const ComponentIdMask& skip_constructor = {});
+        ArchetypeEntityIndex insert(Entity entity, const ComponentIdMask& skip_constructor = ComponentIdMask::null());
 
+        // Move from prev to this archetype
         void externalMove(Entity entity, Archetype& prev, ArchetypeEntityIndex prev_index,
                           const ComponentIdMask& skip_constructor);
         void internalMove(ArchetypeEntityIndex from, ArchetypeEntityIndex to);
@@ -171,8 +172,10 @@ namespace mustache {
          * moves last entity at index.
          * returns new entity at index.
          */
-        void remove(Entity entity, ArchetypeEntityIndex index);
+        void remove(Entity entity, ArchetypeEntityIndex index, const ComponentIdMask& skip_on_remove_call);
         void callDestructor(const ElementView& view);
+        void callOnRemove(ArchetypeEntityIndex index, const ComponentIdMask& components_to_be_removed);
+
 
         World& world_;
         const ComponentIdMask mask_;

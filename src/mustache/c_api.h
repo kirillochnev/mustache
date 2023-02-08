@@ -50,7 +50,7 @@ typedef struct {
 
 
 typedef struct {
-    void (* create)(void*);
+    void (* create)(void*, Entity, World*);
 
     void (* copy)(void*, const void*);
 
@@ -128,7 +128,8 @@ MUSTACHE_EXPORT void clearWorldEntities(struct World*);
 MUSTACHE_EXPORT void destroyWorld(struct World*);
 MUSTACHE_EXPORT ComponentId registerComponent(TypeInfo info);
 MUSTACHE_EXPORT bool hasComponent(struct World* world, Entity entity, ComponentId component_id);
-MUSTACHE_EXPORT ComponentPtr assignComponent(struct World* world, Entity entity, ComponentId component_id, bool skip_constructor);
+MUSTACHE_EXPORT ComponentPtr assignComponent(struct World* world, Entity entity, ComponentId component_id);
+MUSTACHE_EXPORT ComponentPtr assignComponentWithoutInit(struct World* world, Entity entity, ComponentId component_id);
 MUSTACHE_EXPORT ComponentPtr getComponent(struct World* world, Entity entity, ComponentId component_id, bool is_const);
 MUSTACHE_EXPORT void removeComponent(struct World* world, Entity entity, ComponentId component_id);
 MUSTACHE_EXPORT struct Job* makeJob(JobDescriptor info);

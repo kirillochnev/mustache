@@ -2,7 +2,8 @@
 
 #include <mustache/ecs/entity.hpp>
 #include <mustache/ecs/id_deff.hpp>
-#include <mustache/utils/type_info.hpp>
+
+#include <mustache/ecs/component_info.hpp>
 #include <mustache/ecs/component_mask.hpp>
 #include <mustache/ecs/component_handler.hpp>
 #include <mustache/utils/default_settings.hpp>
@@ -18,7 +19,7 @@ namespace mustache {
 
         template <typename T>
         static SharedComponentId registerSharedComponent() noexcept {
-            static const auto info = makeTypeInfo<T>();
+            static const auto info = ComponentInfo::make<T>();
             static SharedComponentId result = sharedComponentId(info);
             if (!result.isValid()) {
                 result = sharedComponentId(info);
@@ -28,7 +29,7 @@ namespace mustache {
 
         template <typename T>
         static ComponentId registerComponent() {
-            static const auto info = makeTypeInfo<T>();
+            static const auto info = ComponentInfo::make<T>();
             static ComponentId result = componentId(info);
             if (!result.isValid()) {
                 result = componentId(info);
@@ -89,10 +90,10 @@ namespace mustache {
             return mask;
         }
 
-        static void initComponents(World&, Entity entity, const TypeInfo& info, void* data, size_t count);
-        static void destroyComponents(World&, Entity entity, const TypeInfo& info, void* data, size_t count);
-        static void moveComponent(World&, Entity entity, const TypeInfo& info, void* source, void* dest);
-        static void copyComponent(World&, Entity entity, const TypeInfo& info, const void* source, void* dest);
+        static void initComponents(World&, Entity entity, const ComponentInfo& info, void* data, size_t count);
+        static void destroyComponents(World&, Entity entity, const ComponentInfo& info, void* data, size_t count);
+        static void moveComponent(World&, Entity entity, const ComponentInfo& info, void* source, void* dest);
+        static void copyComponent(World&, Entity entity, const ComponentInfo& info, const void* source, void* dest);
 
         template<typename T, typename...  ARGS>
         static T* initComponent(void* data, World& world, const Entity& e, ARGS&&... args) {
@@ -101,6 +102,7 @@ namespace mustache {
                 if constexpr(!std::is_trivially_default_constructible<T>::value) {
                     data = new(data) T {std::forward<ARGS>(args)...};
                 }
+                ComponentInfo::afterComponentAssign<T>(data, e, world);
             } else {
                 initComponents(world, e, id, data, 1);
             }
@@ -126,9 +128,9 @@ namespace mustache {
 
         static ComponentId nextComponentId() noexcept;
 
-        static const TypeInfo& componentInfo(ComponentId id);
-        static ComponentId componentId(const TypeInfo& info);
-        static SharedComponentId sharedComponentId(const TypeInfo& info);
+        static const ComponentInfo& componentInfo(ComponentId id);
+        static ComponentId componentId(const ComponentInfo& info);
+        static SharedComponentId sharedComponentId(const ComponentInfo& info);
 
     };
 

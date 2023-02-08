@@ -30,6 +30,14 @@ endif()
 include(GNUInstallDirs)
 
 if (MUSTACHE_BUILD_SHARED)
+	if(MSVC)
+	  foreach(flag_var CMAKE_CXX_FLAGS CMAKE_CXX_FLAGS_DEBUG CMAKE_CXX_FLAGS_RELEASE
+		CMAKE_CXX_FLAGS_MINSIZEREL CMAKE_CXX_FLAGS_RELWITHDEBINFO)
+		if(${flag_var} MATCHES "/MD")
+		  string(REGEX REPLACE "/MD" "/MT" ${flag_var} "${${flag_var}}")
+		endif()
+	  endforeach()
+	endif()
     set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
     set(MUSTACHE_LIB_TYPE SHARED)
 	if(WIN32)
@@ -84,6 +92,9 @@ add_library(${PROJECT_NAME} ${MUSTACHE_LIB_TYPE}
     ${mustache_SOURCE_DIR}/src/mustache/ecs/component_mask.hpp
     ${mustache_SOURCE_DIR}/src/mustache/ecs/world.cpp
     ${mustache_SOURCE_DIR}/src/mustache/ecs/world.hpp
+    ${mustache_SOURCE_DIR}/src/mustache/ecs/component_info.cpp
+    ${mustache_SOURCE_DIR}/src/mustache/ecs/component_info.hpp
+    ${mustache_SOURCE_DIR}/src/mustache/ecs/component_events.hpp
     ${mustache_SOURCE_DIR}/src/mustache/ecs/component_factory.cpp
     ${mustache_SOURCE_DIR}/src/mustache/ecs/component_factory.hpp
     ${mustache_SOURCE_DIR}/src/mustache/ecs/entity_group.cpp
@@ -116,7 +127,7 @@ if (MUSTACHE_WARNINGS_AS_ERROR)
         include(cmake/msvc_warnings.cmake)
     endif()
     
-    set_property(TARGET ${PROJECT_NAME} PROPERTY COMPILE_FLAGS "${CMAKE_CXX_FLAGS} ${MUSTACHE_WARNINGS}")
+	target_compile_options(${PROJECT_NAME} PRIVATE ${MUSTACHE_WARNINGS})
 else()
     message(WARNING "If you have disabled compiler warnings because your compiler throws errors, please let me know.")
 endif()

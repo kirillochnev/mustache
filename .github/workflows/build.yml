@@ -10,29 +10,38 @@ jobs:
     strategy:
       matrix:
         compiler:
-          - pkg: g++-7
-            exe: g++-7
-          - pkg: g++-8
-            exe: g++-8
           - pkg: g++-9
             exe: g++-9
+          - pkg: g++-10
+            exe: g++-10
+          - pkg: g++-11
+            exe: g++-11
           - pkg: g++
             exe: g++
-          - pkg: clang-8
-            exe: clang++-8
-          - pkg: clang-9
-            exe: clang++-9
-          - pkg: clang-10
-            exe: clang++-10
+          - pkg: clang-12
+            exe: clang++-12
+          - pkg: clang-13
+            exe: clang++-13
+          - pkg: clang-14
+            exe: clang++-14
           - pkg: clang
             exe: clang++
 
     runs-on: ubuntu-latest
 
     steps:
-      - name: Install gtest manually
-        run: sudo apt-get install libgtest-dev && cd /usr/src/gtest && sudo cmake CMakeLists.txt && sudo make && sudo cp ./lib/*.a /usr/lib && sudo ln -s /usr/lib/libgtest.a /usr/local/lib/libgtest.a && sudo ln -s /usr/lib/libgtest_main.a /usr/local/lib/libgtest_main.a
+      - name: Download Google Test
+        run: |
+          wget https://github.com/google/googletest/archive/release-1.12.1.tar.gz
+          tar xvzf release-1.12.1.tar.gz
 
+      - name: Build and install Google Test
+        run: |
+          cd googletest-release-1.12.1/
+          cmake .
+          make
+          sudo make install
+        
       - uses: actions/checkout@v2
       - name: Install compiler
         run: |
@@ -64,9 +73,18 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Install gtest manually
-        run: sudo apt-get install libgtest-dev && cd /usr/src/gtest && sudo cmake CMakeLists.txt && sudo make && sudo cp ./lib/*.a /usr/lib && sudo ln -s /usr/lib/libgtest.a /usr/local/lib/libgtest.a && sudo ln -s /usr/lib/libgtest_main.a /usr/local/lib/libgtest_main.a
+      - name: Download Google Test
+        run: |
+          wget https://github.com/google/googletest/archive/release-1.12.1.tar.gz
+          tar xvzf release-1.12.1.tar.gz
 
+      - name: Build and install Google Test
+        run: |
+          cd googletest-release-1.12.1/
+          cmake .
+          make
+          sudo make install
+          
       - uses: actions/checkout@v2
       - name: Compile tests
         working-directory: build

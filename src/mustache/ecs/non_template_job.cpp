@@ -92,8 +92,8 @@ const char* NonTemplateJob::nameCStr() const noexcept {
 }
 
 uint32_t NonTemplateJob::applyFilter(World& world) noexcept {
-    filter_result_.mask = {};
-    filter_result_.shared_component_mask = {};
+    filter_result_.mask = ComponentIdMask::null();
+    filter_result_.shared_component_mask = SharedComponentIdMask::null();
 
     for (const auto& request : component_requests) {
         filter_result_.mask.set(request.id, request.is_required);

@@ -15,9 +15,6 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      - name: Install gtest
-        run: vcpkg.exe install gtest:x64-windows
-
       - uses: actions/checkout@v2
       - name: Update submodule
         run: git submodule update --init

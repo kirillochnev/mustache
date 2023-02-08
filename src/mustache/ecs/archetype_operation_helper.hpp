@@ -1,10 +1,10 @@
 #pragma once
 
-#include <mustache/utils/type_info.hpp>
 #include <mustache/utils/array_wrapper.hpp>
 #include <mustache/utils/default_settings.hpp>
 
 #include <mustache/ecs/id_deff.hpp>
+#include <mustache/ecs/component_info.hpp>
 
 #include <cstring>
 #include <vector>
@@ -22,7 +22,16 @@ namespace mustache {
         static std::vector<ComponentOffset> offsetsFor(const std::vector<ComponentId>& components);
 
         struct InsertInfo {
-            TypeInfo::Constructor constructor;
+            MUSTACHE_INLINE void constructor(void* ptr, const Entity& entity, World& world) const noexcept {
+                if (constructor_func) {
+                    constructor_func(ptr, entity, world);
+                }
+                if (after_assign_func) {
+                    after_assign_func(ptr, entity, world);
+                }
+            }
+            ComponentInfo::Constructor constructor_func;
+            ComponentInfo::AfterAssing after_assign_func;
             ComponentIndex component_index;
         };
 
@@ -33,12 +42,17 @@ namespace mustache {
         };
 
         struct DestroyInfo {
-            TypeInfo::Destructor destructor;
+            ComponentInfo::Destructor destructor;
             ComponentIndex component_index;
         };
 
+        struct BeforeRemoveInfo {
+            ComponentIndex index;
+            ComponentInfo::BeforeRemove function;
+        };
+
         struct InternalMoveInfo {
-            TypeInfo::MoveFunction move_ptr;
+            ComponentInfo::MoveFunction move_ptr;
             size_t size;
             MUSTACHE_INLINE void move(void* dest, void* src) const {
                 if (move_ptr) {
@@ -50,21 +64,25 @@ namespace mustache {
         };
 
         struct ExternalMoveInfo {
-            TypeInfo::Constructor constructor_ptr;
-            TypeInfo::MoveFunction move_ptr;
+            ComponentInfo::Constructor constructor_ptr;
+            ComponentInfo::AfterAssing after_assign;
+            ComponentInfo::MoveFunction move_ptr;
             ComponentId id;
             const std::byte* default_data = nullptr;
             size_t size;
 
-            MUSTACHE_INLINE bool hasConstructor() const noexcept {
-                return constructor_ptr || default_data != nullptr;
+            MUSTACHE_INLINE bool hasConstructorOrAfterAssign() const noexcept {
+                return constructor_ptr || default_data != nullptr || after_assign;
             }
 
-            MUSTACHE_INLINE void constructor(void* ptr, World& world, const Entity& entity) const {
+            MUSTACHE_INLINE void constructorAndAfterAssign(void* ptr, World& world, const Entity& entity) const {
                 if (constructor_ptr) {
                     constructor_ptr(ptr, entity, world);
-                } else {
+                } else if (default_data != nullptr) {
                     memcpy(ptr, default_data, size);
+                }
+                if (after_assign) {
+                    after_assign(ptr, entity, world);
                 }
             }
             MUSTACHE_INLINE void move(void* dest, void* source) const {
@@ -93,6 +111,7 @@ namespace mustache {
         std::vector<InsertInfo, Allocator<InsertInfo> > insert; // only non-null init functions
         std::vector<CreateWithValueInfo, Allocator<CreateWithValueInfo> > create_with_value; // only non-empty values
         std::vector<DestroyInfo, Allocator<DestroyInfo> > destroy; // only non-null destroy functions
+        std::vector<BeforeRemoveInfo, Allocator<BeforeRemoveInfo> > before_remove_functions; // only non-null beforeRemove functions
         ArrayWrapper<ExternalMoveInfo, ComponentIndex, true> external_move;
         ArrayWrapper<InternalMoveInfo, ComponentIndex, true> internal_move; // move or copy function
     };
