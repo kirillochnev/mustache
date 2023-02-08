@@ -425,7 +425,7 @@ namespace mustache {
             }
             return entity;
         }
-        return createLocked({}, {});
+        return createLocked(ComponentIdMask::null(), SharedComponentsInfo::null());
     }
 
     Entity EntityManager::create(const ComponentIdMask& components, const SharedComponentsInfo& shared) {
@@ -481,7 +481,7 @@ namespace mustache {
                     throw std::runtime_error("Invalid archetype index");
                 }
             }
-            archetypes_[location.archetype]->remove(entity, location.index, {});
+            archetypes_[location.archetype]->remove(entity, location.index, ComponentIdMask::null());
         }
         releaseEntityIdUnsafe(entity);
     }
@@ -625,9 +625,7 @@ namespace mustache {
 
         auto& arch = getArchetype(prev_arch.componentMask(), shared_components_info);
         if (&arch != &prev_arch) {
-            const auto prev_index = location.index;
-            const ComponentIdMask skip_init_mask{};
-            arch.externalMove(e, prev_arch, prev_index, skip_init_mask);
+            arch.externalMove(e, prev_arch, location.index, ComponentIdMask::null());
         }
 
         return component_data;

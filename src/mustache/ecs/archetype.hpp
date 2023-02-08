@@ -161,7 +161,7 @@ namespace mustache {
         void clear();
 
         /// Entity must belong to default(empty) archetype
-        ArchetypeEntityIndex insert(Entity entity, const ComponentIdMask& skip_constructor = {});
+        ArchetypeEntityIndex insert(Entity entity, const ComponentIdMask& skip_constructor = ComponentIdMask::null());
 
         // Move from prev to this archetype
         void externalMove(Entity entity, Archetype& prev, ArchetypeEntityIndex prev_index,

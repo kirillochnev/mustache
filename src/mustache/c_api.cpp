@@ -345,7 +345,7 @@ void destroyEntities(World* world, Entity* entities, uint32_t count, bool now) {
 
 Archetype* getArchetype(World* world, ComponentMask mask) {
     auto& entities = convert(world)->entities();
-    return convert(&entities.getArchetype(convert(mask), mustache::SharedComponentsInfo{}));
+    return convert(&entities.getArchetype(convert(mask), mustache::SharedComponentsInfo::null()));
 }
 Archetype* getArchetypeByBitsetMask(World* world, uint64_t bits)
 {
@@ -355,7 +355,7 @@ Archetype* getArchetypeByBitsetMask(World* world, uint64_t bits)
         const auto is_set = ((1ull << i) & bits) != 0u;
         mask.set(mustache::ComponentId::make(i), is_set);
     }
-    return convert(&entities.getArchetype(mask, mustache::SharedComponentsInfo{}));
+    return convert(&entities.getArchetype(mask, mustache::SharedComponentsInfo::null()));
 }
 CSystem* createSystem(World* world, const SystemDescriptor* descriptor) {
     std::unique_ptr<CSystem> result{new CSystem{*descriptor}};

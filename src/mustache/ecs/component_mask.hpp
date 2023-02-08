@@ -231,6 +231,11 @@ namespace mustache {
 
             return result;
         }
+
+        [[nodiscard]] static const SharedComponentsInfo& null() noexcept {
+            static const SharedComponentsInfo instanse{};
+            return instanse;
+        }
     private:
         SharedComponentIdMask mask_;
         std::vector<SharedComponentId> ids_;

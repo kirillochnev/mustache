@@ -26,7 +26,7 @@ namespace mustache {
         }
 
         ComponentIdMask checkMask() const noexcept override {
-            return ComponentIdMask{};
+            return ComponentIdMask::null();
         }
 
         ComponentIdMask updateMask() const noexcept override {

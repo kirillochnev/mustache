@@ -201,7 +201,7 @@ void EntityManager::removeComponent(Entity entity, ComponentId component) {
     }
 
     const auto prev_index = location.index;
-    archetype.externalMove(entity, prev_archetype, prev_index, ComponentIdMask{});
+    archetype.externalMove(entity, prev_archetype, prev_index, ComponentIdMask::null());
 }
 
 bool EntityManager::removeSharedComponent(Entity entity, SharedComponentId component) {
@@ -227,7 +227,7 @@ bool EntityManager::removeSharedComponent(Entity entity, SharedComponentId compo
     }
 
     const auto prev_index = location.index;
-    archetype.externalMove(entity, prev_archetype, prev_index, ComponentIdMask{});
+    archetype.externalMove(entity, prev_archetype, prev_index, ComponentIdMask::null());
 
     return true;
 }
