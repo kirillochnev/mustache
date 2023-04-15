@@ -5,7 +5,11 @@
 #include <map>
 #include <cstdlib>
 #include <cstring>
+#ifdef __APPLE__
+#include <sys/malloc.h>
+#else
 #include <malloc.h>
+#endif
 
 #if MEMORY_MANAGER_COLLECT_STATISTICS
 #define MEMORY_MANAGER_STATISTICS_ARG_DECL , const char* file, uint32_t line
@@ -28,7 +32,11 @@ void* mustache::MemoryManager::allocate(size_t size, size_t align MEMORY_MANAGER
     #define ALIGNED_ALLOC(size, align) aligned_alloc(align, size)
 #endif
 
+#ifdef __APPLE__
+    void* ptr = (align < 8) ? malloc(size) : ALIGNED_ALLOC(size, align);
+#else
     void* ptr = (align == 0) ? malloc(size) : ALIGNED_ALLOC(size, align);
+#endif
     
 #undef ALIGNED_ALLOC
 
