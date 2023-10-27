@@ -2,6 +2,7 @@
 
 #include <mustache/utils/timer.hpp>
 
+#include <cstdint>
 #include <deque>
 
 namespace mustache {

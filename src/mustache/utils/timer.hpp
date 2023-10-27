@@ -1,8 +1,7 @@
 #pragma once
 
 #include <mustache/utils/dll_export.h>
-
-#include <chrono>
+#include <mustache/utils/fast_private_impl.hpp>
 
 namespace mustache {
 
@@ -13,6 +12,9 @@ namespace mustache {
 
     class MUSTACHE_EXPORT Timer {
     public:
+        Timer();
+        ~Timer();
+
         void reset();
 
         void pause();
@@ -24,14 +26,8 @@ namespace mustache {
         TimerStatus status() const;
 
     protected:
-        using Clock = std::chrono::high_resolution_clock;
-        using TimePoint = Clock::time_point;
-
-        TimePoint begin_ = Clock::now();
-        TimePoint pause_begin_;
-        double pause_time_ = 0.0;
-        mutable double elapsed_ = 0.0;
-        TimerStatus status_ = TimerStatus::Active;
+        struct Data;
+        FastPimpl<Data, 64, 8> data_;
     };
 
 }
