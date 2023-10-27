@@ -33,21 +33,26 @@ namespace mustache {
             }
         }
 
-        ComponentHandler operator++(int) {
+        ComponentHandler operator+=(size_t count) {
             if constexpr (std::is_base_of<SharedComponentTag, T>::value) {
                 return *this;
             } else {
                 ComponentHandler cpy = *this;
                 if constexpr (_IsRequired) {
-                    ++ptr_;
+                    ptr_ += count;
                 } else {
                     if (ptr_ != nullptr) {
-                        ++ptr_;
+                        ptr_ += count;
                     }
                 }
                 return cpy;
             }
         }
+
+        ComponentHandler operator++(int) {
+            return *this+=1;
+        }
+
         operator bool() const noexcept {
             return ptr_ != nullptr;
         }
