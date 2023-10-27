@@ -46,6 +46,20 @@ namespace mustache {
         }
 
     protected:
+        template<size_t>
+        MUSTACHE_INLINE static void incPtrs() {
+        }
+        template<size_t _Count, typename _Ptr, typename... _Other>
+        MUSTACHE_INLINE static void incPtrs(_Ptr& ptr, _Other&... other) {
+            ptr += _Count;
+            incPtrs<_Count>(other...);
+        }
+        MUSTACHE_INLINE static void incInvocationIndex(JobInvocationIndex& invocation_index) noexcept {
+            if constexpr(Info::FunctionInfo::Position::job_invocation >= 0) {
+                ++invocation_index.entity_index_in_task;
+                ++invocation_index.entity_index;
+            }
+        }
 
         template<typename... _ARGS>
         MUSTACHE_INLINE void forEachArrayGenerated(World& world, ComponentArraySize count,
@@ -56,14 +70,49 @@ namespace mustache {
             if constexpr (Info::has_for_each_array) {
                 invokeMethod(self, &T::forEachArray, world, count, invocation_index, pointers...);
             } else {
-                const auto size = count.toInt();
+                const auto size = count.toInt() / 4;
+                // TODO: find the way to make compiler unroll this loop
                 for(uint32_t i = 0u; i < size; ++i) {
-                    invoke(self, world, invocation_index, pointers[i]...);
-                    if constexpr(Info::FunctionInfo::Position::job_invocation >= 0) {
-                        ++invocation_index.entity_index_in_task;
-                        ++invocation_index.entity_index;
-                    }
+                    invoke(self, world, invocation_index, pointers[0]...);
+                    incInvocationIndex(invocation_index);
+
+                    invoke(self, world, invocation_index, pointers[1]...);
+                    incInvocationIndex(invocation_index);
+
+                    invoke(self, world, invocation_index, pointers[2]...);
+                    incInvocationIndex(invocation_index);
+
+                    invoke(self, world, invocation_index, pointers[3]...);
+                    incInvocationIndex(invocation_index);
+
+                    incPtrs<4>(pointers...);
                 }
+                using TailFunction = void (*) (TargetType&, World&, JobInvocationIndex&, _ARGS&...);
+                static const TailFunction tails[4] {
+                        [](TargetType&, World&, JobInvocationIndex&, _ARGS&...){},
+                        [](TargetType& _self, World& _world, JobInvocationIndex& ii, _ARGS&... _pointers){
+                            invoke(_self, _world, ii, _pointers[0]...);
+                            incInvocationIndex(ii);
+                        },
+                        [](TargetType& _self, World& _world, JobInvocationIndex& ii, _ARGS&... _pointers){
+                            invoke(_self, _world, ii, _pointers[0]...);
+                            incInvocationIndex(ii);
+
+                            invoke(_self, _world, ii, _pointers[1]...);
+                            incInvocationIndex(ii);
+                        },
+                        [](TargetType& _self, World& _world, JobInvocationIndex& ii, _ARGS&... _pointers){
+                            invoke(_self, _world, ii, _pointers[0]...);
+                            incInvocationIndex(ii);
+
+                            invoke(_self, _world, ii, _pointers[1]...);
+                            incInvocationIndex(ii);
+
+                            invoke(_self, _world, ii, _pointers[2]...);
+                            incInvocationIndex(ii);
+                        }
+                };
+                tails[count.toInt() % 4](self, world, invocation_index, pointers...);
             }
         }
 
