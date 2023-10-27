@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 #include <cstddef>
+#include <map>
 
 namespace mustache {
     namespace detail {
@@ -40,14 +41,44 @@ namespace mustache {
         inline constexpr bool hasAfterAssign(...) noexcept {
             return false;
         }
+
+        template<typename C>
+        inline constexpr bool hasClone(decltype(&C::clone)) noexcept {
+            return true;
+        }
+        template<typename C>
+        inline constexpr bool hasClone(...) noexcept {
+            return false;
+        }
+
+        template<typename C>
+        inline constexpr bool hasAfterClone(decltype(&C::afterClone)) noexcept {
+            return true;
+        }
+        template<typename C>
+        inline constexpr bool hasAfterClone(...) noexcept {
+            return false;
+        }
     }
 
 
     class World;
+    struct CloneEntityMap;
     struct Entity;
 
     template<typename _Sign>
     using Functor = std::function<_Sign>;
+
+    template<typename T>
+    struct CloneDest {
+        const Entity& entity;
+        T* value;
+    };
+    template<typename T>
+    struct CloneSource {
+        const Entity& entity;
+        const T* value;
+    };
 
     struct MUSTACHE_EXPORT ComponentInfo {
         using Constructor = Functor<void (void*, const Entity&, World&) >;
@@ -57,7 +88,8 @@ namespace mustache {
         using IsEqual = Functor<bool (const void*, const void*)>;
         using BeforeRemove = Functor<void(void*, const Entity&, World&)>;
         using AfterAssing = Functor<void(void*, const Entity&, World&)>;
-
+        using CloneFunction = Functor<void(void*, const Entity&, const void*,
+                                      const Entity&, World&, CloneEntityMap&)>;
         size_t size{0};
         size_t align{0};
         std::string name;
@@ -71,6 +103,8 @@ namespace mustache {
             IsEqual compare;
             BeforeRemove before_remove;
             AfterAssing after_assign;
+            CloneFunction clone;
+            CloneFunction after_clone;
         } functions;
 
         std::vector<std::byte> default_value; // this array will be used to init component in case of empty constructor
@@ -118,6 +152,39 @@ namespace mustache {
         template<typename T>
         static void componentDestructor(void* ptr) {
             static_cast<T*>(ptr)->~T();
+        }
+
+        template<typename T>
+        static void clone(void* dest_ptr, const Entity& dest_entity, const void* source_ptr,
+                          const Entity& source_entity, World& world, CloneEntityMap& map) {
+            if constexpr (detail::hasClone<T>(nullptr)) {
+                CloneSource<T> source {
+                    source_entity,
+                    static_cast<const T*>(source_ptr)
+                };
+                CloneDest<T> dest {
+                    dest_entity,
+                    static_cast<T*>(dest_ptr)
+                };
+                invoke(&T::clone, source, dest, world, map);
+            } else {
+                copyComponent<T>(dest_ptr, source_ptr);
+            }
+        }
+        template<typename T>
+        static void afterClone(void* dest_ptr, const Entity& dest_entity, const void* source_ptr,
+                               const Entity& source_entity, World& world, CloneEntityMap& map) {
+            if constexpr (detail::hasAfterClone<T>(nullptr)) {
+                CloneSource<T> source {
+                    source_entity,
+                    static_cast<const T*>(source_ptr)
+                };
+                CloneDest<T> dest {
+                    dest_entity,
+                    static_cast<T*>(dest_ptr)
+                };
+                invoke(&T::afterClone, source, dest, world, map);
+            }
         }
 
         template<typename T>
@@ -178,6 +245,9 @@ namespace mustache {
                         &componentComparator<T>,
                         detail::hasBeforeRemove<T>(nullptr) ? &beforeComponentRemove<T> : ComponentInfo::BeforeRemove{},
                         detail::hasAfterAssign<T>(nullptr) ? &afterComponentAssign<T> : ComponentInfo::AfterAssing{},
+                        &clone<T>,
+                        detail::hasAfterClone<T>(nullptr) ? &afterClone<T> : ComponentInfo::CloneFunction{},
+
                 }, {}
             };
             return result;

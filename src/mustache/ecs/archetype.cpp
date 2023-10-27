@@ -204,6 +204,26 @@ ArchetypeEntityIndex Archetype::insert(Entity entity, const ComponentIdMask& ski
     return index.toArchetypeIndex();
 }
 
+void Archetype::cloneEntity(Entity source, Entity dest, ArchetypeEntityIndex src_index, CloneEntityMap& map) {
+    const auto dest_index = pushBack(dest).toArchetypeIndex();
+    world_.entities().updateLocation(dest, id_, dest_index);
+    {
+        ComponentIndex component_index = ComponentIndex::make(0);
+        for (const auto& clone_fn: operation_helper_.clone) {
+            auto src_data = getConstComponent<FunctionSafety::kUnsafe>(component_index, src_index);
+            auto dst_data = getComponent<FunctionSafety::kUnsafe>(component_index, dest_index);
+            clone_fn.clone(dst_data, dest, src_data, source, world_, map);
+            ++component_index;
+        }
+    }
+
+    for (auto&& [component_index, after_clone] : operation_helper_.after_clone) {
+        auto src_data = getConstComponent<FunctionSafety::kUnsafe>(component_index, src_index);
+        auto dst_data = getComponent<FunctionSafety::kUnsafe>(component_index, dest_index);
+        after_clone(dst_data, dest, src_data, source, world_, map);
+    }
+}
+
 void Archetype::internalMove(ArchetypeEntityIndex source_index, ArchetypeEntityIndex destination_index) {
     MUSTACHE_PROFILER_BLOCK_LVL_2(__FUNCTION__);
     // moving last entity to index

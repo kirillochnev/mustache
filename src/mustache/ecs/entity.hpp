@@ -118,4 +118,10 @@ namespace mustache {
             return value & shifted_version_mask;
         }
     };
+
+    struct CloneEntityMap {
+        virtual ~CloneEntityMap() = default;
+        virtual void add(Entity src, Entity dst) = 0;
+        [[nodiscard]] virtual Entity remap(Entity entity) const = 0;
+    };
 }

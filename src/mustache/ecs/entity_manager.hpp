@@ -229,6 +229,39 @@ namespace mustache {
             }
             return lock_counter_ < 1u;
         }
+
+        Entity clone(const Entity& source, CloneEntityMap& entity_map) {
+            if (!isEntityValid(source)) {
+                return Entity{};
+            }
+
+            const auto location = locations_[source.id()];
+            auto& arch = archetypes_[location.archetype];
+            auto dest = createWithOutInit();
+            entity_map.add(source, dest);
+            arch->cloneEntity(source, dest, location.index, entity_map);
+            return dest;
+        }
+
+        Entity clone(const Entity& source) {
+            struct DefaultCloneEntityMap : CloneEntityMap{
+                std::map<Entity, Entity> entities;
+                void add(Entity src, Entity dst) override {
+                    entities[src] = dst;
+                }
+
+                [[nodiscard]] Entity remap(Entity entity) const override {
+                    const auto find_res = entities.find(entity);
+                    if (find_res != entities.end()) {
+                        return find_res->second;
+                    }
+                    return entity;
+                }
+            };
+            DefaultCloneEntityMap entity_map {};
+            return clone(source, entity_map);
+        }
+
     private:
         /// iteration safe
         template<bool _SkipConstructor>

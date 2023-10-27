@@ -35,6 +35,15 @@ namespace mustache {
             ComponentIndex component_index;
         };
 
+        struct CloneInfo {
+            ComponentInfo::CloneFunction clone;
+        };
+
+        struct AfterCloneInfo {
+            ComponentIndex component_index;
+            ComponentInfo::CloneFunction after_clone;
+        };
+
         struct CreateWithValueInfo {
             const std::byte* value = nullptr;
             size_t size = 0;
@@ -114,5 +123,7 @@ namespace mustache {
         std::vector<BeforeRemoveInfo, Allocator<BeforeRemoveInfo> > before_remove_functions; // only non-null beforeRemove functions
         ArrayWrapper<ExternalMoveInfo, ComponentIndex, true> external_move;
         ArrayWrapper<InternalMoveInfo, ComponentIndex, true> internal_move; // move or copy function
+        ArrayWrapper<CloneInfo, ComponentIndex, true> clone; // clone or copy functions
+        std::vector<AfterCloneInfo> after_clone;
     };
 }
