@@ -45,7 +45,9 @@ if (MUSTACHE_BUILD_SHARED)
 	    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /MTd")
 	endif()
 else()
-    set(MUSTACHE_LIB_TYPE STATIC)
+    set(MUSTACHE_LIB_TYPE STATIC
+            src/mustache/utils/fast_private_impl.hpp
+            src/mustache/utils/unused.hpp)
 endif ()
 
 add_library(${PROJECT_NAME} ${MUSTACHE_LIB_TYPE}
@@ -59,11 +61,13 @@ add_library(${PROJECT_NAME} ${MUSTACHE_LIB_TYPE}
     ${mustache_SOURCE_DIR}/src/mustache/utils/benchmark.cpp
     ${mustache_SOURCE_DIR}/src/mustache/utils/benchmark.hpp
     ${mustache_SOURCE_DIR}/src/mustache/utils/uncopiable.hpp
+    ${mustache_SOURCE_DIR}/src/mustache/utils/unused.hpp
     ${mustache_SOURCE_DIR}/src/mustache/utils/memory_manager.cpp
     ${mustache_SOURCE_DIR}/src/mustache/utils/memory_manager.hpp
     ${mustache_SOURCE_DIR}/src/mustache/utils/dispatch.cpp
     ${mustache_SOURCE_DIR}/src/mustache/utils/dispatch.hpp
     ${mustache_SOURCE_DIR}/src/mustache/utils/index_like.hpp
+    ${mustache_SOURCE_DIR}/src/mustache/utils/fast_private_impl.hpp
     ${mustache_SOURCE_DIR}/src/mustache/utils/array_wrapper.hpp
     ${mustache_SOURCE_DIR}/src/mustache/utils/invoke.hpp
     ${mustache_SOURCE_DIR}/src/mustache/utils/crc32.hpp

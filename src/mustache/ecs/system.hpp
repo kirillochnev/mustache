@@ -3,6 +3,7 @@
 #include <mustache/utils/uncopiable.hpp>
 #include <mustache/utils/type_info.hpp>
 
+#include <cstdint>
 #include <set>
 
 namespace mustache {

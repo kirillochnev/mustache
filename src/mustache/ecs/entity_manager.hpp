@@ -608,7 +608,7 @@ namespace mustache {
         constexpr bool use_custom_constructor = sizeof...(_ARGS) > 0;
         auto component_ptr = assign<use_custom_constructor>(e, component_id);
         if constexpr(use_custom_constructor) {
-            *new(component_ptr) T{std::forward<_ARGS>(args)...};
+            component_ptr = static_cast<void*>(new(component_ptr) T{std::forward<_ARGS>(args)...});
             ComponentInfo::afterComponentAssign<T>(component_ptr, e, world_);
         }
         return *reinterpret_cast<T*>(component_ptr);

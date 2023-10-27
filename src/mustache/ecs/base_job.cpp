@@ -116,6 +116,7 @@ void BaseJob::run(World& world, JobRunMode mode) {
 }
 
 uint32_t BaseJob::applyFilter(World& world) noexcept {
+    // TODO: make this fast for small jobs
     MUSTACHE_PROFILER_BLOCK_LVL_0(__FUNCTION__ );
 
     filter_result_.clear();
