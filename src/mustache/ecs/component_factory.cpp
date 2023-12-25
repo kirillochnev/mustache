@@ -73,43 +73,45 @@ namespace {
     }
 }
 
-SharedComponentId ComponentFactory::sharedComponentId(const ComponentInfo& info) {
+SharedComponentId ComponentFactory::sharedComponentId(const ComponentInfo& info) const {
     MUSTACHE_PROFILER_BLOCK_LVL_3(__FUNCTION__);
     return shared_component_id_storage.getId(info);
 }
 
-ComponentId ComponentFactory::componentId(const ComponentInfo& info) {
+ComponentId ComponentFactory::componentId(const ComponentInfo& info) const {
     MUSTACHE_PROFILER_BLOCK_LVL_3(__FUNCTION__);
     return component_id_storage.getId(info);
 }
 
-const ComponentInfo& ComponentFactory::componentInfo(ComponentId id) {
+const ComponentInfo& ComponentFactory::componentInfo(ComponentId id) const {
     MUSTACHE_PROFILER_BLOCK_LVL_3(__FUNCTION__);
     return component_id_storage.componentInfo(id);
 }
 
-void ComponentFactory::initComponents(World& world, Entity entity, const ComponentInfo& info, void* data, size_t count) {
+void ComponentFactory::initComponents(World& world, Entity entity,
+                                      const ComponentInfo& info, void* data, size_t count) const {
     MUSTACHE_PROFILER_BLOCK_LVL_2(__FUNCTION__);
     applyFunction(data, info.functions.create, count, info.size, world, entity);
     applyFunction(data, info.functions.after_assign, count, info.size, world, entity);
 }
 
-void ComponentFactory::destroyComponents(World& world, Entity entity, const ComponentInfo& info, void* data, size_t count) {
+void ComponentFactory::destroyComponents(World& world, Entity entity,
+                                         const ComponentInfo& info, void* data, size_t count) const {
     MUSTACHE_PROFILER_BLOCK_LVL_2(__FUNCTION__);
     applyFunction(data, info.functions.destroy, count, info.size, world, entity);
 }
 
-ComponentId ComponentFactory::nextComponentId() noexcept {
+ComponentId ComponentFactory::nextComponentId() const noexcept {
     MUSTACHE_PROFILER_BLOCK_LVL_3(__FUNCTION__);
     return component_id_storage.next_component_id;
 }
 
-bool ComponentFactory::isEq(const SharedComponentTag* c0,const SharedComponentTag* c1, SharedComponentId id) {
+bool ComponentFactory::isEq(const SharedComponentTag* c0,const SharedComponentTag* c1, SharedComponentId id) const {
     MUSTACHE_PROFILER_BLOCK_LVL_3(__FUNCTION__);
     return shared_component_id_storage.componentInfo(id).functions.compare(c0, c1);
 }
 
-void ComponentFactory::moveComponent(World&, Entity, const ComponentInfo& info, void* source, void* dest) {
+void ComponentFactory::moveComponent(World&, Entity, const ComponentInfo& info, void* source, void* dest) const {
     MUSTACHE_PROFILER_BLOCK_LVL_2(__FUNCTION__);
     if (!info.functions.move) {
         throw std::runtime_error("Invalid move function for: " + info.name);
@@ -117,10 +119,15 @@ void ComponentFactory::moveComponent(World&, Entity, const ComponentInfo& info, 
     info.functions.move(dest, source);
 }
 
-void ComponentFactory::copyComponent(World&, Entity, const ComponentInfo& info, const void* source, void* dest) {
+void ComponentFactory::copyComponent(World&, Entity, const ComponentInfo& info, const void* source, void* dest) const {
     MUSTACHE_PROFILER_BLOCK_LVL_2(__FUNCTION__);
     if (!info.functions.copy) {
         throw std::runtime_error("Invalid copy function for: " + info.name);
     }
     info.functions.copy(dest, source);
+}
+
+ComponentFactory& ComponentFactory::instance() {
+    static ComponentFactory factory;
+    return factory;
 }

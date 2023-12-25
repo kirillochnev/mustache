@@ -167,7 +167,7 @@ SharedComponentPtr EntityManager::getCreatedSharedComponent(const SharedComponen
     }
     auto& arr = shared_components_[id];
     for (const auto& v : arr) {
-        if (v.get() == ptr.get() || ComponentFactory::isEq(v.get(), ptr.get(), id)) {
+        if (v.get() == ptr.get() || ComponentFactory::instance().isEq(v.get(), ptr.get(), id)) {
             return v;
         }
     }
@@ -346,7 +346,7 @@ void EntityManager::applyCommandPack(TemporalStorage& storage, size_t begin, siz
             continue;
         }
         auto dest = view.getData(archetype.getComponentIndex(command.component_id));
-        const auto& component_functions = ComponentFactory::componentInfo(command.component_id).functions;
+        const auto& component_functions = ComponentFactory::instance().componentInfo(command.component_id).functions;
         component_functions.move_constructor(dest, command.ptr);
         if (component_functions.after_assign) {
             component_functions.after_assign(dest, command.entity, world_);
@@ -421,7 +421,7 @@ void EntityManager::applyStorage(TemporalStorage& storage) { // optimized versio
 
     for (auto& command : storage.actions_) {
         if (command.action == TemporalStorage::Action::kAssignComponent) {
-            const auto& info = ComponentFactory::componentInfo(command.component_id);
+            const auto& info = ComponentFactory::instance().componentInfo(command.component_id);
             if (info.functions.destroy) {
                 info.functions.destroy(command.ptr);
             }

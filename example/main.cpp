@@ -237,7 +237,7 @@ int main() {
 
 
     mustache::World world;
-    createEntities(world, 1000000, 3);
+    createEntities(world, 50000, 3);
 
     const auto run_mode = mustache::JobRunMode::kSingleThread;
 

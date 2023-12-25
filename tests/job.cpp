@@ -507,7 +507,7 @@ TEST(Job, UpdateSingleChunk) {
         }
 
         mustache::ComponentIdMask checkMask() const noexcept override {
-            return mustache::ComponentFactory::makeMask<Component0>();
+            return mustache::ComponentFactory::instance().makeMask<Component0>();
         }
         uint32_t count = 0;
         bool show_up = false;
@@ -572,9 +572,9 @@ TEST(Job, NonTemplate) {
     mustache::NonTemplateJob job;
     job.job_name = "Move job";
     job.component_requests = {
-            {mustache::ComponentFactory::registerComponent<Position>(), false, true},
-            {mustache::ComponentFactory::registerComponent<Velocity>(), true, true},
-            {mustache::ComponentFactory::registerComponent<Orientation>(), true, true},
+            {mustache::ComponentFactory::instance().registerComponent<Position>(), false, true},
+            {mustache::ComponentFactory::instance().registerComponent<Velocity>(), true, true},
+            {mustache::ComponentFactory::instance().registerComponent<Orientation>(), true, true},
     };
     uint32_t call_count = 0;
     job.callback = [&call_count](const mustache::NonTemplateJob::ForEachArrayArgs& args) {

@@ -34,7 +34,7 @@ namespace mustache {
 
         template<typename T>
         MUSTACHE_INLINE auto& remove() noexcept {
-            to_destroy_.add(ComponentFactory::registerComponent<T>());
+            to_destroy_.add(ComponentFactory::instance().registerComponent<T>());
             return *this;
         }
 
@@ -65,7 +65,7 @@ namespace mustache {
         }
         template<typename T>
         MUSTACHE_INLINE auto& remove() noexcept {
-            to_destroy_.add(ComponentFactory::registerComponent<T>());
+            to_destroy_.add(ComponentFactory::instance().registerComponent<T>());
             return *this;
         }
 

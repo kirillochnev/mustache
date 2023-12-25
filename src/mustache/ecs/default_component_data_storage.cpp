@@ -23,7 +23,7 @@ DefaultComponentDataStorage::DefaultComponentDataStorage(const ComponentIdMask& 
 
         auto offset = ComponentOffset::make(0u);
         mask.forEachItem([this, &offset, &mask](ComponentId id) {
-            const auto& info = ComponentFactory::componentInfo(id);
+            const auto& info = ComponentFactory::instance().componentInfo(id);
             if (offset.toInt() == 0) {
                 chunk_align_ = static_cast<uint32_t>(info.align);
             }

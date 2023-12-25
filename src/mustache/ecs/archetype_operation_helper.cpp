@@ -30,7 +30,7 @@ ArchetypeOperationHelper::ArchetypeOperationHelper(MemoryManager& memory_manager
             component_id_to_component_index.resize(component_id.next().toInt());
         }
         component_id_to_component_index[component_id] = component_index;
-        const auto& info = ComponentFactory::componentInfo(component_id);
+        const auto& info = ComponentFactory::instance().componentInfo(component_id);
 
         if (info.functions.create || info.functions.after_assign) {
             insert.push_back(InsertInfo {

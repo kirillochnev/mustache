@@ -236,7 +236,7 @@ namespace mustache {
     template<typename T>
     SharedComponentIndex Archetype::sharedComponentIndex() const noexcept {
         using Component = typename ComponentType<T>::type;
-        return sharedComponentIndex(ComponentFactory::registerSharedComponent<Component>());
+        return sharedComponentIndex(ComponentFactory::instance().registerSharedComponent<Component>());
     }
 
     template<typename... ARGS>
