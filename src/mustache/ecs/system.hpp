@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <mustache/utils/uncopiable.hpp>
 #include <mustache/utils/type_info.hpp>
 
