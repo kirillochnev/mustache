@@ -11,7 +11,7 @@ std::string ComponentIdMask::toString() const noexcept {
     std::string res;
     bool first = true;
     forEachItem([&first, &res](ComponentId id) {
-        res += (first ? "[" : ", [") + ComponentFactory::componentInfo(id).name + "]";
+        res += (first ? "[" : ", [") + ComponentFactory::instance().componentInfo(id).name + "]";
         first = false;
     });
     return res;

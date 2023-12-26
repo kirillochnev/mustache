@@ -77,8 +77,7 @@ TEST(WorldFilter, chunk_version) {
         }
 
         mustache::ComponentIdMask checkMask() const noexcept {
-            mustache::ComponentIdMask result = mustache::ComponentFactory::makeMask<Component<0>,Component<1> >();
-            return result;
+            return mustache::ComponentFactory::instance().makeMask<Component<0>,Component<1> >();
         }
     };
     mustache::World world = mustache::World{mustache::WorldId::make(0)};

@@ -19,8 +19,9 @@
 namespace mustache {
 
     class World;
-    class EntityManager;
     class Archetype;
+    class EntityManager;
+    struct CloneEntityMap;
 
     // NOTE: element view does not update component versions
     struct MUSTACHE_EXPORT ElementView : public DataStorageIterator {
@@ -176,6 +177,7 @@ namespace mustache {
         void callDestructor(const ElementView& view);
         void callOnRemove(ArchetypeEntityIndex index, const ComponentIdMask& components_to_be_removed);
 
+        void cloneEntity(Entity source, Entity dest, ArchetypeEntityIndex index, CloneEntityMap& map);
 
         World& world_;
         const ComponentIdMask mask_;
@@ -234,7 +236,7 @@ namespace mustache {
     template<typename T>
     SharedComponentIndex Archetype::sharedComponentIndex() const noexcept {
         using Component = typename ComponentType<T>::type;
-        return sharedComponentIndex(ComponentFactory::registerSharedComponent<Component>());
+        return sharedComponentIndex(ComponentFactory::instance().registerSharedComponent<Component>());
     }
 
     template<typename... ARGS>

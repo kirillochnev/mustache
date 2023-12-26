@@ -153,7 +153,7 @@ namespace mustache {
                 auto& archetype = *info.archetype();
                 archetype.getSharedComponents(shared_components);
                 static const std::array<ComponentId, sizeof...(_I)> ids {
-                        ComponentFactory::registerComponent<typename ComponentType<typename Info::FunctionInfo::
+                        ComponentFactory::instance().registerComponent<typename ComponentType<typename Info::FunctionInfo::
                         template UniqueComponentType<_I>::type>::type>()...
                 };
                 std::array<ComponentIndex, sizeof...(_I)> component_indexes {

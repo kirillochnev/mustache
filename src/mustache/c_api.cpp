@@ -253,7 +253,7 @@ void destroyWorld(World* world) {
 }
 
 ComponentId registerComponent(TypeInfo info) {
-    return mustache::ComponentFactory::componentId(convert(info)).toInt();
+    return mustache::ComponentFactory::instance().componentId(convert(info)).toInt();
 }
 
 ComponentPtr assignComponent(World* world, Entity entity, ComponentId component_id) {
@@ -273,7 +273,7 @@ void removeComponent(World* world, Entity entity, ComponentId component_id) {
     convert(world)->entities().removeComponent(convert(entity), convert(component_id));
 }
 ComponentPtr getComponent(World* world, Entity entity, ComponentId component_id, bool is_const) {
-    const auto type_id = mustache::ComponentFactory::componentInfo(convert(component_id));
+    const auto type_id = mustache::ComponentFactory::instance().componentInfo(convert(component_id));
     const void* ptr = nullptr;
     if (is_const) {
         ptr = convert(world)->entities().getComponent<true>(convert(entity), convert(component_id));

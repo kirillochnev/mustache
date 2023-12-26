@@ -180,7 +180,7 @@ struct MySuperJob : public PerEntityJob<MySuperJob> {
     }
 
     bool extraArchetypeFilterCheck(const Archetype& archetype) const noexcept override {
-        const auto component_id = ComponentFactory::registerComponent<Component2>();
+        const auto component_id = ComponentFactory::instance().registerComponent<Component2>();
         return !archetype.hasComponent(component_id); // skip entities with Component2
     }
 };

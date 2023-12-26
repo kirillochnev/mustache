@@ -313,7 +313,7 @@ namespace mustache {
 
         template<size_t... _I>
         static ComponentIdMask componentMask(const std::index_sequence<_I...>&) noexcept {
-            return ComponentFactory::makeMask<typename FunctionInfo::template UniqueComponentType<_I> ::type...>();
+            return ComponentFactory::instance().makeMask<typename FunctionInfo::template UniqueComponentType<_I> ::type...>();
         }
         static ComponentIdMask componentMask() noexcept {
             return componentMask(std::make_index_sequence<FunctionInfo::components_count>());
@@ -321,7 +321,7 @@ namespace mustache {
 
         template<size_t... _I>
         static SharedComponentIdMask sharedComponentMask(const std::index_sequence<_I...>&) noexcept {
-            return ComponentFactory::makeSharedMask<typename FunctionInfo::template SharedComponentType<_I> ::type...>();
+            return ComponentFactory::instance().makeSharedMask<typename FunctionInfo::template SharedComponentType<_I> ::type...>();
         }
         static SharedComponentIdMask sharedComponentMask() noexcept {
             return sharedComponentMask(std::make_index_sequence<FunctionInfo::shared_components_count>());
@@ -330,7 +330,7 @@ namespace mustache {
         template<typename _C>
         static std::pair<ComponentId, bool> componentInfo() noexcept {
             using Component = typename ComponentType<_C>::type;
-            return std::make_pair(ComponentFactory::registerComponent<Component>(),
+            return std::make_pair(ComponentFactory::instance().registerComponent<Component>(),
                                   IsComponentMutable<_C>::value);
         }
 

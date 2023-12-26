@@ -14,7 +14,7 @@ TemporalStorage::~TemporalStorage() {
 }
 
 void* TemporalStorage::assignComponent(World& world, Entity entity, ComponentId id, bool skip_constructor) {
-    const auto& component_info = ComponentFactory::componentInfo(id);
+    const auto& component_info = ComponentFactory::instance().componentInfo(id);
     auto& command = emplaceItem(entity, Action::kAssignComponent);
     command.type_info = &component_info;
     command.component_id = id;

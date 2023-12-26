@@ -30,7 +30,7 @@ ArchetypeOperationHelper::ArchetypeOperationHelper(MemoryManager& memory_manager
             component_id_to_component_index.resize(component_id.next().toInt());
         }
         component_id_to_component_index[component_id] = component_index;
-        const auto& info = ComponentFactory::componentInfo(component_id);
+        const auto& info = ComponentFactory::instance().componentInfo(component_id);
 
         if (info.functions.create || info.functions.after_assign) {
             insert.push_back(InsertInfo {
@@ -68,6 +68,12 @@ ArchetypeOperationHelper::ArchetypeOperationHelper(MemoryManager& memory_manager
         external_move_info.default_data = info.default_value.empty() ? nullptr : info.default_value.data();
         external_move_info.after_assign = info.functions.after_assign;
 
+        clone.push_back(CloneInfo{info.functions.clone});
+        if (info.functions.after_clone) {
+            auto& after_clone_info = after_clone.emplace_back();
+            after_clone_info.after_clone = info.functions.after_clone;
+            after_clone_info.component_index = component_index;
+        }
         ++component_index;
     }
 }
