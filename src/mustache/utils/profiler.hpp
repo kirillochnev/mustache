@@ -22,7 +22,7 @@
 #endif
 
 #ifndef MUSTACHE_PROFILER_LVL
-    #define MUSTACHE_PROFILER_LVL 0
+    #define MUSTACHE_PROFILER_LVL 2
 #endif
 
 #if MUSTACHE_PROFILER_LVL >= 0
