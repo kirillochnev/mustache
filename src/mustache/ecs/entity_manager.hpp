@@ -15,6 +15,7 @@
 #include <map>
 #include <set>
 #include <memory>
+#include <atomic>
 
 namespace mustache {
 
@@ -303,6 +304,7 @@ namespace mustache {
 
         [[nodiscard]] TemporalStorage& getTemporalStorage() noexcept {
             static thread_local const auto thread_id = threadId();
+            was_temporal_storage_used_.store(true, std::memory_order_relaxed);
             return temporal_storages_[thread_id];
         }
 
@@ -401,6 +403,7 @@ namespace mustache {
         // NOTE: must be the last field(for correct default destructor).
         ArrayWrapper<std::shared_ptr<Archetype>, ArchetypeIndex, true> archetypes_;
 
+        std::atomic_bool was_temporal_storage_used_ = false;
         // archetype stores component version for every  default_archetype_component_version_chunk_size created_entities
         struct ArchetypeVersionChunkSize {
             uint32_t default_size = 1024u;

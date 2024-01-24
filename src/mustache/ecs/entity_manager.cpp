@@ -268,10 +268,11 @@ void EntityManager::onUnlock() {
     if (isLocked()) {
         throw std::runtime_error("Entity manager must be unlocked");
     }
-
-    for (auto& storage : temporal_storages_) {
-        applyStorage(storage);
-        storage.clear();
+    if (was_temporal_storage_used_.exchange(false)) {
+        for (auto& storage: temporal_storages_) {
+            applyStorage(storage);
+            storage.clear();
+        }
     }
 }
 
@@ -297,6 +298,10 @@ void EntityManager::applyCommandPack(TemporalStorage& storage, size_t begin, siz
     }
     else {
         auto archetype = getArchetypeOf(entity);
+        if (archetype == nullptr) {
+            return;
+        }
+
         final_mask = archetype->componentMask();
         shared = archetype->sharedComponentInfo();
     }
