@@ -12,6 +12,7 @@
     #define MUSTACHE_PROFILER_DUMP(fileName) profiler::dumpBlocksToFile(fileName);
     #define MUSTACHE_PROFILER_CATEGORY(text, type) EASY_BLOCK(text)
 #else
+    #define MUSTACHE_PROFILER_LVL -1
     #define MUSTACHE_PROFILER_BLOCK(...)
     #define MUSTACHE_PROFILER_START()
     #define MUSTACHE_PROFILER_MAIN_THREAD()
