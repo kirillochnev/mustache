@@ -21,6 +21,9 @@ EntityManager::EntityManager(World& world):
         world_version_{world.version()},
         archetypes_{world.memoryManager()} {
     MUSTACHE_PROFILER_BLOCK_LVL_0(__FUNCTION__ );
+
+    const auto thread_count = Dispatcher::maxThreadCount();
+    temporal_storages_.resize(thread_count);
 }
 
 Archetype& EntityManager::getArchetype(const ComponentIdMask& mask, const SharedComponentsInfo& shared) {
@@ -257,9 +260,6 @@ void EntityManager::markDirty(Entity entity, ComponentId component_id) noexcept 
 
 void EntityManager::onLock() {
     MUSTACHE_PROFILER_BLOCK_LVL_0(__FUNCTION__ );
-
-    const auto thread_count = world_.dispatcher().maxThreadCount();
-    temporal_storages_.resize(thread_count);
     next_entity_id_ = static_cast<uint32_t >(entities_.size());
 }
 

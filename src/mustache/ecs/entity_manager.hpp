@@ -32,6 +32,19 @@ namespace mustache {
 
     using ArchetypeChunkSizeFunction = std::function<ArchetypeChunkSize (const ComponentIdMask&)>;
 
+
+    struct EntityLocationInWorld {
+        constexpr static ArchetypeIndex kDefaultArchetype = ArchetypeIndex::null();
+        EntityLocationInWorld() = default;
+        EntityLocationInWorld(ArchetypeEntityIndex i, ArchetypeIndex arch ) noexcept :
+                index{i},
+                archetype{arch} {
+
+        }
+        ArchetypeEntityIndex index = ArchetypeEntityIndex::make(0u);
+        ArchetypeIndex archetype = kDefaultArchetype;
+    };
+
     class MUSTACHE_EXPORT EntityManager : public Uncopiable {
     public:
         explicit EntityManager(World& world);
@@ -214,6 +227,16 @@ namespace mustache {
             return lock_counter_ > 0u;
         }
 
+        template<FunctionSafety _Safety = FunctionSafety::kSafe>
+        [[nodiscard]] MUSTACHE_INLINE EntityLocationInWorld entityLocation(Entity entity) const noexcept {
+            if constexpr (_Safety == FunctionSafety::kSafe) {
+                if (!isEntityValid(entity)) {
+                    return EntityLocationInWorld {};
+                }
+            }
+            return locations_[entity.id()];
+        }
+
         MUSTACHE_INLINE void lock() noexcept {
             ++lock_counter_;
             if (lock_counter_ == 1u) {
@@ -370,18 +393,6 @@ namespace mustache {
                 location.index = index;
             }
         }
-
-        struct EntityLocationInWorld {
-            constexpr static ArchetypeIndex kDefaultArchetype = ArchetypeIndex::null();
-            EntityLocationInWorld() = default;
-            EntityLocationInWorld(ArchetypeEntityIndex i, ArchetypeIndex arch ) noexcept :
-                    index{i},
-                    archetype{arch} {
-
-            }
-            ArchetypeEntityIndex index = ArchetypeEntityIndex::make(0u);
-            ArchetypeIndex archetype = kDefaultArchetype;
-        };
 
         World& world_;
         uint32_t lock_counter_{0u};
