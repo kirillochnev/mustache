@@ -19,8 +19,6 @@ namespace mustache {
         ArchetypeOperationHelper(MemoryManager& memory_manager, const ComponentIdMask& mask);
         ArchetypeOperationHelper() = default;
 
-        static std::vector<ComponentOffset> offsetsFor(const std::vector<ComponentId>& components);
-
         struct InsertInfo {
             MUSTACHE_INLINE void constructor(void* ptr, const Entity& entity, World& world) const noexcept {
                 if (constructor_func) {
@@ -124,6 +122,6 @@ namespace mustache {
         ArrayWrapper<ExternalMoveInfo, ComponentIndex, true> external_move;
         ArrayWrapper<InternalMoveInfo, ComponentIndex, true> internal_move; // move or copy function
         ArrayWrapper<CloneInfo, ComponentIndex, true> clone; // clone or copy functions
-        std::vector<AfterCloneInfo> after_clone;
+        std::vector<AfterCloneInfo, Allocator<AfterCloneInfo> > after_clone;
     };
 }

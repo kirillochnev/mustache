@@ -77,10 +77,30 @@ namespace mustache {
 
         void clearArchetype(Archetype& archetype);
 
-        /// iteration safe
+        /**
+         * @brief Destroys an entity.
+         *
+         * This function is used to destroy the specified entity. If the EntityManager is currently locked,
+         * the entity is added to the temporal storage for deletion. Otherwise, the entity is marked for deletion
+         * and will be destroyed on the next update cycle.
+         *
+         * @param entity The entity to be destroyed.
+         */
         MUSTACHE_INLINE void destroy(Entity entity);
 
-        /// iteration safe
+        /**
+         * @brief Check if an entity is marked for destruction.
+         *
+         * This function checks if the specified entity is marked for destruction.
+         *
+         * @param entity The entity to check.
+         * @return True if the entity is marked for destruction, false otherwise.
+         *
+         * @note This function is iteration safe, which means that it can be safely called
+         * during the iteration over entities.
+         *
+         * @see EntityManager
+         */
         [[nodiscard]] MUSTACHE_INLINE bool isMarkedForDestroy(Entity entity) const noexcept;
 
         /// iteration safe
@@ -129,7 +149,30 @@ namespace mustache {
         bool removeSharedComponent(Entity entity, SharedComponentId component);
 
 
-        /// iteration safe
+        /**
+         * @brief Assigns a component to an entity.
+         *
+         * This function assigns a component to the specified entity. The component type
+         * is deduced from the template parameter T. The function can also take additional
+         * arguments, specified by the variadic parameter pack _ARGS.
+         *
+         * @tparam T The type of the component to assign.
+         * @tparam _ARGS Additional arguments to be forwarded to the component constructor.
+         * @param e The entity to assign the component to.
+         * @param args Additional arguments to be forwarded to the component constructor.
+         * @return The assigned component.
+         *
+         * @details This function assigns a component to the specified entity. If the component
+         * type T is a shared component, it calls the assignShared function to assign the component.
+         * Otherwise, it calls the assignUnique function to assign the component.
+         *
+         * @note This function is iteration safe, which means that it can be safely called
+         * during the iteration over entities.
+         *
+         * @related EntityManager
+         * @related assignShared
+         * @related assignUnique
+         */
         template<typename T, typename... _ARGS>
         MUSTACHE_INLINE decltype(auto) assign(Entity e, _ARGS&&... args);
 
@@ -142,21 +185,85 @@ namespace mustache {
             return assign<true>(e, id);
         }
 
-        /// iteration safe
+        /**
+         * @brief Checks if the given entity has a component of type T.
+         *
+         * @tparam T The component type.
+         * @tparam _Safety The function safety level.
+         * @param entity The entity to check for the component.
+         * @return bool Returns true if the entity has the component, false otherwise.
+         *
+         * This function checks if the specified entity has a component of the specified
+         * type T. It returns true if the entity has the component, and false otherwise.
+         * The function safety level _Safety determines the level of safety checks to perform.
+         *
+         * @note This function is iteration safe, which means that it can be safely called
+         * during the iteration over entities.
+         */
         template<typename T, FunctionSafety _Safety = FunctionSafety::kDefault>
         [[nodiscard]] MUSTACHE_INLINE bool hasComponent(Entity entity) const noexcept;
 
-        /// iteration safe
+        /**
+         * @brief Checks if an entity has a specific component.
+         *
+         * This function checks if the specified entity has the specified component.
+         *
+         * @tparam _Safety The function safety level. By default, it uses the default safety level.
+         * @tparam _ComponentId The ID of the component to check.
+         * @param entity The entity to check.
+         * @param id The ID of the component.
+         * @return `true` if the entity has the specified component, `false` otherwise.
+         *
+         * @note This function is iteration safe, which means that it can be safely called
+         * during the iteration over entities.
+         *
+         * @see EntityManager::hasComponent(Entity, _ComponentId)
+         */
         template<FunctionSafety _Safety = FunctionSafety::kDefault, typename _ComponentId>
         [[nodiscard]] MUSTACHE_INLINE bool hasComponent(Entity entity, _ComponentId id) const noexcept;
 
-        /// iteration safe
+        /**
+         * @brief Returns the WorldVersion of the last update of a component for a given entity.
+         *
+         * This function retrieves the WorldVersion of the last update of a component for a given entity.
+         * The FunctionSafety template parameter allows the user to specify the safety level of the function.
+         *
+         * @tparam T The component type.
+         * @tparam _Safety The safety level of the function.
+         * @param entity The entity for which to retrieve the WorldVersion.
+         * @return The WorldVersion of the last update of the component for the entity.
+         *
+         * @note The function is iteration safe.
+         * @note The function can throw exceptions if the safety level is not set to safe.
+         */
         template<typename T, FunctionSafety _Safety = FunctionSafety::kSafe>
         [[nodiscard]] MUSTACHE_INLINE WorldVersion getWorldVersionOfLastComponentUpdate(Entity entity) const noexcept;
 
         template<typename _F, typename... ARGS>
         MUSTACHE_INLINE void forEachWithArgsTypes(_F&& function, JobRunMode mode);
-
+        /**
+         * @brief Calls a given function on each element of a container.
+         *
+         * This function template is used to iterate over a container and apply a given
+         * function to each element. The function to be applied must be callable with
+         * the elements of the container as arguments. It is recommended that the
+         * function supports forwarding arguments in order to handle any type of
+         * elements.
+         *
+         * The function is called using the JobRunMode specified. The JobRunMode
+         * determines how the iterations are executed:
+         *   - kCurrentThread: The iterations are executed in the current thread.
+         *   - kParallel: The iterations are executed in parallel using multiple threads.
+         *   - kSingleThread: The iterations are executed sequentially in a single thread.
+         *   - kDefault: The iterations are executed in the current thread (same as
+         *               kCurrentThread).
+         *
+         * @tparam _F The type of the function to be applied.
+         * @param function The function to be applied to each element.
+         * @param mode The execution mode for the iterations.
+         *
+         * @see JobRunMode
+         */
         template<typename _F, size_t... _I>
         MUSTACHE_INLINE void forEach(_F&& function, JobRunMode mode, std::index_sequence<_I...>&&) {
             using Info = utils::function_traits<_F>;
@@ -168,18 +275,96 @@ namespace mustache {
             constexpr auto args_count = utils::function_traits<_F>::arity;
             forEach(std::forward<_F>(function), mode, std::make_index_sequence<args_count>());
         }
-
+        /**
+          * @fn EntityBuilder<void> begin(Entity entity = {})
+          * @brief Begins the process of entity construction or modification.
+          *
+          * This function initiates the process of building or modifying an entity by creating an instance of the EntityBuilder class.
+          * You can supply an already existing entity as an argument for modification. If no entity is provided, this function will create a new one automatically.
+          *
+          * You can add or remove components to/from the entity during the building process through the .assign and .remove methods respectively.
+          * These operations change the entity's archetype, a major benefit of the EntityBuilder is that it allows you to place the entity into its final archetype directly, thus avoiding multiple costly archetype transitions.
+          *
+          * Example:
+          * ```
+          * world.entities().begin(existingEntity)
+          *   .assign<C0>()
+          *   .assign<C1>()
+          *   .remove<C3>()
+          * .end();
+          * ```
+          * In this example, the entity building process begins with an existing entity, then assigns two new components named C0 and C1 to the entity, removes the C3 component, and finally, ends the building process.
+          *
+          * @param entity The entity to build or modify (optional).
+          * @return An instance of the EntityBuilder class.
+          *
+          * @see EntityBuilder
+          */
         EntityBuilder<void> begin(Entity entity = {}) {
             return EntityBuilder<void>{this, entity};
         }
 
         template<typename TupleType>
         Entity apply(Entity entity, const ComponentIdMask& to_remove, EntityBuilder<TupleType>& args_pack);
-
+        /**
+         * @brief Retrieves the accumulated components that are dependent on a provided mask.
+         *
+         * This function returns a ComponentIdMask that represents the components having a
+         * dependency on the given mask. It calculates this mask by integrating not only
+         * the direct dependencies but also the indirect dependencies in a recursive manner,
+         * until no new dependencies are discovered.
+         *
+         * @param mask The ComponentIdMask for which dependent components are to be identified.
+         * @return A ComponentIdMask representing the accumulated dependent components.
+         * This mask includes originally provided mask and all identified dependencies.
+         */
         ComponentIdMask getExtraComponents(const ComponentIdMask&) const noexcept;
 
+        /**
+        * @brief Establishes a dependency between a master component and a set of dependent components.
+        *
+        * This function sets up a relationship where the master component has a dependency on a group of other components,
+        * as represented through the dependent_mask. Once a dependency is established, the addition of the master component
+        * automatically triggers the addition of all its direct and indirect dependent components.
+        *
+        * @param master The ID of the master component.
+        * @param dependent_mask The mask representing the direct and indirect dependent components.
+        *
+        * @note This function does not throw exceptions.
+        *
+        * @see EntityManager::getExtraComponents
+        *
+        * @par Related Functions
+        * - EntityManager::getExtraComponents
+        */
         void addDependency(ComponentId master, const ComponentIdMask& dependent_mask) noexcept;
 
+        /**
+         * @brief Adds a dependency between a master component and one or more dependent components.
+         *
+         * @tparam _Master The master component type.
+         * @tparam DEPENDENT The dependent component types.
+         *
+         * This function is used to establish a dependency relationship between a master component and one or more dependent components.
+         * The master component should not be one of the dependent components.
+         *
+         * @note This function is noexcept.
+         *
+         * @see ComponentFactory
+         *
+         * @example
+         *
+         * // Example usage:
+         *
+         * // Define the master and dependent component types
+         * struct MasterComponent {};
+         * struct DependentComponent1 {};
+         * struct DependentComponent2 {};
+         *
+         * // Add dependency between the master and dependent components
+         * addDependency<MasterComponent, DependentComponent1, DependentComponent2>();
+         *
+         */
         template<typename _Master, typename... DEPENDENT>
         void addDependency() noexcept {
             static_assert(!IsOneOfTypes<_Master, DEPENDENT...>::value, "Self dependency is not allowed");
@@ -187,9 +372,28 @@ namespace mustache {
             const auto depend_on_mask = ComponentFactory::instance().makeMask<DEPENDENT...>();
             addDependency(component_id, depend_on_mask);
         }
-
+        /**
+         * @brief Adds a chunk size function to the EntityManager.
+         *
+         * This function adds a chunk size function to the EntityManager. A chunk size function is a user-defined
+         * function that specifies the size of each chunk in an archetype. It allows for customizing the chunk
+         * size based on specific requirements or performance optimizations.
+         *
+         * @param function  The chunk size function to be added.
+         */
         void addChunkSizeFunction(const ArchetypeChunkSizeFunction& function);
 
+        /**
+         * @brief Adds a chunk size function for the given archetype.
+         *
+         * This function generates a chunk size function based on the provided archetype component mask.
+         * The chunk size function determines the minimum and maximum chunk sizes for the archetype based on the provided range.
+         *
+         * @tparam ARGS The component types in the archetype
+         * @param min The minimum chunk size for the archetype
+         * @param max The maximum chunk size for the archetype
+         * @return void
+         */
         template <typename... ARGS>
         void addChunkSizeFunction(uint32_t min, uint32_t max) {
             const auto check_mask = ComponentFactory::instance().makeMask<ARGS...>();
@@ -203,6 +407,20 @@ namespace mustache {
             });
         }
 
+        /**
+         * @brief Sets the default chunk size for archetype versioning.
+         *
+         * This function sets the default chunk size for archetype versioning.
+         * The chunk size determines how many components are marked as dirty when a single component is modified.
+         * When you modify one component, all the components in the same version chunk will be marked as dirty.
+         *
+         * @param value The new value for the default chunk size.
+         *
+         * @note The default chunk size will affect all the newly created entities.
+         *
+         * @see EntityManager::setDefaultArchetypeVersionChunkSize
+         * @see archetype_chunk_size_info_
+         */
         void setDefaultArchetypeVersionChunkSize(uint32_t value) noexcept;
 
         template<typename T, typename... _ARGS>
@@ -237,6 +455,15 @@ namespace mustache {
             return locations_[entity.id()];
         }
 
+        /**
+         * @brief Locks the entity manager, allowing changes to be applied to temporal storages.
+         *
+         * When the entity manager is locked, all changes made to the entities and components will be applied to temporal storages.
+         * The entity manager has separate storages for different threads, so entities and components can be added or removed in parallel
+         * mode and while iterating over them.
+         *
+         * @see EntityManager::unlock()
+         */
         MUSTACHE_INLINE void lock() noexcept {
             ++lock_counter_;
             if (lock_counter_ == 1u) {
@@ -244,6 +471,13 @@ namespace mustache {
             }
         }
 
+        /**
+         * @brief Apply all changes
+         *
+         * This function applies all the pending changes in the entity manager.
+         * It iterates through each temporal storage and applies the actions in the storage to update the entity manager's state.
+         * The actions include creating and destroying entities, assigning and removing components, and moving entities between archetypes.
+         */
         MUSTACHE_INLINE bool unlock() noexcept {
             if (lock_counter_ > 0u) {
                 --lock_counter_;

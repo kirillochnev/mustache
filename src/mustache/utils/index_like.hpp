@@ -4,7 +4,15 @@
 #include <mustache/utils/dll_export.h>
 
 namespace mustache {
-
+    /**
+     * @brief A templated class representing an index-like object.
+     *
+     * This class provides functionality for creating and manipulating index-like objects.
+     *
+     * @tparam T The underlying type of the index.
+     * @tparam _Type The type of the index-like object.
+     * @tparam NULL_VALUE The null value of the index.
+     */
     template <typename T, typename _Type, T NULL_VALUE = static_cast<T>(-1)>
     struct IndexLike {
         using ValueType = T;
