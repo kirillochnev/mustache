@@ -6,6 +6,7 @@
 #include <mustache/ecs/world_filter.hpp>
 #include <mustache/ecs/entity_manager.hpp>
 #include <mustache/ecs/job_arg_parcer.hpp>
+#include <mustache/utils/profiler.hpp>
 
 #include <cstdint>
 
@@ -64,7 +65,7 @@ namespace mustache {
         template<typename... _ARGS>
         MUSTACHE_INLINE void forEachArrayGenerated(World& world, ComponentArraySize count,
                                                    JobInvocationIndex& invocation_index,
-                                                   _ARGS MUSTACHE_RESTRICT_PTR ... pointers) noexcept(Info::is_noexcept) {
+                                                   _ARGS... pointers) noexcept(Info::is_noexcept) {
             using TargetType = typename std::conditional<Info ::is_const_this, const T, T>::type;
             TargetType& self = *static_cast<TargetType*>(this);
             if constexpr (Info::has_for_each_array) {
@@ -178,6 +179,165 @@ namespace mustache {
         }
 
     };
+    // task with no filter stage
+    template<typename _Function>
+    class SimpleTask {
+    private:
+        using Info = JobInfo<_Function>;
+        ComponentFactory* factory;
+        ComponentIdMask component_id_mask;
+
+        template<typename _F, typename... _ARGS>
+        void task(World& world, const _F& function, JobInvocationIndex& invocation_index, size_t count, _ARGS&&... args) noexcept {
+            for (size_t i = 0; i < count; ++i) {
+                invoke(function, world, invocation_index, args[i]...);
+                ++invocation_index.entity_index;
+                ++invocation_index.entity_index_in_task;
+            }
+        }
+        template<size_t _I>
+        static auto getComponentHandler(const ElementView& view, ComponentIndex index) noexcept {
+            constexpr auto Safety = FunctionSafety::kUnsafe;
+
+            using ArgType = typename Info::FunctionInfo::template UniqueComponentType<_I>::type;
+            using Component = typename ComponentType<ArgType>::type;
+            if constexpr (IsComponentRequired<ArgType>::value) {
+                auto ptr = view.template getData<Safety>(index);
+                return RequiredComponent<Component> {reinterpret_cast<Component*>(ptr)};
+            } else {
+                void* ptr = nullptr;
+                if (!index.isNull()) {
+                    ptr = view.template getData<Safety>(index);
+                }
+                return OptionalComponent<Component> {reinterpret_cast<Component*>(ptr)};
+            }
+        }
+        template <typename _C>
+        static constexpr SharedComponent<_C> makeShared(_C* ptr) noexcept {
+            static_assert(isComponentShared<_C>(), "Component is not shared");
+            return SharedComponent<_C>{ptr};
+        }
+
+        template<size_t _I>
+        static auto getComponentIndex(const Archetype& archetype, ComponentId id) noexcept {
+            using ArgType = typename Info::FunctionInfo::template UniqueComponentType<_I>::type;
+            constexpr bool is_required = IsComponentRequired<ArgType>::value;
+            constexpr auto Safety = is_required ? FunctionSafety::kUnsafe : FunctionSafety::kSafe;
+            return archetype.getComponentIndex<Safety>(id);
+        }
+
+        template<size_t _I>
+        constexpr static bool isComponentMutable() {
+            using FunctionInfo = typename Info::FunctionInfo;
+            using Component = typename ComponentType<
+                    typename FunctionInfo::template UniqueComponentType<_I>::type>::type;
+            return IsComponentMutable<Component>::value;
+        }
+
+        template<size_t... _I>
+        static void updateVersion(WorldVersion version, Archetype& archetype,
+                                  const std::array<ComponentIndex, sizeof...(_I)>& component_indexes) noexcept {
+            static constexpr std::array<bool, sizeof...(_I)> is_mutable = {
+                    isComponentMutable<_I>()...
+            };
+            const auto last_chunk = ChunkIndex::make(archetype.chunkCount());
+            for (auto chunk = ChunkIndex::make(0); chunk != last_chunk; ++chunk) {
+                for (uint32_t component = 0; component < sizeof...(_I); ++component) {
+                    if (is_mutable[component]) {
+                        archetype.versionStorage().setVersion(version, chunk, component_indexes[component]);
+                    }
+                }
+            }
+        }
+        template<size_t _ComponentIndex>
+        static constexpr auto getNullptr() noexcept {
+            using Type = typename Info::FunctionInfo::template SharedComponentType<_ComponentIndex>::type;
+            using ResultType = typename ComponentType<Type>::type;
+            return static_cast<const ResultType*>(nullptr);
+        }
+
+        template<typename _F, size_t... _I, size_t... _SI>
+        void runWithIndexSequence(World& world, _F&& function, const std::index_sequence<_I...>&,
+                                  const std::index_sequence<_SI...>&) noexcept {
+            using FunctionInfo = typename Info::FunctionInfo;
+
+            constexpr auto Safety = FunctionSafety::kUnsafe;
+            static const std::array<ComponentId, sizeof...(_I) > unique_ids {
+                    factory->registerComponent<typename ComponentType<
+                            typename FunctionInfo::template UniqueComponentType<_I>::type>::type>()...
+            };
+            static const std::array<ComponentId, sizeof...(_SI) > shared_ids {
+                    factory->registerComponent<typename ComponentType<
+                            typename FunctionInfo::template SharedComponentType<_SI>::type>::type>()...
+            };
+            auto shared_components = std::make_tuple(
+                    getNullptr<_SI>()...
+            );
+            auto& entities = world.entities();
+            const auto world_version = world.version();
+            const auto archetypes_count = entities.getArchetypesCount();
+            std::array<ComponentIndex, sizeof...(_I)> component_indexes;
+            JobInvocationIndex invocation_index;
+            invocation_index.entity_index_in_task = ParallelTaskItemIndexInTask::make(0);
+            invocation_index.entity_index = ParallelTaskGlobalItemIndex::make(0);
+            invocation_index.thread_id = ThreadId::make(0);
+            for (size_t ai = 0; ai < archetypes_count; ++ai) {
+                const auto archetype_index = ArchetypeIndex::make(ai);
+                auto& arch = entities.getArchetype<Safety>(archetype_index);
+                if (!arch.isMatch(component_id_mask)) {
+                    continue;
+                }
+                arch.getSharedComponents(shared_components);
+                component_indexes = {
+                        getComponentIndex<_I>(arch, unique_ids[_I])...
+                };
+
+                updateVersion<_I...>(world_version, arch, component_indexes);
+
+                auto view = arch.getElementView(ArchetypeEntityIndex::make(0));
+                auto entities_to_process = arch.size();
+                while (entities_to_process > 0) {
+                    const auto chunk_size = view.distToChunkEnd();
+                    task(world, function, invocation_index, chunk_size, view.getEntity(),
+                         getComponentHandler<_I>(view, component_indexes[_I])...,
+                         makeShared(std::get<_SI>(shared_components))...
+                    );
+
+                    entities_to_process -= chunk_size;
+                    view += chunk_size;
+                }
+            }
+        }
+    public:
+        SimpleTask(ComponentFactory* _factory, const ComponentIdMask& _mask):
+                factory {_factory},
+                component_id_mask {_mask} {
+        }
+        SimpleTask():
+                SimpleTask(&ComponentFactory::instance(), Info::componentMask()) {
+        }
+
+        template<typename _F>
+        void run(World& world, _F&& function) noexcept {
+#if MUSTACHE_PROFILER_LVL >= 3
+            const auto profiler_msg = mustache::type_name<_Derived>() + "::run()";
+            MUSTACHE_PROFILER_BLOCK_LVL_0(profiler_msg.c_str());
+#endif
+            constexpr auto unique = Info::FunctionInfo::componentsCount();
+            constexpr auto shared = Info::FunctionInfo::sharedComponentsCount();
+            world.entities().lock();
+            runWithIndexSequence(world, std::forward<_F>(function),
+                    std::make_index_sequence<unique>(), std::make_index_sequence<shared>());
+            world.entities().unlock();
+        }
+        void run(World& world) noexcept {
+            if constexpr (std::is_base_of_v<SimpleTask<_Function>, _Function>) {
+                run(world, *static_cast<_Function*>(this));
+            } else {
+                static_assert(std::is_base_of_v<SimpleTask<_Function>, _Function>);
+            }
+        }
+    };
 
     template<typename _F, typename... ARGS>
     void EntityManager::forEachWithArgsTypes(_F&& function, JobRunMode mode) {
@@ -190,21 +350,27 @@ namespace mustache {
             }
             job_name = "ForEachJob<" + str + ">";
         }
-        struct TmpJob : public PerEntityJob<TmpJob> {
-            TmpJob(_F&& f):
-                    func{std::forward<_F>(f)} {
-            }
+        if (mode == JobRunMode::kCurrentThread) {
+            static SimpleTask<_F> job;
+            job.run(world_, std::forward<_F>(function));
 
-            _F&& func;
-            void operator() (ARGS... args) {
-                func(std::forward<ARGS>(args)...);
-            }
+        } else {
+            struct TmpJob : public PerEntityJob<TmpJob> {
+                TmpJob(_F&& f):
+                        func{std::forward<_F>(f)} {
+                }
 
-            virtual std::string name() const noexcept override {
-                return job_name;
-            }
-        };
-        TmpJob job = std::forward<_F>(function);
-        job.run(world_, mode);
+                _F&& func;
+                void operator() (ARGS... args) {
+                    func(std::forward<ARGS>(args)...);
+                }
+
+                virtual std::string name() const noexcept override {
+                    return job_name;
+                }
+            };
+            TmpJob job = std::forward<_F>(function);
+            job.run(world_, mode);
+        }
     }
 }

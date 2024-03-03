@@ -105,7 +105,7 @@ namespace mustache {
         }
 
     private:
-        T* ptr_;
+        T* ptr_ = nullptr;
     };
 
     template<typename T>
