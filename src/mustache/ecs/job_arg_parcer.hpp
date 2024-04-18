@@ -79,34 +79,36 @@ namespace mustache {
             };
             ArgType type;
             uint32_t position;
+            bool is_mutable;
             constexpr ArgInfo() = default;
-            constexpr ArgInfo(ArgType t, uint32_t pos):
+            constexpr ArgInfo(ArgType t, uint32_t pos, bool _is_mutable):
                     type {t},
-                    position {pos} {
+                    position {pos},
+                    is_mutable{_is_mutable} {
             }
         };
         template<size_t _I>
         static constexpr ArgInfo getArgInfo() noexcept {
             using ArgType = typename utils::function_traits<T>::template arg<_I>::type;
             if constexpr (IsArgEntity<ArgType>::value)  {
-                return ArgInfo(ArgInfo::kEntity, _I);
+                return ArgInfo(ArgInfo::kEntity, _I, false);
             }
             if constexpr (IsArgJobInvocationIndex<ArgType>::value) {
-                return ArgInfo(ArgInfo::kInvocationIndex, _I);
+                return ArgInfo(ArgInfo::kInvocationIndex, _I, false);
             }
             if constexpr(IsArgComponentArraySize<ArgType>::value) {
-                return ArgInfo(ArgInfo::kArraySize, _I);
+                return ArgInfo(ArgInfo::kArraySize, _I, false);
             }
             if constexpr(IsArgWorld<ArgType>::value) {
-                return ArgInfo(ArgInfo::kWorld, _I);
+                return ArgInfo(ArgInfo::kWorld, _I, true);
             }
 
             // Arg is component
             if constexpr (isComponentShared<ArgType>()) {
-                return ArgInfo(ArgInfo::kSharedComponent, _I);
+                return ArgInfo(ArgInfo::kSharedComponent, _I, false);
             }
 
-            return ArgInfo(ArgInfo::kComponent, _I);
+            return ArgInfo(ArgInfo::kComponent, _I, IsComponentMutable<ArgType>::value);
         }
 
         template<size_t... _I>
@@ -138,6 +140,16 @@ namespace mustache {
             return result;
         }
 
+        static constexpr size_t mutableComponentsCount() noexcept {
+            size_t result = 0;
+            for (const auto& info : args_info) {
+                if (info.type == info.type == ArgInfo::kComponent && info.is_mutable) {
+                    ++result;
+                }
+            }
+            return result;
+        }
+
         static constexpr size_t anyComponentsCount() noexcept {
             size_t result = 0;
             for (const auto& info : args_info) {
@@ -159,6 +171,7 @@ namespace mustache {
         }
 
         static constexpr size_t any_components_count = anyComponentsCount();
+        static constexpr size_t mutable_components_count = mutableComponentsCount();
         static constexpr size_t components_count = componentsCount();
         static constexpr size_t shared_components_count = sharedComponentsCount();
 
@@ -203,6 +216,19 @@ namespace mustache {
             }
             return result;
         }
+        static constexpr size_t mutableComponentPosition(size_t component_index) noexcept {
+            uint32_t result = 0u;
+            for (const auto& info : args_info) {
+                if (info.type == ArgInfo::kComponent && info.is_mutable) {
+                    if (component_index < 1) {
+                        break;
+                    }
+                    --component_index;
+                }
+                ++result;
+            }
+            return result;
+        }
 
         template<size_t... _I>
         static constexpr auto buildComponentIndexes(const std::index_sequence<_I...>&) {
@@ -211,6 +237,10 @@ namespace mustache {
         template<size_t... _I>
         static constexpr auto buildSharedComponentIndexes(const std::index_sequence<_I...>&) {
             return std::index_sequence<sharedComponentPosition(_I)...>{};
+        }
+        template<size_t... _I>
+        static constexpr auto buildMutableComponentIndexes(const std::index_sequence<_I...>&) {
+            return std::index_sequence<mutableComponentPosition(_I)...>{};
         }
         template<size_t... _I>
         static constexpr auto buildUniqueComponentIndexes(const std::index_sequence<_I...>&) {
@@ -228,6 +258,8 @@ namespace mustache {
                 buildComponentIndexes(std::make_index_sequence<any_components_count>());
         static constexpr auto shared_components_indexes =
                 buildSharedComponentIndexes(std::make_index_sequence<shared_components_count>());
+        static constexpr auto mutable_components_indexes =
+                buildMutableComponentIndexes(std::make_index_sequence<mutable_components_count>());
         static constexpr auto unique_components_indexes =
                 buildUniqueComponentIndexes(std::make_index_sequence<components_count>());
 
@@ -280,12 +312,23 @@ namespace mustache {
             }
         }
 
-        static constexpr decltype(auto) getUserFunction() noexcept {
+        static constexpr bool isNoexcept() noexcept {
             if constexpr (testForEachArray<T>(nullptr)) {
-                return &T::forEachArray;
-            } else {
-                return &T::operator();
+                return noexcept(&T::forEachArray);
             }
+            if constexpr (testCallOperator<T>(nullptr)) {
+                return noexcept(&T::operator());
+            }
+            return false;
+        }
+        static constexpr bool isConstThis() noexcept {
+            if constexpr (testForEachArray<T>(nullptr)) {
+                return checkConst(&T::forEachArray);
+            }
+            if constexpr (testCallOperator<T>(nullptr)) {
+                return checkConst(&T::operator());
+            }
+            return true;
         }
 
         template <typename C, typename R, typename... A>
@@ -301,13 +344,13 @@ namespace mustache {
         JobInfo() = delete;
         ~JobInfo() = delete;
 
-        static_assert(testForEachArray<T>(nullptr) || testCallOperator<T>(nullptr),
-                      "T is not a job type, operator() or method forEachArray does not found");
+//        static_assert(testForEachArray<T>(nullptr) || testCallOperator<T>(nullptr),
+//                      "T is not a job type, operator() or method forEachArray does not found");
 
-        static constexpr auto user_function_ptr = getUserFunction();
+
         static constexpr bool has_for_each_array = testForEachArray<T>(nullptr);
-        static constexpr bool is_noexcept = noexcept(user_function_ptr);
-        static constexpr bool is_const_this = checkConst(user_function_ptr);
+        static constexpr bool is_noexcept = isNoexcept();
+        static constexpr bool is_const_this = isConstThis();
 
         using FunctionInfo = decltype(getJobFunctionInfo());
 

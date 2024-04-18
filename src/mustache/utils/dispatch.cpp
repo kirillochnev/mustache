@@ -70,8 +70,10 @@ namespace {
 }
 
 struct Dispatcher::Data {
+    uint32_t thread_count = 0;
     JobQueue parallel_jobs;
     mutable std::mutex mutex;
+    std::mutex thread_create_mutex;
     std::condition_variable jobs_available;
     std::vector<std::thread> threads;
     std::set<std::thread::id> thread_ids;
@@ -85,6 +87,22 @@ struct Dispatcher::Data {
 
     bool terminate {false};
     bool single_thread_mode{false};
+
+    void initThreads() {
+        std::unique_lock lock {thread_create_mutex};
+        if (threads.size() == thread_count) {
+            return;
+        }
+        MUSTACHE_PROFILER_BLOCK_LVL_0("Create workers");
+        threads.reserve(thread_count);
+        for(uint32_t i = 0; i < thread_count; ++i) {
+            MUSTACHE_PROFILER_BLOCK_LVL_0("Create worker");
+            auto& thread = threads.emplace_back([this, i]() noexcept {
+                threadTask(ThreadId::make(i + 1));
+            });
+            thread_ids.insert(thread.get_id());
+        }
+    }
 
     JobQueue* findQueue() {
         MUSTACHE_PROFILER_BLOCK_LVL_3(__FUNCTION__ );
@@ -195,15 +213,9 @@ Dispatcher::Dispatcher(uint32_t thread_count):
     MUSTACHE_PROFILER_BLOCK_LVL_0(__FUNCTION__ );
 
     if (thread_count == 0) {
-        thread_count = maxThreadCount() - 1; // one core for main thread
-    }
-
-    data_->threads.reserve(thread_count);
-    for(uint32_t i = 0; i < thread_count; ++i) {
-        auto& thread = data_->threads.emplace_back([this, i]() noexcept {
-            data_->threadTask(ThreadId::make(i + 1));
-        });
-        data_->thread_ids.insert(thread.get_id());
+        data_->thread_count = maxThreadCount() - 1; // one core for main thread
+    } else {
+        data_->thread_count = thread_count;
     }
 }
 
@@ -222,6 +234,11 @@ Dispatcher::~Dispatcher() {
         if (thread.joinable())
             thread.join();
     }
+}
+
+void Dispatcher::initThreads() {
+    MUSTACHE_PROFILER_BLOCK_LVL_2(__FUNCTION__ );
+    data_->initThreads();
 }
 
 void Dispatcher::clear() noexcept {
@@ -244,6 +261,8 @@ void Dispatcher::addJob(Job&& job) {
         job(ThreadId::make(0));
         return;
     }
+
+    initThreads();
     {
         std::unique_lock<std::mutex> lock{ data_->mutex };
         data_->parallel_jobs.push(std::move(job));
@@ -272,6 +291,7 @@ void Dispatcher::async(QueueId queue_id, Job &&job) {
         std::lock_guard<std::mutex> lock{data_->mutex};
         data_->extra.array[queue_id]->jobs.emplace(std::move(job));
     }
+    initThreads();
     data_->jobs_available.notify_one();
 }
 
@@ -282,7 +302,8 @@ void Dispatcher::waitQueue(QueueId queue_id) const noexcept {
 
 uint32_t Dispatcher::maxThreadCount() noexcept {
     MUSTACHE_PROFILER_BLOCK_LVL_3(__FUNCTION__ );
-    return NUMBER_OF_CORES;
+    const static uint32_t num_cores = NUMBER_OF_CORES;
+    return num_cores;
 }
 
 void Dispatcher::setSingleThreadMode(bool on) noexcept {
@@ -293,7 +314,7 @@ void Dispatcher::setSingleThreadMode(bool on) noexcept {
 
 uint32_t mustache::Dispatcher::threadCount() const noexcept {
     MUSTACHE_PROFILER_BLOCK_LVL_3(__FUNCTION__ );
-    return static_cast<uint32_t>(data_->threads.size());
+    return data_->thread_count;
 }
 
 ThreadId mustache::Dispatcher::currentThreadId() const noexcept {

@@ -59,6 +59,9 @@ namespace mustache {
 
         ~Dispatcher();
 
+
+        void initThreads();
+
         void clear() noexcept;
 
         // blocks calling thread until job queue is empty

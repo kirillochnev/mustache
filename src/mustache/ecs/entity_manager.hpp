@@ -15,6 +15,7 @@
 #include <map>
 #include <set>
 #include <memory>
+#include <atomic>
 
 namespace mustache {
 
@@ -30,6 +31,19 @@ namespace mustache {
     };
 
     using ArchetypeChunkSizeFunction = std::function<ArchetypeChunkSize (const ComponentIdMask&)>;
+
+
+    struct EntityLocationInWorld {
+        constexpr static ArchetypeIndex kDefaultArchetype = ArchetypeIndex::null();
+        EntityLocationInWorld() = default;
+        EntityLocationInWorld(ArchetypeEntityIndex i, ArchetypeIndex arch ) noexcept :
+                index{i},
+                archetype{arch} {
+
+        }
+        ArchetypeEntityIndex index = ArchetypeEntityIndex::make(0u);
+        ArchetypeIndex archetype = kDefaultArchetype;
+    };
 
     class MUSTACHE_EXPORT EntityManager : public Uncopiable {
     public:
@@ -225,7 +239,7 @@ namespace mustache {
         template<typename T, FunctionSafety _Safety = FunctionSafety::kSafe>
         [[nodiscard]] MUSTACHE_INLINE WorldVersion getWorldVersionOfLastComponentUpdate(Entity entity) const noexcept;
 
-        template<typename _F, typename... ARGS>
+        template<JobUnroll _Unroll = JobUnroll::kAuto, typename _F, typename... ARGS>
         MUSTACHE_INLINE void forEachWithArgsTypes(_F&& function, JobRunMode mode);
         /**
          * @brief Calls a given function on each element of a container.
@@ -250,16 +264,16 @@ namespace mustache {
          *
          * @see JobRunMode
          */
-        template<typename _F, size_t... _I>
+        template<JobUnroll _Unroll = JobUnroll::kAuto, typename _F, size_t... _I>
         MUSTACHE_INLINE void forEach(_F&& function, JobRunMode mode, std::index_sequence<_I...>&&) {
             using Info = utils::function_traits<_F>;
-            forEachWithArgsTypes<_F, typename Info::template arg<_I>::type...>(std::forward<_F>(function), mode);
+            forEachWithArgsTypes<_Unroll, _F, typename Info::template arg<_I>::type...>(std::forward<_F>(function), mode);
         }
 
-        template<typename _F>
+        template<JobUnroll _Unroll = JobUnroll::kAuto, typename _F>
         MUSTACHE_INLINE void forEach(_F&& function, JobRunMode mode = JobRunMode::kDefault) {
             constexpr auto args_count = utils::function_traits<_F>::arity;
-            forEach(std::forward<_F>(function), mode, std::make_index_sequence<args_count>());
+            forEach<_Unroll>(std::forward<_F>(function), mode, std::make_index_sequence<args_count>());
         }
         /**
           * @fn EntityBuilder<void> begin(Entity entity = {})
@@ -431,6 +445,16 @@ namespace mustache {
             return lock_counter_ > 0u;
         }
 
+        template<FunctionSafety _Safety = FunctionSafety::kSafe>
+        [[nodiscard]] MUSTACHE_INLINE EntityLocationInWorld entityLocation(Entity entity) const noexcept {
+            if constexpr (_Safety == FunctionSafety::kSafe) {
+                if (!isEntityValid(entity)) {
+                    return EntityLocationInWorld {};
+                }
+            }
+            return locations_[entity.id()];
+        }
+
         /**
          * @brief Locks the entity manager, allowing changes to be applied to temporal storages.
          *
@@ -537,6 +561,7 @@ namespace mustache {
 
         [[nodiscard]] TemporalStorage& getTemporalStorage() noexcept {
             static thread_local const auto thread_id = threadId();
+            was_temporal_storage_used_.store(true, std::memory_order_relaxed);
             return temporal_storages_[thread_id];
         }
 
@@ -603,18 +628,6 @@ namespace mustache {
             }
         }
 
-        struct EntityLocationInWorld {
-            constexpr static ArchetypeIndex kDefaultArchetype = ArchetypeIndex::null();
-            EntityLocationInWorld() = default;
-            EntityLocationInWorld(ArchetypeEntityIndex i, ArchetypeIndex arch ) noexcept :
-                    index{i},
-                    archetype{arch} {
-
-            }
-            ArchetypeEntityIndex index = ArchetypeEntityIndex::make(0u);
-            ArchetypeIndex archetype = kDefaultArchetype;
-        };
-
         World& world_;
         uint32_t lock_counter_{0u};
         std::atomic<uint32_t > next_entity_id_; // for create entity with locked EntityManager
@@ -635,6 +648,7 @@ namespace mustache {
         // NOTE: must be the last field(for correct default destructor).
         ArrayWrapper<std::shared_ptr<Archetype>, ArchetypeIndex, true> archetypes_;
 
+        std::atomic_bool was_temporal_storage_used_ = false;
         // archetype stores component version for every  default_archetype_component_version_chunk_size created_entities
         struct ArchetypeVersionChunkSize {
             uint32_t default_size = 1024u;

@@ -14,9 +14,9 @@ namespace {
     using TimePoint = Clock::time_point;
 
     double get_seconds(const TimePoint& begin, const TimePoint& end) {
-        constexpr double Microseconds2SecondConvertK = 0.000001;
-        const auto microseconds = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
-        return static_cast<double>(microseconds) * Microseconds2SecondConvertK;
+        constexpr double Nanoseconds2SecondConvertK = 0.000000001;
+        const auto microseconds = std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count();
+        return static_cast<double>(microseconds) * Nanoseconds2SecondConvertK;
     }
 
     TimePoint now() noexcept {

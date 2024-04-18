@@ -2,6 +2,9 @@ cmake_minimum_required(VERSION 3.7)
 
 
 project(mustache_test)
+
+enable_testing()
+
 if (MSVC)
     find_package(GTest CONFIG)
     set(gtest_libs GTest::gtest GTest::gtest_main)
@@ -48,6 +51,8 @@ add_executable(${PROJECT_NAME}
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE mustache)
+include(GoogleTest)
+gtest_discover_tests(${PROJECT_NAME})
 
 if(MUSTACHE_TEST_SANITIZE)
 	set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-omit-frame-pointer -fsanitize=address")
