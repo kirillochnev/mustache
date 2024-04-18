@@ -239,7 +239,7 @@ namespace mustache {
         template<typename T, FunctionSafety _Safety = FunctionSafety::kSafe>
         [[nodiscard]] MUSTACHE_INLINE WorldVersion getWorldVersionOfLastComponentUpdate(Entity entity) const noexcept;
 
-        template<typename _F, typename... ARGS>
+        template<JobUnroll _Unroll = JobUnroll::kAuto, typename _F, typename... ARGS>
         MUSTACHE_INLINE void forEachWithArgsTypes(_F&& function, JobRunMode mode);
         /**
          * @brief Calls a given function on each element of a container.
@@ -264,16 +264,16 @@ namespace mustache {
          *
          * @see JobRunMode
          */
-        template<typename _F, size_t... _I>
+        template<JobUnroll _Unroll = JobUnroll::kAuto, typename _F, size_t... _I>
         MUSTACHE_INLINE void forEach(_F&& function, JobRunMode mode, std::index_sequence<_I...>&&) {
             using Info = utils::function_traits<_F>;
-            forEachWithArgsTypes<_F, typename Info::template arg<_I>::type...>(std::forward<_F>(function), mode);
+            forEachWithArgsTypes<_Unroll, _F, typename Info::template arg<_I>::type...>(std::forward<_F>(function), mode);
         }
 
-        template<typename _F>
+        template<JobUnroll _Unroll = JobUnroll::kAuto, typename _F>
         MUSTACHE_INLINE void forEach(_F&& function, JobRunMode mode = JobRunMode::kDefault) {
             constexpr auto args_count = utils::function_traits<_F>::arity;
-            forEach(std::forward<_F>(function), mode, std::make_index_sequence<args_count>());
+            forEach<_Unroll>(std::forward<_F>(function), mode, std::make_index_sequence<args_count>());
         }
         /**
           * @fn EntityBuilder<void> begin(Entity entity = {})

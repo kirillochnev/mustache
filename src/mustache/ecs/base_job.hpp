@@ -11,6 +11,11 @@ namespace mustache {
     class World;
     class Dispatcher;
 
+    enum class JobUnroll : uint32_t {
+        kAuto = 0,
+        kEnabled,
+        kDisabled
+    };
     enum class JobRunMode : uint32_t {
         kCurrentThread = 0u,
         kParallel = 1u,
