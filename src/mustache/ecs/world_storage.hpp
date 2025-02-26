@@ -5,9 +5,9 @@
 #include <mustache/utils/crc32.hpp>
 #include <mustache/utils/type_info.hpp>
 #include <mustache/utils/array_wrapper.hpp>
+#include <mustache/utils/container_unordered_map.hpp>
 
 #include <memory>
-#include <unordered_map>
 
 namespace mustache {
 
@@ -105,6 +105,6 @@ namespace mustache {
         }
     private:
         ArrayWrapper<std::shared_ptr<void>, SingletonId, true > singletons_;
-        std::unordered_map<ObjectTag, std::shared_ptr<void>, ObjectTag::Hash > objects_with_tag_;
+        mustache::unordered_map<ObjectTag, std::shared_ptr<void>, ObjectTag::Hash > objects_with_tag_;
     };
 }

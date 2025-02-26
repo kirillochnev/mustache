@@ -2,9 +2,9 @@
 
 #include <mustache/utils/uncopiable.hpp>
 #include <mustache/utils/index_like.hpp>
+#include <mustache/utils/container_vector.hpp>
 
 #include <cstdint>
-#include <vector>
 #include <thread>
 #include <memory>
 #include <future>

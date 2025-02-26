@@ -1,8 +1,8 @@
 #pragma once
 
+#include <mustache/utils/container_vector.hpp>
 #include <mustache/ecs/id_deff.hpp>
 
-#include <vector>
 #include <cstdint>
 
 namespace mustache {

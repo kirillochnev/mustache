@@ -33,7 +33,7 @@ namespace mustache {
 
     template <typename T>
     struct Receivers : public AReceivers {
-        std::vector<Receiver<T>* > receivers;
+        mustache::vector<Receiver<T>* > receivers;
 
         void add(Receiver<T>* ptr) {
             receivers.push_back(ptr);

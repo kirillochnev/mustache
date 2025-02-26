@@ -53,8 +53,8 @@ namespace mustache {
         JobEvent job_begin;
         JobEvent job_end;
 
-        std::vector<ComponentRequest> component_requests;
-        std::vector<SharedComponentId> shared_component_ids;
+        mustache::vector<ComponentRequest> component_requests;
+        mustache::vector<SharedComponentId> shared_component_ids;
         std::string job_name = "NonTemplateJob";
         bool require_entity = false;
     };

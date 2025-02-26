@@ -10,7 +10,7 @@ namespace mustache {
 
     struct MaskAndVersion {
         WorldVersion version;
-        std::vector<ComponentIndex> mask;
+        mustache::vector<ComponentIndex> mask;
     };
 
     class MUSTACHE_EXPORT VersionStorage : public Uncopiable {
@@ -39,7 +39,7 @@ namespace mustache {
         [[nodiscard]] uint32_t chunkSize() const noexcept;
     protected:
         uint32_t chunk_size_;
-        std::vector<WorldVersion, Allocator<WorldVersion> > chunk_versions_; // per chunk component version
+        mustache::vector<WorldVersion, Allocator<WorldVersion> > chunk_versions_; // per chunk component version
         mustache::ArrayWrapper<WorldVersion, ComponentIndex, true> global_versions_; // global component version
     };
 }

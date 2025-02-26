@@ -2,9 +2,9 @@
 
 #include <mustache/utils/uncopiable.hpp>
 #include <mustache/utils/type_info.hpp>
+#include <mustache/utils/container_set.hpp>
 
 #include <cstdint>
-#include <set>
 
 namespace mustache {
 
@@ -19,8 +19,8 @@ namespace mustache {
         void updateAfter() {
             update_after.insert(ARGS::systemName()...);
         }
-        std::set<std::string> update_before;
-        std::set<std::string> update_after;
+        mustache::set<std::string> update_before;
+        mustache::set<std::string> update_after;
         std::string update_group = "";
         int32_t priority = 0;
     };

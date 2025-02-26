@@ -3,12 +3,12 @@
 #include <mustache/utils/dll_export.h>
 #include <mustache/utils/type_info.hpp>
 #include <mustache/utils/index_like.hpp>
+#include <mustache/utils/container_map.hpp>
+#include <mustache/utils/container_vector.hpp>
 
 #include <functional>
 #include <string>
-#include <vector>
 #include <cstddef>
-#include <map>
 
 namespace mustache {
     namespace detail {
@@ -107,7 +107,7 @@ namespace mustache {
             CloneFunction after_clone;
         } functions;
 
-        std::vector<std::byte> default_value; // this array will be used to init component in case of empty constructor
+        mustache::vector<std::byte> default_value; // this array will be used to init component in case of empty constructor
 
         template<typename T>
         static void componentConstructor(void *ptr, [[maybe_unused]] const Entity& entity, [[maybe_unused]] World& world) {

@@ -7,13 +7,13 @@ namespace mustache {
 
     class MUSTACHE_EXPORT EntityGroup {
     public:
-        EntityGroup(std::vector<Entity>&& fragmented, uint32_t first, uint32_t count):
+        EntityGroup(mustache::vector<Entity>&& fragmented, uint32_t first, uint32_t count):
                 fragmented_(std::move(fragmented)),
                 first_{first},
                 count_{count} {
 
         };
-        EntityGroup(const std::vector<Entity>& fragmented, uint32_t first, uint32_t count):
+        EntityGroup(const mustache::vector<Entity>& fragmented, uint32_t first, uint32_t count):
                 fragmented_(fragmented),
                 first_{first},
                 count_{count} {
@@ -67,7 +67,7 @@ namespace mustache {
             return count_ + numFragmented();
         }
     private:
-        std::vector<Entity> fragmented_;
+        mustache::vector<Entity> fragmented_;
         uint32_t first_{0u};
         uint32_t count_{0u};
     };

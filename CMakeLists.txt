@@ -51,6 +51,14 @@ else()
 endif ()
 
 add_library(${PROJECT_NAME} ${MUSTACHE_LIB_TYPE}
+    ${mustache_SOURCE_DIR}/src/mustache/utils/container_set.hpp
+    ${mustache_SOURCE_DIR}/src/mustache/utils/container_map.hpp
+    ${mustache_SOURCE_DIR}/src/mustache/utils/container_unordered_map.hpp
+    ${mustache_SOURCE_DIR}/src/mustache/utils/container_queue.hpp
+    ${mustache_SOURCE_DIR}/src/mustache/utils/container_deque.hpp
+    ${mustache_SOURCE_DIR}/src/mustache/utils/container_vector.hpp
+
+
     ${mustache_SOURCE_DIR}/src/mustache/utils/dll_export.h
     ${mustache_SOURCE_DIR}/src/mustache/utils/timer.cpp
     ${mustache_SOURCE_DIR}/src/mustache/utils/timer.hpp

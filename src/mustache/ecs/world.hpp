@@ -20,6 +20,7 @@ namespace mustache {
         std::shared_ptr<EventManager> events;
     };
 
+//    template <bool EnableAutoVersionControl = true>
     class MUSTACHE_EXPORT World : public Uncopiable {
     public:
         [[nodiscard]] static WorldId nextWorldId() noexcept;

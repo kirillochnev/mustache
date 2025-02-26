@@ -2,6 +2,8 @@
 
 #include <mustache/utils/uncopiable.hpp>
 #include <mustache/utils/array_wrapper.hpp>
+#include <mustache/utils/container_map.hpp>
+#include <mustache/utils/container_set.hpp>
 #include <mustache/utils/default_settings.hpp>
 
 #include <mustache/ecs/entity.hpp>
@@ -12,8 +14,6 @@
 #include <mustache/ecs/temporal_storage.hpp>
 #include <mustache/ecs/component_factory.hpp>
 
-#include <map>
-#include <set>
 #include <memory>
 #include <atomic>
 
@@ -503,7 +503,7 @@ namespace mustache {
 
         Entity clone(const Entity& source) {
             struct DefaultCloneEntityMap : CloneEntityMap{
-                std::map<Entity, Entity> entities;
+                mustache::map<Entity, Entity> entities;
                 void add(Entity src, Entity dst) override {
                     entities[src] = dst;
                 }
@@ -633,15 +633,15 @@ namespace mustache {
         std::atomic<uint32_t > next_entity_id_; // for create entity with locked EntityManager
         ArrayWrapper<TemporalStorage, ThreadId, false> temporal_storages_;
         ArrayWrapper<SharedComponentsData, SharedComponentId, false> shared_components_;
-        using ArchetypeMap = std::map<SharedComponentsData, Archetype*>;
-        std::map<ArchetypeComponents, ArchetypeMap> mask_to_arch_;
-        std::map<ComponentId, ComponentIdMask > dependencies_;
+        using ArchetypeMap = mustache::map<SharedComponentsData, Archetype*>;
+        mustache::map<ArchetypeComponents, ArchetypeMap> mask_to_arch_;
+        mustache::map<ComponentId, ComponentIdMask > dependencies_;
         EntityId next_slot_ = EntityId::make(0);
 
         uint32_t empty_slots_{0};
         ArrayWrapper<Entity, EntityId, true> entities_;
         ArrayWrapper<EntityLocationInWorld, EntityId, true> locations_;
-        std::set<Entity, std::less<Entity>, Allocator<Entity> > marked_for_delete_;
+        mustache::set<Entity, std::less<Entity>, Allocator<Entity> > marked_for_delete_;
         WorldId this_world_id_;
         WorldVersion world_version_;
         // TODO: replace shared pointed with some kind of unique_ptr but with deleter calling clearArchetype
@@ -656,7 +656,7 @@ namespace mustache {
             uint32_t max_size = 0u;
         };
         ArchetypeVersionChunkSize archetype_chunk_size_info_;
-        std::vector<ArchetypeChunkSizeFunction> get_chunk_size_functions_;
+        mustache::vector<ArchetypeChunkSizeFunction> get_chunk_size_functions_;
     };
 
     bool EntityManager::isEntityValid(Entity entity) const noexcept {

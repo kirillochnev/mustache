@@ -2,8 +2,8 @@
 
 #include <mustache/utils/logger.hpp>
 #include <mustache/utils/profiler.hpp>
+#include <mustache/utils/container_map.hpp>
 
-#include <map>
 #include <mutex>
 
 using namespace mustache;
@@ -16,9 +16,9 @@ namespace {
             ComponentInfo info{};
             IdType id = IdType::null();
         };
-        std::map<std::string, Element> type_map;
+        mustache::map<std::string, Element> type_map;
         IdType next_component_id{IdType::make(0)};
-        std::vector<ComponentInfo> components_info;
+        mustache::vector<ComponentInfo> components_info;
         mutable std::mutex mutex;
 
         IdType getId(const ComponentInfo& info) {

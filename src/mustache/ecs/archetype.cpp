@@ -19,7 +19,8 @@ Archetype::Archetype(World& world, ArchetypeIndex id, const ComponentIdMask& mas
         shared_components_info_ {shared_components_info},
         version_storage_{world.memoryManager(), mask.componentsCount(), chunk_size},
         operation_helper_{world.memoryManager(), mask},
-        data_storage_{std::make_unique<DefaultComponentDataStorage>(mask, world_.memoryManager())},
+        data_storage_{std::make_unique<NewComponentDataStorage>(mask, world_.memoryManager())},
+//        data_storage_{std::make_unique<DefaultComponentDataStorage>(mask, world_.memoryManager())},
         entities_{world.memoryManager()},
         id_{id} {
     MUSTACHE_PROFILER_BLOCK_LVL_0(__FUNCTION__);
