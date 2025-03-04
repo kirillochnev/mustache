@@ -1,9 +1,9 @@
 #pragma once
 
 #include <mustache/utils/timer.hpp>
+#include <mustache/utils/container_deque.hpp>
 
 #include <cstdint>
-#include <deque>
 
 namespace mustache {
     class MUSTACHE_EXPORT Benchmark {
@@ -22,7 +22,7 @@ namespace mustache {
             }
         }
     private:
-        std::deque<double > times_;
+        mustache::deque<double > times_;
         Timer timer_;
     };
 }

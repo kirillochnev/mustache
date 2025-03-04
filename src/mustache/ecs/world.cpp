@@ -5,7 +5,7 @@
 using namespace mustache;
 
 namespace {
-    std::set<WorldId> used_world_ids;
+    mustache::set<WorldId> used_world_ids;
     WorldId next_id = WorldId::make(0);
 }
 

@@ -1,7 +1,9 @@
 #include "dispatch.hpp"
-#include <queue>
-#include <map>
-#include <set>
+#include <mustache/utils/container_map.hpp>
+#include <mustache/utils/container_set.hpp>
+#include <mustache/utils/container_queue.hpp>
+#include <mustache/utils/container_vector.hpp>
+
 #include <string>
 
 #ifdef __EMSCRIPTEN__
@@ -23,7 +25,7 @@ namespace {
     };
 
     struct JobQueue {
-        std::queue<Job> jobs;
+        mustache::queue<Job> jobs;
         JobState state{JobState::kParallelQueue};
 
         bool isEmpty() const noexcept {
@@ -75,14 +77,14 @@ struct Dispatcher::Data {
     mutable std::mutex mutex;
     std::mutex thread_create_mutex;
     std::condition_variable jobs_available;
-    std::vector<std::thread> threads;
-    std::set<std::thread::id> thread_ids;
+    mustache::vector<std::thread> threads;
+    mustache::set<std::thread::id> thread_ids;
     uint32_t threads_waiting{0u};
 
     struct {
-        std::vector<std::unique_ptr<JobQueue> > array;
-        std::multimap<int32_t, QueueId> by_priority;
-        std::map<std::string, QueueId> by_name;
+        mustache::vector<std::unique_ptr<JobQueue> > array;
+        mustache::multimap<int32_t, QueueId> by_priority;
+        mustache::map<std::string, QueueId> by_name;
     } extra;
 
     bool terminate {false};

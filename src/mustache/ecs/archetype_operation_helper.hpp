@@ -7,7 +7,7 @@
 #include <mustache/ecs/component_info.hpp>
 
 #include <cstring>
-#include <vector>
+
 
 namespace mustache {
     struct ComponentIdMask;
@@ -115,13 +115,13 @@ namespace mustache {
         ArrayWrapper<ComponentIndex, ComponentId, true> component_id_to_component_index;
         ArrayWrapper<ComponentId, ComponentIndex, true> component_index_to_component_id;
 
-        std::vector<InsertInfo, Allocator<InsertInfo> > insert; // only non-null init functions
-        std::vector<CreateWithValueInfo, Allocator<CreateWithValueInfo> > create_with_value; // only non-empty values
-        std::vector<DestroyInfo, Allocator<DestroyInfo> > destroy; // only non-null destroy functions
-        std::vector<BeforeRemoveInfo, Allocator<BeforeRemoveInfo> > before_remove_functions; // only non-null beforeRemove functions
+        mustache::vector<InsertInfo, Allocator<InsertInfo> > insert; // only non-null init functions
+        mustache::vector<CreateWithValueInfo, Allocator<CreateWithValueInfo> > create_with_value; // only non-empty values
+        mustache::vector<DestroyInfo, Allocator<DestroyInfo> > destroy; // only non-null destroy functions
+        mustache::vector<BeforeRemoveInfo, Allocator<BeforeRemoveInfo> > before_remove_functions; // only non-null beforeRemove functions
         ArrayWrapper<ExternalMoveInfo, ComponentIndex, true> external_move;
         ArrayWrapper<InternalMoveInfo, ComponentIndex, true> internal_move; // move or copy function
         ArrayWrapper<CloneInfo, ComponentIndex, true> clone; // clone or copy functions
-        std::vector<AfterCloneInfo, Allocator<AfterCloneInfo> > after_clone;
+        mustache::vector<AfterCloneInfo, Allocator<AfterCloneInfo> > after_clone;
     };
 }

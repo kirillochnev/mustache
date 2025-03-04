@@ -3,9 +3,9 @@
 using namespace mustache;
 
 void NonTemplateJob::singleTask(World&, ArchetypeGroup archetype_group, JobInvocationIndex invocation_index) {
-    std::vector<const void*> shared_components(shared_component_ids.size());
-    std::vector<ComponentIndex> component_indexes(component_requests.size());
-    std::vector<void*> component_ptr(component_requests.size());
+    mustache::vector<const void*> shared_components(shared_component_ids.size());
+    mustache::vector<ComponentIndex> component_indexes(component_requests.size());
+    mustache::vector<void*> component_ptr(component_requests.size());
     ForEachArrayArgs args;
     args.shared_components = shared_components.data();
     args.components = component_ptr.data();

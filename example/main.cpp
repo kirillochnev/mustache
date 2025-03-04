@@ -197,7 +197,73 @@ void prefabTest() {
 }
 
 
+template<bool _Const>
+void getComponentTest(mustache::World& world, const std::vector<Entity>& entities) {
+    constexpr auto Safety = mustache::FunctionSafety::kUnsafe;
+    using PositionC = typename std::conditional<_Const, const Position, Position>::type;
+    using VelocityC = typename std::conditional<_Const, const Velocity, Velocity>::type;
+    using RotationC = typename std::conditional<_Const, const Rotation, Rotation>::type;
+    for (const auto& entity : entities) {
+        (void) world.entities().getComponent<PositionC, Safety>(entity);
+        (void) world.entities().getComponent<VelocityC, Safety>(entity);
+//        (void) world.entities().getComponent<RotationC, Safety>(entity);
+    }
+}
+
+template<bool _Const>
+void getComponentTest(mustache::World& world, Entity first, uint32_t entity_count) {
+    constexpr auto Safety = mustache::FunctionSafety::kUnsafe;
+    using PositionC = typename std::conditional<_Const, const Position, Position>::type;
+    using VelocityC = typename std::conditional<_Const, const Velocity, Velocity>::type;
+    using RotationC = typename std::conditional<_Const, const Rotation, Rotation>::type;
+    auto entity = first;
+    auto& entities = world.entities();
+    auto location = entities.entityLocation(first);
+    auto& archetype = entities.getArchetype(location.archetype);
+    auto view = archetype.getElementView(location.index);
+    for (uint32_t i = 0; i < entity_count; ++i) {
+        (void)view.getData<Safety>(ComponentIndex::make(0));
+        (void)view.getData<Safety>(ComponentIndex::make(1));
+        ++view;
+//        (void) entities.getComponent<PositionC, Safety>(entity);
+//        (void) entities.getComponent<VelocityC, Safety>(entity);
+//        (void) world.entities().getComponent<RotationC, Safety>(entity);
+    }
+}
+
+void getComponentBenchMain() {
+    constexpr bool first_test_const = false;
+    constexpr uint32_t iteration_count = 10;
+    constexpr uint32_t entity_count = 1000000;
+    mustache::Benchmark benchmark;
+    mustache::World world;
+    auto& archetype = world.entities().getArchetype<Position, Velocity, Rotation>();
+    std::vector<mustache::Entity> entities(entity_count);
+    for (uint32_t i = 0; i < entity_count; ++i) {
+        entities[i] = world.entities().create(archetype);
+    }
+
+    benchmark.add([&world, &entities]{
+//        getComponentTest<first_test_const>(world, Entity::makeFromValue(0), entity_count);
+        getComponentTest<first_test_const>(world, entities);
+    }, iteration_count);
+    benchmark.show();
+    benchmark.reset();
+
+    benchmark.add([&world, &entities]{
+//        getComponentTest<!first_test_const>(world, Entity::makeFromValue(0), entity_count);
+        getComponentTest<!first_test_const>(world, entities);
+    }, iteration_count);
+    benchmark.show();
+}
+
 int main() {
+
+    getComponentBenchMain();
+    if (true) {
+        return 0;
+    }
+
     constexpr float dt = 1.0f / 60.0f;
     struct MoveJob : public mustache::PerEntityJob<MoveJob> {
         static void calc(Position& pos, const Velocity& vel, const Rotation& rot) noexcept {

@@ -46,7 +46,7 @@ namespace mustache {
 
         void clear() noexcept;
 
-        std::vector<ArchetypeFilterResult> filtered_archetypes;
+        mustache::vector<ArchetypeFilterResult> filtered_archetypes;
         ComponentIdMask mask;
         SharedComponentIdMask shared_component_mask;
         uint32_t total_entity_count{0u};

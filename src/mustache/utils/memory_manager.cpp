@@ -1,8 +1,8 @@
 #include "memory_manager.hpp"
 #include <mustache/utils/logger.hpp>
 #include <mustache/utils/profiler.hpp>
+#include <mustache/utils/container_map.hpp>
 
-#include <map>
 #include <cstdlib>
 #include <cstring>
 #ifdef __APPLE__
@@ -15,8 +15,8 @@
 #define MEMORY_MANAGER_STATISTICS_ARG_DECL , const char* file, uint32_t line
 namespace {
     size_t total_size = 0;
-    std::map<void*, std::string> ptr_to_file;
-    std::map<std::string, size_t> file_to_size;
+    mustache::map<void*, std::string> ptr_to_file;
+    mustache::map<std::string, size_t> file_to_size;
 }
 #else
 #define MEMORY_MANAGER_STATISTICS_ARG_DECL

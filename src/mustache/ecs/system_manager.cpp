@@ -1,11 +1,11 @@
 #include "system_manager.hpp"
 
 #include <mustache/utils/profiler.hpp>
+#include <mustache/utils/container_map.hpp>
+#include <mustache/utils/container_vector.hpp>
 
 #include <mustache/ecs/system.hpp>
 
-#include <map>
-#include <vector>
 #include <algorithm>
 #include <stdexcept>
 
@@ -27,10 +27,10 @@ struct SystemManager::Data {
             return system == rhs;
         }
     };
-    std::vector<SystemInfo> systems_info;
-    std::vector<SystemPtr> ordered_systems;
-    std::map<std::string, int32_t> group_priorities;
-    std::map<std::string, SystemPtr > system_by_name;
+    mustache::vector<SystemInfo> systems_info;
+    mustache::vector<SystemPtr> ordered_systems;
+    mustache::map<std::string, int32_t> group_priorities;
+    mustache::map<std::string, SystemPtr > system_by_name;
 };
 
 SystemManager::SystemManager(World& world) :
@@ -112,9 +112,9 @@ void mustache::SystemManager::reorderSystems() {
     MUSTACHE_PROFILER_BLOCK_LVL_0(__FUNCTION__ );
 
     auto systems_cpy = data_->systems_info;
-    std::set<std::string> unplaced_systems_names;
+    mustache::set<std::string> unplaced_systems_names;
     {
-        std::map<std::string, Data::SystemInfo*> map;
+        mustache::map<std::string, Data::SystemInfo*> map;
         for (auto& info : data_->systems_info) {
             const auto name = info.system->name();
             unplaced_systems_names.insert(name);
@@ -141,7 +141,7 @@ void mustache::SystemManager::reorderSystems() {
                   return a.config.priority > b.config.priority;
               });
 
-    std::vector<SystemPtr> ordered_systems;
+    mustache::vector<SystemPtr> ordered_systems;
     ordered_systems.reserve(systems_cpy.size());
 
     const auto& can_be_placed = [&unplaced_systems_names](const Data::SystemInfo& info) {

@@ -2,13 +2,12 @@
 
 #include <mustache/utils/logger.hpp>
 #include <mustache/utils/profiler.hpp>
-
-#include <map>
+#include <mustache/utils/container_map.hpp>
 
 using namespace mustache;
 
 namespace {
-    std::map<std::string, SingletonId> type_map;
+    mustache::map<std::string, SingletonId> type_map;
     SingletonId next_singleton_id{SingletonId::make(0)};
 
 }

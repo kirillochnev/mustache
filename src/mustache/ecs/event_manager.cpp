@@ -2,13 +2,13 @@
 
 #include <mustache/utils/logger.hpp>
 #include <mustache/utils/profiler.hpp>
+#include <mustache/utils/container_map.hpp>
 
-#include <map>
 
 using namespace mustache;
 
 namespace {
-    std::map<std::string, EventId> type_map;
+    mustache::map<std::string, EventId> type_map;
     EventId next_event_id = EventId::make(0u);
 }
 

@@ -45,7 +45,7 @@ struct NewComponentDataStorage::ComponentDataHolder {
         return block + component_size * (index % chunk_capacity).toInt();
     }
     MemoryManager* memory_manager = nullptr;
-    std::vector<std::byte*, Allocator<std::byte*> > data;
+    mustache::vector<std::byte*, Allocator<std::byte*> > data;
     uint32_t component_size;
     uint32_t component_alignment;
 };
@@ -97,12 +97,12 @@ void* NewComponentDataStorage::getDataSafe(ComponentIndex component_index, Compo
     if (index.toInt() >= size_ || !components_.has(component_index)) {
         return nullptr;
     }
-    return components_[component_index].get(index);
+    return components_[component_index].get<FunctionSafety::kSafe>(index);
 }
 
 void* NewComponentDataStorage::getDataUnsafe(ComponentIndex component_index, ComponentStorageIndex index) const noexcept {
     MUSTACHE_PROFILER_BLOCK_LVL_3(__FUNCTION__);
-    return components_[component_index].get(index);
+    return components_[component_index].get<FunctionSafety::kUnsafe>(index);
 }
 
 void NewComponentDataStorage::allocateBlock() {

@@ -1,11 +1,10 @@
 #pragma once
 
 #include <mustache/utils/invoke.hpp>
-
+#include <mustache/utils/container_vector.hpp>
 #include <mustache/ecs/id_deff.hpp>
 
 #include <bitset>
-#include <vector>
 #include <memory>
 #include <cstdint>
 #include <initializer_list>
@@ -31,8 +30,8 @@ namespace mustache {
             return !value_.any();
         }
 
-        [[nodiscard]] std::vector<_ItemType > items() const noexcept {
-            std::vector<_ItemType > result;
+        [[nodiscard]] mustache::vector<_ItemType > items() const noexcept {
+            mustache::vector<_ItemType > result;
             for (size_t i = 0u; i < value_.size(); ++i) {
                 if (value_.test(i)) {
                     result.push_back(_ItemType::make(i));
@@ -154,7 +153,7 @@ namespace mustache {
 
     using SharedComponentPtr = std::shared_ptr<const SharedComponentTag>;
     
-    using SharedComponentsData = std::vector<SharedComponentPtr>;
+    using SharedComponentsData = mustache::vector<SharedComponentPtr>;
 
     struct SharedComponentsInfo {
 
@@ -238,7 +237,7 @@ namespace mustache {
         }
     private:
         SharedComponentIdMask mask_;
-        std::vector<SharedComponentId> ids_;
+        mustache::vector<SharedComponentId> ids_;
         SharedComponentsData data_;
 
     };

@@ -6,7 +6,6 @@
 #include <mustache/ecs/entity.hpp>
 #include <mustache/ecs/component_factory.hpp>
 
-#include <vector>
 
 namespace mustache {
     class Archetype;
@@ -76,13 +75,13 @@ namespace mustache {
             SharedComponentsInfo shared;
         };
         ArrayWrapper<CreateAction, CreateActionIndex, false> create_actions_;
-        std::vector<ActionInfo> actions_;
+        mustache::vector<ActionInfo> actions_;
 
         ActionInfo& emplaceItem(Entity enity, Action action);
 
         std::byte* allocate(uint32_t size);
 
-        std::vector<DataChunk> chunks_;
+        mustache::vector<DataChunk> chunks_;
         uint32_t target_chunk_size_ = 4096u;
         uint32_t total_size_ = 0u;
     };
