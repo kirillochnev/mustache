@@ -182,7 +182,7 @@ namespace mustache {
         World& world_;
         const ComponentIdMask mask_;
         const SharedComponentsInfo shared_components_info_;
-        VersionStorage<false> version_storage_;
+        VersionStorage<true> version_storage_;
         ArchetypeOperationHelper operation_helper_;
         std::unique_ptr<DefaultComponentDataStorage> data_storage_;
         ArrayWrapper<Entity, ArchetypeEntityIndex, true> entities_;
