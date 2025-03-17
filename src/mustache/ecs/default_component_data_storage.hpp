@@ -1,5 +1,6 @@
 #pragma once
 
+#include <mustache/utils/profiler.hpp>
 #include <mustache/utils/array_wrapper.hpp>
 
 #include <mustache/ecs/component_mask.hpp>
@@ -8,7 +9,7 @@
 namespace mustache {
     class MemoryManager;
 
-    class DefaultComponentDataStorage : public BaseComponentDataStorage {
+    class DefaultComponentDataStorage final : public BaseComponentDataStorage {
     public:
         DefaultComponentDataStorage(const ComponentIdMask& mask, MemoryManager& memory_manager);
 
@@ -24,9 +25,28 @@ namespace mustache {
             return chunk_capacity_;
         }
 
-        void* getDataSafe(ComponentIndex component_index, ComponentStorageIndex index) const noexcept override;
+        void* getDataSafe(ComponentIndex component_index, ComponentStorageIndex index) const noexcept {
+            MUSTACHE_PROFILER_BLOCK_LVL_3(__FUNCTION__);
+            if (component_index.isNull() || index.isNull() ||
+                !component_getter_info_.has(component_index) || index.toInt() >= size_) {
+                return nullptr;
+            }
+            const auto chunk_index = index % chunk_capacity_;
+            const auto& info = component_getter_info_[component_index];
+            const auto offset = info.offset.add(info.size * chunk_index.toInt<size_t>());
+            auto chunk = chunks_[index / chunk_capacity_];
+            return dataPointerWithOffset(chunk, offset);
+        }
 
-        void* getDataUnsafe(ComponentIndex component_index, ComponentStorageIndex index) const noexcept override;
+        void* getDataUnsafe(ComponentIndex component_index, ComponentStorageIndex index) const noexcept {
+            MUSTACHE_PROFILER_BLOCK_LVL_3(__FUNCTION__);
+            const auto chunk_index = index % chunk_capacity_;
+            const auto& info = component_getter_info_[component_index];
+            const auto offset = info.offset.add(info.size * chunk_index.toInt<size_t>());
+            auto chunk = chunks_[index / chunk_capacity_];
+            return dataPointerWithOffset(chunk, offset);
+        }
+
 
     protected:
         struct ComponentDataGetter {

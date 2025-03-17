@@ -11,6 +11,7 @@
 #include <mustache/ecs/component_version_storage.hpp>
 #include <mustache/ecs/archetype_operation_helper.hpp>
 #include <mustache/ecs/base_component_data_storage.hpp>
+#include <mustache/ecs/default_component_data_storage.hpp>
 
 #include <stdexcept>
 #include <cstdint>
@@ -109,11 +110,11 @@ namespace mustache {
 
         [[nodiscard]] ComponentIndexMask makeComponentMask(const ComponentIdMask& mask) const noexcept;
 
-        [[nodiscard]] VersionStorage& versionStorage() noexcept {
+        [[nodiscard]] auto& versionStorage() noexcept {
             return version_storage_;
         }
 
-        [[nodiscard]] const VersionStorage& versionStorage() const noexcept {
+        [[nodiscard]] const auto& versionStorage() const noexcept {
             return version_storage_;
         }
 
@@ -141,8 +142,7 @@ namespace mustache {
 
         MUSTACHE_INLINE void markComponentDirty(ComponentIndex component, ArchetypeEntityIndex index,
                                                 WorldVersion version) noexcept {
-            const auto chunk = versionStorage().chunkAt(index);
-            versionStorage().setVersion(version, chunk, component);
+            versionStorage().setVersion(version, index, component);
         }
 
         template<FunctionSafety _Safety = FunctionSafety::kDefault>
@@ -182,9 +182,9 @@ namespace mustache {
         World& world_;
         const ComponentIdMask mask_;
         const SharedComponentsInfo shared_components_info_;
-        VersionStorage version_storage_;
+        VersionStorage<false> version_storage_;
         ArchetypeOperationHelper operation_helper_;
-        std::unique_ptr<BaseComponentDataStorage> data_storage_;
+        std::unique_ptr<DefaultComponentDataStorage> data_storage_;
         ArrayWrapper<Entity, ArchetypeEntityIndex, true> entities_;
         const ArchetypeIndex id_;
     };
