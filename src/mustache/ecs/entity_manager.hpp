@@ -797,11 +797,13 @@ namespace mustache {
         }
 
         const auto& location = locations_[entity.id()];
-        if (location.archetype == nullptr) {
-            return static_cast<ResultType>(nullptr);
+        const auto arch = location.archetype;
+        if constexpr(isSafe(_Safety)) {
+            if (arch == nullptr) {
+                return static_cast<ResultType>(nullptr);
+            }
         }
-        const auto& arch = location.archetype;
-        const auto index = arch->getComponentIndex(component_id);
+        const auto index = arch->getComponentIndex<_Safety> (component_id);
         if constexpr(isSafe(_Safety)) {
             if (!index.isValid()) {
                 return static_cast<ResultType>(nullptr);
@@ -985,7 +987,7 @@ namespace mustache {
         if (isLocked()) {
             auto& storage = getTemporalStorage();
             static const std::array component_ids {
-                ComponentFactory::instance().registerComponent<typename std::tuple_element<_I, TupleType>::type::Component>()...
+                    ComponentFactory::instance().registerComponent<typename std::tuple_element<_I, TupleType>::type::Component>()...
             };
             const auto unused_init_list = {
                     initComponent(storage.assignComponent(world_, entity, component_ids[_I], true),
