@@ -25,7 +25,7 @@ namespace mustache {
             return chunk_capacity_;
         }
 
-        void* getDataSafe(ComponentIndex component_index, ComponentStorageIndex index) const noexcept {
+        void* getDataSafe(ComponentIndex component_index, ComponentStorageIndex index) const noexcept override final {
             MUSTACHE_PROFILER_BLOCK_LVL_3(__FUNCTION__);
             if (component_index.isNull() || index.isNull() ||
                 !component_getter_info_.has(component_index) || index.toInt() >= size_) {
@@ -38,7 +38,7 @@ namespace mustache {
             return dataPointerWithOffset(chunk, offset);
         }
 
-        void* getDataUnsafe(ComponentIndex component_index, ComponentStorageIndex index) const noexcept {
+        void* getDataUnsafe(ComponentIndex component_index, ComponentStorageIndex index) const noexcept override final {
             MUSTACHE_PROFILER_BLOCK_LVL_3(__FUNCTION__);
             const auto chunk_index = index % chunk_capacity_;
             const auto& info = component_getter_info_[component_index];
