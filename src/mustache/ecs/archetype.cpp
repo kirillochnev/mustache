@@ -174,7 +174,7 @@ void Archetype::externalMove(Entity entity, Archetype& prev_archetype, Archetype
     }
 
     prev_archetype.remove(*source_view.getEntity<FunctionSafety::kUnsafe>(), prev_index, mask_);
-    world_.entities().updateLocation(entity, id_, index.toArchetypeIndex());
+    world_.entities().updateLocation(entity, this, index.toArchetypeIndex());
 }
 
 ArchetypeEntityIndex Archetype::insert(Entity entity, const ComponentIdMask& skip_constructor) {
@@ -201,13 +201,13 @@ ArchetypeEntityIndex Archetype::insert(Entity entity, const ComponentIdMask& ski
         }
     }
     versionStorage().emplace(worldVersion(), index.toArchetypeIndex());
-    world_.entities().updateLocation(entity, id_, index.toArchetypeIndex());
+    world_.entities().updateLocation(entity, this, index.toArchetypeIndex());
     return index.toArchetypeIndex();
 }
 
 void Archetype::cloneEntity(Entity source, Entity dest, ArchetypeEntityIndex src_index, CloneEntityMap& map) {
     const auto dest_index = pushBack(dest).toArchetypeIndex();
-    world_.entities().updateLocation(dest, id_, dest_index);
+    world_.entities().updateLocation(dest, this, dest_index);
     {
         ComponentIndex component_index = ComponentIndex::make(0);
         for (const auto& clone_fn: operation_helper_.clone) {
@@ -245,8 +245,8 @@ void Archetype::internalMove(ArchetypeEntityIndex source_index, ArchetypeEntityI
     versionStorage().setVersion(world_version, versionStorage().chunkAt(source_index));
     versionStorage().setVersion(world_version, versionStorage().chunkAt(destination_index));
 
-    world_.entities().updateLocation(dest_entity, ArchetypeIndex::null(), ArchetypeEntityIndex::null());
-    world_.entities().updateLocation(source_entity, id_, destination_index);
+    world_.entities().updateLocation(dest_entity, nullptr, ArchetypeEntityIndex::null());
+    world_.entities().updateLocation(source_entity, this, destination_index);
 
     dest_entity = source_entity;
 
@@ -284,7 +284,7 @@ void Archetype::remove(Entity entity_to_destroy, ArchetypeEntityIndex entity_ind
             popBack();
         }
         versionStorage().setVersion(worldVersion(), versionStorage().chunkAt(entity_index));
-        world_.entities().updateLocation(entity_to_destroy, ArchetypeIndex::null(), ArchetypeEntityIndex::null());
+        world_.entities().updateLocation(entity_to_destroy, nullptr, ArchetypeEntityIndex::null());
     } else {
         internalMove(last_index, entity_index);
     }

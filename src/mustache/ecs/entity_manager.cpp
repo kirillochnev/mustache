@@ -110,7 +110,7 @@ void EntityManager::clearArchetype(Archetype& archetype) {
     for (const auto entity : archetype.entities()) {
         const auto id = entity.id();
         auto& location = locations_[id];
-        location.archetype = ArchetypeIndex::null();
+        location.archetype = nullptr;
         entities_[id].reset(empty_slots_ ? next_slot_ : id.next(), entity.version().next());
         next_slot_ = id;
         ++empty_slots_;
@@ -186,11 +186,11 @@ void EntityManager::removeComponent(Entity entity, ComponentId component) {
         return;
     }
     const auto& location = locations_[entity.id()];
-    if (location.archetype.isNull()) {
+    if (location.archetype == nullptr) {
         return;
     }
 
-    auto& prev_archetype = *archetypes_[location.archetype];
+    auto& prev_archetype = *location.archetype;
     if (!prev_archetype.hasComponent(component)) {
         return;
     }
@@ -211,11 +211,11 @@ bool EntityManager::removeSharedComponent(Entity entity, SharedComponentId compo
     MUSTACHE_PROFILER_BLOCK_LVL_2(__FUNCTION__ );
 
     const auto& location = locations_[entity.id()];
-    if (location.archetype.isNull()) {
+    if (location.archetype == nullptr) {
             return false;
     }
 
-    auto& prev_archetype = *archetypes_[location.archetype];
+    auto& prev_archetype = *location.archetype;
 
     if (!prev_archetype.hasComponent(component)) {
         return false;
@@ -241,8 +241,7 @@ Archetype* EntityManager::getArchetypeOf(Entity entity) const noexcept {
     if (!isEntityValid(entity)) {
         return nullptr;
     }
-    const auto archetype_index = locations_[entity.id()].archetype;
-    return archetypes_[archetype_index].get();
+    return locations_[entity.id()].archetype;
 }
 
 void EntityManager::markDirty(Entity entity, ComponentId component_id) noexcept {
@@ -250,7 +249,7 @@ void EntityManager::markDirty(Entity entity, ComponentId component_id) noexcept 
 
     if (isEntityValid(entity)) {
         const auto location = locations_[entity.id()];
-        const auto arch = archetypes_[location.archetype];
+        const auto arch = location.archetype;
         const auto component_index = arch->getComponentIndex(component_id);
         if (component_index.isValid()) {
             arch->markComponentDirty(component_index, location.index, worldVersion());
@@ -341,7 +340,7 @@ void EntityManager::applyCommandPack(TemporalStorage& storage, size_t begin, siz
     }
     else if (initial_mask != final_mask) {
         const auto location = locations_[entity.id()];
-        archetype.externalMove(entity, getArchetype(location.archetype), location.index, final_mask);
+        archetype.externalMove(entity, *location.archetype, location.index, final_mask);
     }
 
     auto view = archetype.getElementView(locations_[entity.id()].index);
