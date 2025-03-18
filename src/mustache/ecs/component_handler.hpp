@@ -3,8 +3,18 @@
 #include <mustache/ecs/shared_component.hpp>
 
 #include <stdexcept>
+#include <type_traits>
 
 namespace mustache {
+
+    template<typename T>
+    using Component = std::conditional_t< std::is_const_v<T>,
+            std::conditional_t< std::is_trivially_copyable_v<T> && sizeof(T) <= 2 * sizeof(void*),
+                    const T,
+                    const T&
+            >,
+            T&
+    >;
 
     template <typename T, typename... ARGS>
     struct IsOneOfTypes {
