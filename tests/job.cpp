@@ -492,7 +492,7 @@ TEST(Job, compilation) {
     static_assert(std::is_same<Info::UniqueComponentType<1>::type, TestComponent1&>::value);
 }
 
-TEST(Job, UpdateSingleChunk) {
+TEST(Job, UpdateSingleChunk) { // Should fail
     struct Component0 {
         uint32_t value = 0;
     };

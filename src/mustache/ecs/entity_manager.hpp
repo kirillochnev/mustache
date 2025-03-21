@@ -657,6 +657,7 @@ namespace mustache {
         };
         ArchetypeVersionChunkSize archetype_chunk_size_info_;
         mustache::vector<ArchetypeChunkSizeFunction> get_chunk_size_functions_;
+        const bool enable_version_control_ {false};
     };
 
     bool EntityManager::isEntityValid(Entity entity) const noexcept {
@@ -809,12 +810,13 @@ namespace mustache {
                 return static_cast<ResultType>(nullptr);
             }
         }
-
-        if constexpr (_Const) {
-            return arch->getConstComponent<FunctionSafety::kUnsafe>(index, location.index);
-        } else {
-            return arch->getComponent<FunctionSafety::kUnsafe>(index, location.index, worldVersion());
+        const auto result = arch->getComponentNoMarkDirty<FunctionSafety::kUnsafe>(index, location.index);
+        if constexpr (!_Const) {
+            if (arch->versionControlEnabled(index)) {
+                arch->markComponentDirty(index, location.index, world_version_);
+            }
         }
+        return const_cast<ResultType>(result);
     }
 
     template<typename T, FunctionSafety _Safety>

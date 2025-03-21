@@ -686,7 +686,7 @@ TEST(EntityManager, component_builder_to_modify) {
     ASSERT_EQ(entities.getComponent<Component2>(entity)->value, 2);
 }
 
-TEST(EntityManager, archetype_chunk_size) {
+TEST(EntityManager, archetype_chunk_size) { // Should fail
     struct Component0 {
 
     };

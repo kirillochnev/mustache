@@ -13,32 +13,33 @@ namespace mustache {
 
     struct MaskAndVersion {
         WorldVersion version;
-        mustache::vector<ComponentIndex> mask;
+        std::vector<ComponentIndex> mask;
     };
 
-    template<bool _Enabled>
-    class VersionStorage;
-
-    template<>
-    class VersionStorage<true> : public Uncopiable {
+    class VersionStorage : public Uncopiable {
     public:
 
         VersionStorage(MemoryManager& memory_manager,
-                                       uint32_t num_components,
-                                       uint32_t chunk_size):
+                       uint32_t num_components,
+                       uint32_t chunk_size,
+                       const ComponentIndexMask& enabled_for):
                 chunk_size_{chunk_size},
                 chunk_versions_{memory_manager},
-                global_versions_{memory_manager} {
+                global_versions_{memory_manager},
+                enabled_mask_{enabled_for} {
             MUSTACHE_PROFILER_BLOCK_LVL_0(__FUNCTION__);
             global_versions_.resize(num_components);
         }
 
-        [[nodiscard]] constexpr bool enabled() const noexcept {
-            return true;
+        [[nodiscard]] bool enabled() const noexcept {
+            return !enabled_mask_.isEmpty();
         }
 
         void emplace(WorldVersion version, ArchetypeEntityIndex index) noexcept {
             MUSTACHE_PROFILER_BLOCK_LVL_2(__FUNCTION__);
+            if (!enabled()) {
+                return;
+            }
             const auto chunk = chunkAt(index);
             if (chunk.template toInt<size_t>() * numComponents() <= chunk_versions_.size()) {
                 chunk_versions_.resize(chunk.next().template toInt<size_t>() * numComponents());
@@ -49,6 +50,9 @@ namespace mustache {
 
         void setVersion(WorldVersion version, ChunkIndex chunk) noexcept {
             MUSTACHE_PROFILER_BLOCK_LVL_3(__FUNCTION__);
+            if (!enabled()) {
+                return;
+            }
             const auto begin = numComponents() * chunk.toInt();
             for (uint32_t i = 0; i < numComponents(); ++i) {
                 global_versions_[ComponentIndex::make(i)] = version;
@@ -63,6 +67,9 @@ namespace mustache {
 
         void setVersion(WorldVersion version, ChunkIndex chunk, ComponentIndex component) noexcept {
             MUSTACHE_PROFILER_BLOCK_LVL_3(__FUNCTION__);
+            if (!enabled_mask_.has(component)) {
+                return;
+            }
             const auto update_index = numComponents() * chunk.toInt() + component.toInt();
             chunk_versions_[update_index] = version;
             setVersion(version, component);
@@ -70,6 +77,9 @@ namespace mustache {
 
         void setVersion(WorldVersion version, ArchetypeEntityIndex index, ComponentIndex component) noexcept {
             MUSTACHE_PROFILER_BLOCK_LVL_3(__FUNCTION__);
+            if (!enabled_mask_.has(component)) {
+                return;
+            }
             const auto chunk = chunkAt(index);
             const auto update_index = numComponents() * chunk.toInt() + component.toInt();
             chunk_versions_[update_index] = version;
@@ -83,12 +93,19 @@ namespace mustache {
 
         [[nodiscard]] WorldVersion getVersion(ChunkIndex chunk, ComponentIndex component) const noexcept {
             MUSTACHE_PROFILER_BLOCK_LVL_3(__FUNCTION__);
+            if (!enabled_mask_.has(component)) {
+                return WorldVersion::null();
+            }
             const WorldVersion* chunk_version = chunk_versions_.data() + numComponents() * chunk.toInt();
             return chunk_version[component.toInt()];
         }
 
         [[nodiscard]] bool checkAndSet(const MaskAndVersion& check, const MaskAndVersion& set) noexcept {
             MUSTACHE_PROFILER_BLOCK_LVL_3(__FUNCTION__);
+            if (!enabled()) {
+                return true;
+            }
+
             bool need_update = check.version.isNull() || check.mask.empty();
 
             for (auto index : check.mask) {
@@ -108,6 +125,10 @@ namespace mustache {
 
         [[nodiscard]] bool checkAndSet(const MaskAndVersion& check, const MaskAndVersion& set, ChunkIndex chunk) noexcept {
             MUSTACHE_PROFILER_BLOCK_LVL_3(__FUNCTION__);
+            if (!enabled()) {
+                return true;
+            }
+
             const auto first_index = numComponents() * chunk.toInt();
             auto versions = chunk_versions_.data() + first_index;
             bool result = check.version.isNull() || check.mask.empty();
@@ -135,24 +156,36 @@ namespace mustache {
 
         [[nodiscard]] ChunkIndex chunkAt(ArchetypeEntityIndex index) const noexcept {
             MUSTACHE_PROFILER_BLOCK_LVL_3(__FUNCTION__);
+            if (!enabled()) {
+                return ChunkIndex::make(0);
+            }
             return ChunkIndex::make(index.toInt() / chunk_size_);
         }
 
         [[nodiscard]] uint32_t chunkSize() const noexcept {
             MUSTACHE_PROFILER_BLOCK_LVL_3(__FUNCTION__);
+            if (!enabled()) {
+                return std::numeric_limits<uint32_t >::max();
+            }
             return chunk_size_;
         }
-
+        [[nodiscard]] const auto& enabledMask() const noexcept {
+            return enabled_mask_;
+        }
+        void setEnabledMask(const ComponentIndexMask& mask) noexcept {
+            enabled_mask_ = mask;
+        }
     protected:
+        friend class Archetype;
         uint32_t chunk_size_;
         mustache::vector<WorldVersion, Allocator<WorldVersion> > chunk_versions_; // per chunk component version
         mustache::ArrayWrapper<WorldVersion, ComponentIndex, true> global_versions_; // global component version
+        ComponentIndexMask enabled_mask_;
     };
 
-    template<>
-    class VersionStorage<false> : public Uncopiable {
+    class FakeVersionStorage {
     public:
-        constexpr VersionStorage(MemoryManager&, uint32_t, uint32_t) {}
+        constexpr FakeVersionStorage(MemoryManager&, uint32_t, uint32_t) {}
 
         [[nodiscard]] constexpr bool enabled() const noexcept {
             return false;

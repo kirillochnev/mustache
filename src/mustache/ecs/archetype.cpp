@@ -17,8 +17,8 @@ Archetype::Archetype(World& world, ArchetypeIndex id, const ComponentIdMask& mas
         world_{world},
         mask_{mask},
         shared_components_info_ {shared_components_info},
-        version_storage_{world.memoryManager(), mask.componentsCount(), chunk_size},
         operation_helper_{world.memoryManager(), mask},
+        version_storage_{world.memoryManager(), mask.componentsCount(), chunk_size, makeComponentMask(mask)},
 //        data_storage_{std::make_unique<NewComponentDataStorage>(mask, world_.memoryManager())},
         data_storage_{std::make_unique<DefaultComponentDataStorage>(mask, world_.memoryManager())},
         entities_{world.memoryManager()},
@@ -242,8 +242,8 @@ void Archetype::internalMove(ArchetypeEntityIndex source_index, ArchetypeEntityI
     auto& dest_entity = *dest_view.getEntity<FunctionSafety::kUnsafe>();
 
     const auto world_version = worldVersion();
-    versionStorage().setVersion(world_version, versionStorage().chunkAt(source_index));
-    versionStorage().setVersion(world_version, versionStorage().chunkAt(destination_index));
+    setVersion(world_version, versionStorage().chunkAt(source_index));
+    setVersion(world_version, versionStorage().chunkAt(destination_index));
 
     world_.entities().updateLocation(dest_entity, nullptr, ArchetypeEntityIndex::null());
     world_.entities().updateLocation(source_entity, this, destination_index);
@@ -283,7 +283,7 @@ void Archetype::remove(Entity entity_to_destroy, ArchetypeEntityIndex entity_ind
         } else {
             popBack();
         }
-        versionStorage().setVersion(worldVersion(), versionStorage().chunkAt(entity_index));
+        setVersion(worldVersion(), versionStorage().chunkAt(entity_index));
         world_.entities().updateLocation(entity_to_destroy, nullptr, ArchetypeEntityIndex::null());
     } else {
         internalMove(last_index, entity_index);

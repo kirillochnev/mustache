@@ -242,7 +242,8 @@ namespace mustache {
 
     };
 
-    struct ComponentIndexMask : public ComponentMask<ComponentIndex, 64> {
-        using ComponentMask::ComponentMask;
-    };
+    using ComponentIndexMask = ComponentMask<ComponentIndex, 64>;
+//    struct ComponentIndexMask : public ComponentMask<ComponentIndex, 64> {
+//        using ComponentMask::ComponentMask;
+//    };
 }
