@@ -1,43 +1,55 @@
-name: coverage
+name: Test Coverage
 
-on: [push, pull_request]
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
 
 jobs:
-
-  codecov:
-    timeout-minutes: 10
+  coverage:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Download Google Test
-        run: |
-          wget https://github.com/google/googletest/archive/release-1.12.1.tar.gz
-          tar xvzf release-1.12.1.tar.gz
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - name: Build and install Google Test
+      - name: Install dependencies
         run: |
-          cd googletest-release-1.12.1/
-          cmake .
-          make
-          sudo make install
-        
-     - uses: actions/checkout@v2
-      - name: Compile tests
-        working-directory: build
-        env:
-          CXXFLAGS: "--coverage -fno-inline"
-          CXX: g++
+          sudo apt-get update
+          sudo apt-get install -y lcov
+
+      - name: Install Google Test
         run: |
-          cmake -DMUSTACHE_BUILD_TESTS=ON ..
-          make -j4
-      - name: Run tests
-        working-directory: build
-        env:
-          CTEST_OUTPUT_ON_FAILURE: 1
-        run: ctest --timeout 120 -C Debug -j4
-      - name: Collect data
-        working-directory: build
+          sudo apt-get install -y libgtest-dev
+          cd /usr/src/gtest
+          sudo cmake .
+          sudo make
+          sudo cp libg* /usr/lib/
+
+      - name: Configure CMake
         run: |
-          sudo apt install lcov
-          lcov -c -d . -o coverage.info
-          lcov -l coverage.info
+          cmake -B build -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_FLAGS="--coverage"
+
+      - name: Build project
+        run: cmake --build build
+
+      - name: Run tests with coverage
+        run: |
+          cd build
+          ctest --output-on-failure
+
+      - name: Capture coverage data
+        run: |
+          lcov --capture --directory build --output-file coverage.info
+          lcov --remove coverage.info '/usr/*' --output-file coverage.info
+          lcov --remove coverage.info '*/tests/*' --output-file coverage.info
+          genhtml coverage.info --output-directory coverage_report
+
+      - name: Upload coverage report as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: build/coverage_report

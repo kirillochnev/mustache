@@ -84,7 +84,7 @@ namespace mustache {
             for (auto chunk = ChunkIndex::make(0); chunk != last_chunk; ++chunk) {
                 for (uint32_t component = 0; component < sizeof...(_I); ++component) {
                     if (is_mutable[component]) {
-                        archetype.versionStorage().setVersion(version, chunk, component_indexes[component]);
+                        archetype.setVersion(version, chunk, component_indexes[component]);
                     }
                 }
             }
@@ -137,28 +137,28 @@ namespace mustache {
 
                 using TailFunction = void (*)(const _F&, World&, JobInvocationIndex&, _ARGS&...);
                 static constexpr TailFunction tails[4] {
-                    [](const _F&, World&, JobInvocationIndex&, _ARGS&...) {},
-                    [](const _F& f, World& _world, JobInvocationIndex& ii, _ARGS&... _pointers) {
-                      invoke(f, _world, ii, _pointers[0]...);
-                      incInvocationIndex(ii);
-                    },
-                    [](const _F& f, World& _world, JobInvocationIndex& ii, _ARGS&... _pointers) {
-                      invoke(f, _world, ii, _pointers[0]...);
-                      incInvocationIndex(ii);
+                        [](const _F&, World&, JobInvocationIndex&, _ARGS&...) {},
+                        [](const _F& f, World& _world, JobInvocationIndex& ii, _ARGS&... _pointers) {
+                            invoke(f, _world, ii, _pointers[0]...);
+                            incInvocationIndex(ii);
+                        },
+                        [](const _F& f, World& _world, JobInvocationIndex& ii, _ARGS&... _pointers) {
+                            invoke(f, _world, ii, _pointers[0]...);
+                            incInvocationIndex(ii);
 
-                      invoke(f, _world, ii, _pointers[1]...);
-                      incInvocationIndex(ii);
-                    },
-                    [](const _F& f, World& _world, JobInvocationIndex& ii, _ARGS&... _pointers) {
-                      invoke(f, _world, ii, _pointers[0]...);
-                      incInvocationIndex(ii);
+                            invoke(f, _world, ii, _pointers[1]...);
+                            incInvocationIndex(ii);
+                        },
+                        [](const _F& f, World& _world, JobInvocationIndex& ii, _ARGS&... _pointers) {
+                            invoke(f, _world, ii, _pointers[0]...);
+                            incInvocationIndex(ii);
 
-                      invoke(f, _world, ii, _pointers[1]...);
-                      incInvocationIndex(ii);
+                            invoke(f, _world, ii, _pointers[1]...);
+                            incInvocationIndex(ii);
 
-                      invoke(f, _world, ii, _pointers[2]...);
-                      incInvocationIndex(ii);
-                }};
+                            invoke(f, _world, ii, _pointers[2]...);
+                            incInvocationIndex(ii);
+                        }};
                 tails[count % 4](function, world, invocation_index, args...);
             }
         }
@@ -207,7 +207,7 @@ namespace mustache {
                 JobHelper<TargetType>::template forEachInArrays<_Unroll>(world, self, invocation_index, count.toInt(), pointers...);
             }
         }
-                template<size_t... _I, size_t... _SI>
+        template<size_t... _I, size_t... _SI>
         MUSTACHE_INLINE void singleTask(World& world, ArchetypeGroup archetype_group, JobInvocationIndex invocation_index,
                                         const std::index_sequence<_I...>&, const std::index_sequence<_SI...>&) {
             auto shared_components = std::make_tuple(
@@ -301,8 +301,8 @@ namespace mustache {
                 while (entities_to_process > 0) {
                     const auto chunk_size = view.distToChunkEnd();
                     JobHelper<_Function>::template forEachInArrays<_Unroll>(world, function, invocation_index, chunk_size, view.getEntity(),
-                            JobHelper<_Function>::template getComponentHandler<_I>(view, component_indexes[_I])...,
-                            JobHelper<_Function>::makeShared(std::get<_SI>(shared_components))...
+                                                                            JobHelper<_Function>::template getComponentHandler<_I>(view, component_indexes[_I])...,
+                                                                            JobHelper<_Function>::makeShared(std::get<_SI>(shared_components))...
                     );
 
                     entities_to_process -= chunk_size;
@@ -331,7 +331,7 @@ namespace mustache {
             constexpr auto unique = Info::FunctionInfo::componentsCount();
             constexpr auto shared = Info::FunctionInfo::sharedComponentsCount();
             runWithIndexSequence(world, std::forward<_F>(function),
-                    std::make_index_sequence<unique>(), std::make_index_sequence<shared>());
+                                 std::make_index_sequence<unique>(), std::make_index_sequence<shared>());
         }
         void run(World& world) {
             if constexpr (std::is_base_of_v<SimpleTask<_Function>, _Function>) {

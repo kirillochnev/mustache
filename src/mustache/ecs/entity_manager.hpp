@@ -34,15 +34,15 @@ namespace mustache {
 
 
     struct EntityLocationInWorld {
-        constexpr static ArchetypeIndex kDefaultArchetype = ArchetypeIndex::null();
+        constexpr static Archetype* kDefaultArchetype = nullptr;
         EntityLocationInWorld() = default;
-        EntityLocationInWorld(ArchetypeEntityIndex i, ArchetypeIndex arch ) noexcept :
+        EntityLocationInWorld(ArchetypeEntityIndex i, Archetype* arch ) noexcept :
                 index{i},
                 archetype{arch} {
 
         }
         ArchetypeEntityIndex index = ArchetypeEntityIndex::make(0u);
-        ArchetypeIndex archetype = kDefaultArchetype;
+        Archetype* archetype = kDefaultArchetype;
     };
 
     class MUSTACHE_EXPORT EntityManager : public Uncopiable {
@@ -494,7 +494,7 @@ namespace mustache {
             }
 
             const auto location = locations_[source.id()];
-            auto& arch = archetypes_[location.archetype];
+            auto& arch = location.archetype;
             auto dest = createWithOutInit();
             entity_map.add(source, dest);
             arch->cloneEntity(source, dest, location.index, entity_map);
@@ -523,7 +523,7 @@ namespace mustache {
     private:
         /// iteration safe
         template<bool _SkipConstructor>
-        MUSTACHE_INLINE void* assign(Entity e, ComponentId id);
+        void* assign(Entity e, ComponentId component_id);
 
         MUSTACHE_INLINE void releaseEntityIdUnsafe(Entity entity) noexcept {
             const auto id = entity.id();
@@ -620,7 +620,7 @@ namespace mustache {
         }
 
         friend Archetype;
-        void updateLocation(Entity e, ArchetypeIndex archetype, ArchetypeEntityIndex index) noexcept {
+        void updateLocation(Entity e, Archetype* archetype, ArchetypeEntityIndex index) noexcept {
             if (e.id().isValid()) {
                 auto& location = locations_[e.id()];
                 location.archetype = archetype;
@@ -657,6 +657,7 @@ namespace mustache {
         };
         ArchetypeVersionChunkSize archetype_chunk_size_info_;
         mustache::vector<ArchetypeChunkSizeFunction> get_chunk_size_functions_;
+        const bool enable_version_control_ {false};
     };
 
     bool EntityManager::isEntityValid(Entity entity) const noexcept {
@@ -676,9 +677,9 @@ namespace mustache {
             }
         }
         const auto location = locations_[entity.id()];
-        const auto& archetype = archetypes_[location.archetype];
+        const auto& arch = location.archetype;
         const auto component_id = ComponentFactory::instance().registerComponent<T>();
-        return archetype->getComponentVersion(location.index, component_id);
+        return arch->getComponentVersion(location.index, component_id);
     }
 
     template<typename _F>
@@ -757,14 +758,13 @@ namespace mustache {
             }
         }
         const auto& location = locations_[entity.id()];
-        if (!location.archetype.isNull()) {
-            if constexpr (isSafe(_Safety)) {
-                if (!archetypes_.has(location.archetype)) {
-                    throw std::runtime_error("Invalid archetype index");
-                }
-            }
-            archetypes_[location.archetype]->remove(entity, location.index, ComponentIdMask::null());
+        if (!location.archetype) {
+            return;
         }
+        if constexpr (isSafe(_Safety)) {
+            // No need to check archetypes_ anymore
+        }
+        location.archetype->remove(entity, location.index, ComponentIdMask::null());
         releaseEntityIdUnsafe(entity);
     }
 
@@ -798,25 +798,25 @@ namespace mustache {
         }
 
         const auto& location = locations_[entity.id()];
+        const auto arch = location.archetype;
         if constexpr(isSafe(_Safety)) {
-            if (!location.archetype.isValid()) {
+            if (arch == nullptr) {
                 return static_cast<ResultType>(nullptr);
             }
         }
-        const auto& arch = archetypes_[location.archetype];
-        const auto index = arch->getComponentIndex(component_id);
+        const auto index = arch->getComponentIndex<_Safety> (component_id);
         if constexpr(isSafe(_Safety)) {
             if (!index.isValid()) {
                 return static_cast<ResultType>(nullptr);
             }
         }
-
-        if constexpr (_Const) {
-            return arch->getConstComponent<FunctionSafety::kUnsafe>(index, location.index);
-        } else {
-            return arch->getComponent<FunctionSafety::kUnsafe>(index, location.index, worldVersion());
+        const auto result = arch->getComponentNoMarkDirty<FunctionSafety::kUnsafe>(index, location.index);
+        if constexpr (!_Const) {
+            if (arch->versionControlEnabled(index)) {
+                arch->markComponentDirty(index, location.index, world_version_);
+            }
         }
-
+        return const_cast<ResultType>(result);
     }
 
     template<typename T, FunctionSafety _Safety>
@@ -836,10 +836,10 @@ namespace mustache {
         static_assert(isComponentShared<Type>(), "Component is not shared, use getComponent() function");
         static const auto component_id = ComponentFactory::instance().registerComponent<Type>();
         const auto& location = locations_[entity.id()];
-        if (!location.archetype.isValid()) {
+        if (location.archetype == nullptr) {
             return nullptr;
         }
-        const auto& arch = archetypes_[location.archetype];
+        const auto& arch = location.archetype;
 
         auto ptr = arch->getSharedComponent(arch->sharedComponentIndex<T>());
         return static_cast<const T*>(ptr);
@@ -872,7 +872,7 @@ namespace mustache {
     void* EntityManager::assign(Entity e, ComponentId component_id) {
         if (!isLocked()) {
             const auto& location = locations_[e.id()];
-            auto& prev_arch = *archetypes_[location.archetype];
+            auto& prev_arch = *location.archetype;
             ComponentIdMask mask = prev_arch.mask_;
             mask.add(component_id);
             auto& arch = getArchetype(mask, prev_arch.sharedComponentInfo());
@@ -901,7 +901,7 @@ namespace mustache {
         const auto& location = locations_[e.id()];
 
         auto component_data = getCreatedSharedComponent(ptr, id);
-        auto& prev_arch = *archetypes_[location.archetype];
+        auto& prev_arch = *location.archetype;
 
         SharedComponentsInfo shared_components_info = prev_arch.sharedComponentInfo();
         shared_components_info.add(id, component_data);
@@ -938,10 +938,10 @@ namespace mustache {
             }
         }
         const auto& location = locations_[entity.id()];
-        if (location.archetype.isNull()) {
+        if (location.archetype == nullptr) {
             return false;
         }
-        const auto& archetype = *archetypes_[location.archetype];
+        const auto& archetype = *location.archetype;
         return archetype.hasComponent(id);
     }
 
@@ -989,7 +989,7 @@ namespace mustache {
         if (isLocked()) {
             auto& storage = getTemporalStorage();
             static const std::array component_ids {
-                ComponentFactory::instance().registerComponent<typename std::tuple_element<_I, TupleType>::type::Component>()...
+                    ComponentFactory::instance().registerComponent<typename std::tuple_element<_I, TupleType>::type::Component>()...
             };
             const auto unused_init_list = {
                     initComponent(storage.assignComponent(world_, entity, component_ids[_I], true),
@@ -1030,7 +1030,7 @@ namespace mustache {
             skip_mask = ComponentFactory::instance().makeMask<typename std::tuple_element<_I, TupleType>::type::Component...>();
         }
         const auto& prev_location = locations_[entity.id()];
-        auto prev_arch = archetypes_[prev_location.archetype].get();
+        auto prev_arch = prev_location.archetype;
         const auto mask = skip_mask.merge(prev_arch->mask_).intersection(to_remove.inverse());
         shared = shared.merge(prev_arch->sharedComponentInfo());
         auto& archetype = getArchetype(mask, shared);

@@ -91,26 +91,26 @@ uint32_t DefaultComponentDataStorage::distToChunkEnd(ComponentStorageIndex globa
 }
 
 
-void* DefaultComponentDataStorage::getDataSafe(ComponentIndex component_index,
-                                               ComponentStorageIndex index) const noexcept {
-    MUSTACHE_PROFILER_BLOCK_LVL_3(__FUNCTION__);
-    if (component_index.isNull() || index.isNull() ||
-        !component_getter_info_.has(component_index) || index.toInt() >= size_) {
-        return nullptr;
-    }
-    const auto chunk_index = index % chunk_capacity_;
-    const auto& info = component_getter_info_[component_index];
-    const auto offset = info.offset.add(info.size * chunk_index.toInt<size_t>());
-    auto chunk = chunks_[index / chunk_capacity_];
-    return dataPointerWithOffset(chunk, offset);
-}
-
-void* DefaultComponentDataStorage::getDataUnsafe(ComponentIndex component_index,
-                                                 ComponentStorageIndex index) const noexcept {
-    MUSTACHE_PROFILER_BLOCK_LVL_3(__FUNCTION__);
-    const auto chunk_index = index % chunk_capacity_;
-    const auto& info = component_getter_info_[component_index];
-    const auto offset = info.offset.add(info.size * chunk_index.toInt<size_t>());
-    auto chunk = chunks_[index / chunk_capacity_];
-    return dataPointerWithOffset(chunk, offset);
-}
+//void* DefaultComponentDataStorage::getDataSafe(ComponentIndex component_index,
+//                                               ComponentStorageIndex index) const noexcept {
+//    MUSTACHE_PROFILER_BLOCK_LVL_3(__FUNCTION__);
+//    if (component_index.isNull() || index.isNull() ||
+//        !component_getter_info_.has(component_index) || index.toInt() >= size_) {
+//        return nullptr;
+//    }
+//    const auto chunk_index = index % chunk_capacity_;
+//    const auto& info = component_getter_info_[component_index];
+//    const auto offset = info.offset.add(info.size * chunk_index.toInt<size_t>());
+//    auto chunk = chunks_[index / chunk_capacity_];
+//    return dataPointerWithOffset(chunk, offset);
+//}
+//
+//void* DefaultComponentDataStorage::getDataUnsafe(ComponentIndex component_index,
+//                                                 ComponentStorageIndex index) const noexcept {
+//    MUSTACHE_PROFILER_BLOCK_LVL_3(__FUNCTION__);
+//    const auto chunk_index = index % chunk_capacity_;
+//    const auto& info = component_getter_info_[component_index];
+//    const auto offset = info.offset.add(info.size * chunk_index.toInt<size_t>());
+//    auto chunk = chunks_[index / chunk_capacity_];
+//    return dataPointerWithOffset(chunk, offset);
+//}

@@ -219,7 +219,7 @@ void getComponentTest(mustache::World& world, Entity first, uint32_t entity_coun
     auto entity = first;
     auto& entities = world.entities();
     auto location = entities.entityLocation(first);
-    auto& archetype = entities.getArchetype(location.archetype);
+    auto& archetype = *location.archetype;
     auto view = archetype.getElementView(location.index);
     for (uint32_t i = 0; i < entity_count; ++i) {
         (void)view.getData<Safety>(ComponentIndex::make(0));
