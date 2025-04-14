@@ -5,6 +5,7 @@
 #include <mustache/utils/container_vector.hpp>
 
 #include <mustache/ecs/system.hpp>
+#include <mustache/ecs/world.hpp>
 
 #include <algorithm>
 #include <stdexcept>
@@ -16,7 +17,6 @@ struct SystemManager::Data {
 
     Data(World& w) :
             world{w} {
-
     }
 
     bool was_init = false;

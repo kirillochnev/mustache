@@ -31,7 +31,7 @@ namespace {
     }
 }
 
-TEST(WorldFilter, component_version) { // Should fail
+TEST(WorldFilter, component_version) {
 
     struct Job : mustache::PerEntityJob<Job> {
         void operator() (Component<0>& component) {
@@ -60,7 +60,7 @@ TEST(WorldFilter, component_version) { // Should fail
 //    ASSERT_EQ(world.version(), entities.getWorldVersionOfLastComponentUpdate<Component<0> >(entity).next().next());
 }
 
-TEST(WorldFilter, chunk_version) { // Should fail
+TEST(WorldFilter, chunk_version) {
     constexpr uint32_t kNumObjects = 50000u;
 
     struct Job0 : mustache::PerEntityJob<Job0> {

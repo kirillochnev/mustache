@@ -69,9 +69,8 @@ namespace mustache {
         template<size_t _I>
         constexpr static bool isComponentMutable() {
             using FunctionInfo = typename Info::FunctionInfo;
-            using Component = typename ComponentType<
-                    typename FunctionInfo::template UniqueComponentType<_I>::type>::type;
-            return IsComponentMutable<Component>::value;
+            return ComponentType<
+                    typename FunctionInfo::template UniqueComponentType<_I>::type>::is_component_mutable;
         }
 
         template<size_t... _I>
