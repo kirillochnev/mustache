@@ -257,12 +257,137 @@ void getComponentBenchMain() {
     benchmark.show();
 }
 
-int main() {
+template<typename T>
+struct ComponentAssignEvent {
+    T* component;
+    mustache::Entity entity;
+};
 
-    getComponentBenchMain();
-    if (true) {
-        return 0;
+template<typename T>
+struct ComponentRemovedEvent {
+    T* component;
+    mustache::Entity entity;
+};
+
+template<typename T>
+struct ComponentWithNotify {
+    static void beforeRemove(T* self, Entity entity, World& world) {
+        world.events().post<ComponentRemovedEvent<T> >({.component = self, .entity = entity});
     }
+    static void afterAssign(T* self, Entity entity, World& world) {
+        world.events().post<ComponentAssignEvent<T> >({.component = self, .entity = entity});
+    }
+};
+
+void componentEventsExample() {
+    using namespace mustache;
+    struct PhysicsComponent : public ComponentWithNotify <PhysicsComponent> {};
+    World world;
+    auto assign_sub = world.events().subscribe<ComponentAssignEvent<PhysicsComponent> >([](const auto& event) {
+        Logger{}.hideContext().info("PhysicsComponent was assigned to: %d", event.entity.id().toInt());
+    });
+    auto remove_sub = world.events().subscribe<ComponentRemovedEvent<PhysicsComponent> >([](const auto& event) {
+        Logger{}.hideContext().info("PhysicsComponent was removed from: %d", event.entity.id().toInt());
+    });
+    vector<Entity> entities;
+    for (uint32_t i = 0; i < 10; ++i) {
+        entities.push_back(world.entities().create());
+    }
+    Logger{}.hideContext().info("All entities were created");
+    for (auto e : entities) {
+        world.entities().assign<PhysicsComponent>(e);
+    }
+    Logger{}.hideContext().info("All components were assigned");
+    for (auto e : entities) {
+        world.entities().destroyNow(e);
+    }
+}
+
+void updateChanged() {
+    using namespace mustache;
+    struct PhysicsComponent {
+        static void beforeRemove(PhysicsComponent* self, Entity entity, World& world) {
+            world.events().post<ComponentRemovedEvent<PhysicsComponent> >({.component = self, .entity = entity});
+        }
+
+        std::string some_data;
+    };
+    struct UpdateChanged : PerEntityJob<UpdateChanged> {
+        void operator()(PhysicsComponent& component, Entity entity) {
+            if (component.some_data.empty()) {
+                Logger{}.hideContext().info("Entity: %d Component was initialized", entity.id().toInt());
+                component.some_data = "I'm super component: " + std::to_string(entity.id().toInt());
+            } else {
+                Logger{}.hideContext().info("Entity: %d, Component [%s] was updated", entity.id().toInt(), component.some_data.c_str());
+            }
+        }
+
+        ComponentIdMask checkMask() const noexcept override { // call operator() only for components whose version was updated since last run call
+            return ComponentFactory::instance().makeMask<PhysicsComponent>();
+        }
+    };
+
+    struct PhysicsSystem : public System<PhysicsSystem>, Receiver<ComponentRemovedEvent<PhysicsComponent>> {
+    protected:
+        void onCreate(World& world) override {
+            Logger{}.hideContext().info("onCreate");
+
+            world.entities().addChunkSizeFunction<PhysicsComponent>(1,1); // store component version for each component
+            world.events().subscribe_<ComponentRemovedEvent<PhysicsComponent> >(this);
+        }
+
+        void onUpdate(World& world) override {
+            Logger{}.hideContext().hideContext().info("onUpdate");
+            update_job.run(world);
+        }
+
+        void onEvent(const ComponentRemovedEvent<PhysicsComponent>& event) override {
+            Logger{}.hideContext().info("Entity: %d, Component [%s] was removed", event.entity.id().toInt(), event.component->some_data.c_str());
+        }
+        UpdateChanged update_job;
+    };
+
+    World world;
+    world.systems().addSystem<PhysicsSystem>();
+    world.init();
+
+    vector<Entity> entities;
+    for (uint32_t i = 0; i < 10; ++i) {
+        entities.push_back(world.entities().create());
+    }
+    Logger{}.hideContext().info("All entities were created");
+    for (auto e : entities) {
+        world.entities().assign<PhysicsComponent>(e);
+    }
+    Logger{}.hideContext().info("All components were assigned");
+
+    world.update(); // UpdateChanged for all entities
+
+    for (auto e : entities) {
+        auto component = world.entities().getComponent<PhysicsComponent>(e);
+        component->some_data += ", Up";
+        world.update(); // UpdateChanged only for e
+    }
+
+    world.update(); // no UpdateChanged call
+
+    world.entities().forEach([](PhysicsComponent& component) {
+        component.some_data += ", touched";
+    });
+
+    world.update(); //  UpdateChanged for all entities
+    world.update(); // no UpdateChanged call
+    for (auto e : entities) {
+        world.entities().destroyNow(e);
+    }
+}
+
+
+
+int main() {
+    updateChanged();
+//    componentEventsExample();
+    if (true) return 0;
 
     constexpr float dt = 1.0f / 60.0f;
     struct MoveJob : public mustache::PerEntityJob<MoveJob> {
