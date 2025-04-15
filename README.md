@@ -1,5 +1,6 @@
 # mustache - A fast, modern C++ Entity Component System
 [![Build Status](https://github.com/kirillochnev/mustache/workflows/build/badge.svg)](https://github.com/kirillochnev/mustache/actions)
+
 ## Why mustache
 
 * [Super fast component iteration](#Performance)
@@ -7,6 +8,7 @@
 * Fully runtime: you can describe Components and Systems without using templates
 * Has C-API and can be used with other programing languages like ex: [mustache-lua](https://github.com/kirillochnev/mustache-lua)
 * Has integration with [profiler](#Profiling)
+* [Built-in component lifecycle hooks](#Component-hooks)
 
 ## Introduction
 
@@ -18,7 +20,6 @@ used mostly in game development. For further details:
 * [ECS on Wikipedia](https://en.wikipedia.org/wiki/Entity%E2%80%93component%E2%80%93system)
 * [About ECS on github](https://github.com/SanderMertens/ecs-faq)
 * [Telegram channel about ECS](https://t.me/ecscomrade)
-
 
 ## Code Example
 
@@ -51,10 +52,10 @@ int main() {
     return 0;
 }
 ```
+
 ## Requirements
 
-To be able to use `mustache`, users must provide a full-featured compiler that
-supports at least C++17.<br/>
+To be able to use `mustache`, users must provide a full-featured compiler that supports at least C++17.<br/>
 The requirements below are mandatory to compile the tests:
 
 * `CMake` version 3.7 or later.
@@ -65,7 +66,7 @@ The requirements below are mandatory to compile the tests:
 
 An `mustache::Entity` is a class wrapping an opaque `uint64_t` value allocated by the `mustache::EntityManager`.
 
-Each `mustache::Entity` has `id`(identifier of Entity), `version` (to check if Entity is still alive) and `worldId`.
+Each `mustache::Entity` has `id` (identifier of Entity), `version` (to check if Entity is still alive) and `worldId`.
 
 Creating an entity is as simple as:
 
@@ -76,6 +77,7 @@ mustache::World world;
 
 const auto entity = world.entities().create();
 ```
+
 And destroying an entity is done with:
 
 ```cpp
@@ -85,16 +87,14 @@ world.entities().destroyNow(entity); // to destroy right now
 
 ### Components (entity data)
 
-The general idea of ECS is to have as little logic in components as possible.
+The general idea of ECS is to have as little logic in components as possible. All logic should be contained in Systems.
 
-All logic should be contained in Systems.
+But mustache has very weak requirements for struct / class to be a component.
 
-But mustache has very weak requirements for struct / class to be component.
-
-You must provide the next public methods (trivial or not):
+You must provide the following public methods (trivial or not):
 
 * default constructor
-* operator= 
+* operator=
 * destructor
 
 #### Creating components
@@ -109,19 +109,20 @@ struct Velocity {
     float x, y, z;
 };
 ```
+
 #### Assigning components to entities
 
-To associate a Component with a previously created Entity call `world.entities().assign<C>(entity);` with the component type, and any component constructor arguments:
+To associate a Component with a previously created Entity:
 
 ```cpp
-// Assign a Position with x=1.0f, y=2.0f and z = 3.0f to "entity"
 world.entities().assign<Position>(entity, 1.0f, 2.0f, 3.0f); 
 ```
 
-There are two ways to create Entity with given set of the Components:
+There are two ways to create an Entity with a given set of Components:
 
-`world.entities().create<C0, C1, C2>(entity);`
-
+```cpp
+world.entities().create<C0, C1, C2>();
+```
 
 ```cpp
 world.entities().begin()
@@ -133,224 +134,192 @@ world.entities().begin()
 
 #### Component version control
 
+You may wish to iterate over only changed components. Mustache has a built-in version control system.
 
-You may wish to iterate over only changed components (see examples), for this reason mustache has built-in component version control system. 
+Each time you request a non-const component from an entity, the version is updated.
 
-Each type you query non-const component from entity, mustache updates component version.
-
-Mustache groups components into blocks and track WorldVersion(int value, updates every `world.updte()`) for such blocks.  
-
-You can change this block size by call `EntityManager::addChunkSizeFunction`, ex.
+You can configure granularity by:
 
 ```cpp
-world.entities().addChunkSizeFunction<Component0>(1, 32); // store version for every 1..32 instance of Component0
-world.entities().addChunkSizeFunction<Component1>(1, 1); // store version for every instance of Component1
+world.entities().addChunkSizeFunction<Component0>(1, 32); // version per chunk of 32
+world.entities().addChunkSizeFunction<Component1>(1, 1);  // version per instance
 ```
 
-#### Component access 
+#### Component access
 
-To query component data from Entity you can call 
-* `EntityManager::getComponent<C>(Entity);` to update component version and get mutable component
-* `EntityManager::getComponent<const C>(Entity);`  to get cont component
+```cpp
+world.entities().getComponent<C>(entity);       // mutable (and version will be updated)
+world.entities().getComponent<const C>(entity); // const access
+```
 
-In case of invalid entity or missed component nullptr will be returned.
+Returns `nullptr` if the component is missing or entity is invalid.
 
 #### Querying entities and their components
 
-To query all entities with a set of components assigned you can use the next method.
-
 ```cpp
-    world.entities().forEach([](Entity entity, Component0& required0, const Component1& required1, const Component2* not_required) {
-        // Iterates over each entity with Component0 and Component1
-        // updates version of Component0
-        // not_required is ptr to  const Component2(if entity has such component) or nullptr.
-    });
+world.entities().forEach([](Entity entity, Component0& required0, const Component1& required1, const Component2* optional2) {
+    // iterate over all entities with required0 and required1
+    // optional2 may be nullptr if Component2 is missing
+});
 ```
 
-The other way is to use PerEntityJob, such job might be implemented with something like the following:
+Alternative: use `PerEntityJob`:
+
 ```cpp
-struct MySuperJob : public PerEntityJob<MySuperJob> { 
+struct MySuperJob : public PerEntityJob<MySuperJob> {
     void operator()(const Component0&, Component1&) {
-        // ...
-    }
-
-    ComponentIdMask checkMask() const noexcept override {
-        // we want to update Component1 only if Component0 has changed.
-        return ComponentFactory::makeMask<Component1>();
-    }
-
-    bool extraArchetypeFilterCheck(const Archetype& archetype) const noexcept override {
-        const auto component_id = ComponentFactory::instance().registerComponent<Component2>();
-        return !archetype.hasComponent(component_id); // skip entities with Component2
+        // iterate over all entities with required0 and required1
     }
 };
 
-MySuperJob job; // create instance of job
-
-// call operator() for each entity with Component0, changed Component2 and without Component2
-job.run(world); 
-
+MySuperJob job;
+job.run(world);
 ```
 
-#### Multithreading
-Mustache has builtin multithreading support, to run job in parallel mode, just use code like following:
+### Supported function arguments
+
+The function passed to `EntityManager::forEach` or the `operator()` of a `PerEntityJob` can accept the following arguments (in any order):
+
+1. **Components**
+    - Passed as reference (`T&` or `const T&`) — required.
+    - Passed as pointer (`T*` or `const T*`) — optional, `nullptr` if entity doesn't have the component.
+    - If `const`, version tracking is **not** updated.
+    - If non-const, version is **updated**.
+
+2. **`Entity`** — the current entity.
+
+3. **`World&`** — world reference.
+
+4. **`JobInvocationIndex`** — provides per-invocation info:
 ```cpp
-// run job parallel
-job.run(world, JobRunMode::kParallel);
-
-// run forEach parallel
-world.entities().forEach(function, JobRunMode::kParallel);
+struct JobInvocationIndex {
+    ParallelTaskId task_index;
+    ParallelTaskItemIndexInTask entity_index_in_task;
+    ParallelTaskGlobalItemIndex entity_index;
+    ThreadId thread_id;
+};
 ```
-#### Component dependencies
-In the case where a component has dependencies on other components, a helper class exists that will automatically create these dependencies.
 
-eg. The following will also add Component0 and Component1 components when a MainComponent component is added to an entity.
+### Job customization
 
-```cpp    
+Jobs that inherit from `BaseJob` (or `PerEntityJob`) can override advanced hooks:
+
+| Function | Description |
+|---------|-------------|
+| `checkMask` | Mask of components to track changes |
+| `updateMask` | Mask of components to mark as updated |
+| `name`, `nameCStr` | Job name string |
+| `extraArchetypeFilterCheck` | Additional filter for archetypes |
+| `extraChunkFilterCheck` | Additional filter per-chunk |
+| `applyFilter` | Full override of entity filter logic |
+| `taskCount` | Split job into N tasks |
+| `onTaskBegin` / `onTaskEnd` | Hook per task |
+| `onJobBegin` / `onJobEnd` | Hook before and after whole job |
+
+See the source of `BaseJob` for more details.
+
+### Multithreading
+
+Mustache has built-in multithreading support:
+
+```cpp
+job.run(world, JobRunMode::kParallel);
+world.entities().forEach(func, JobRunMode::kParallel);
+```
+
+---
+
+### Component hooks
+
+Mustache allows defining optional functions for components to control their lifecycle:
+
+| Function         | When it's called                                                                 |
+|------------------|----------------------------------------------------------------------------------|
+| `static void afterAssign(...)` | After assigning the component to an entity                                |
+| `static void beforeRemove(...)` | Before removing the component from an entity                            |
+| `static void clone(...)` | When cloning a component during entity clone                         |
+| `static void afterClone(...)` | After cloning is done, used for finalization (e.g. remap references) |
+
+These functions are automatically detected and invoked by Mustache.
+
+**Examples:**
+
+- See [`example/component_add_remove_events.cpp`](example/component_add_remove_events.cpp) for `afterAssign` and `beforeRemove` usage.
+- See [`example/clone_entity.cpp`](example/clone_entity.cpp) for cloning and `afterClone` use.
+
+### Component dependencies
+
+Automatically assign dependencies when assigning a component:
+
+```cpp
 world.entities().addDependency<MainComponent, Component0, Component1>();
 ```
 
-### Systems (implementing behavior)
+### Systems
 
-Systems implement behavior using one or more components. Implementations are subclasses of System<T> and must implement the update() method, as shown below.
-
-A basic movement system might be implemented with something like the following:
 ```cpp
 struct System2 : public System<System2> {
-    void onConfigure(mustache::World&, mustache::SystemConfig& config) override {
+    void onConfigure(World&, SystemConfig& config) override {
         config.update_after = {"System0", "System1"};
         config.update_before = {"System3"};
-        config.priority = 0; // default priority
     }
-    
-    void onUpdate(mustache::World&) override {
-        // run some jobs or do any other logic
-    }
-};
-```
 
-
-### Events (communicating between systems)
-
-Events are objects emitted by systems, typically when some condition is met. Listeners subscribe to an event type and will receive a callback for each event object emitted. An ``mustache::EventManager`` coordinates subscription and delivery of events between subscribers and emitters. Typically subscribers will be other systems, but need not be.
-Events are not part of the original ECS pattern, but they are an efficient alternative to component flags for sending infrequent data.
-
-As an example, we might want to implement a very basic collision system using our ``Position`` data from above.
-
-#### Creating event types
-
-First, we define the event type, which for our example is simply the two entities that collided:
-
-```c++
-struct Collision {
-  Entity left;
-  Entity right;
-};
-```
-
-#### Emitting events
-
-Next we implement our collision system, which emits ``Collision`` objects via an ``mustache::EventManager`` instance whenever two entities collide.
-
-```c++
-class CollisionSystem : public System<CollisionSystem> {
-protected:
-    void onUpdate(mustache::World& world) override {
-        world.entities().forEach([&](Entity first, const AABB& first_aabb){
-            world.entities().forEach([&](Entity second, const AABB& second_aabb){
-                if (collide(first_aabb, second_aabb)) {
-                    world.events().post(Collision{first, second});
-                }
-            });
-        });
+    void onUpdate(World&) override {
+        // Your logic
     }
 };
 ```
 
-#### Subscribing to events
+### Events
 
-Objects interested in receiving collision information can subscribe to ``Collision`` events by first subclassing the class ``Receiver<_EventType>``:
-
+Define:
 ```cpp
-struct DebugSystem : public System<DebugSystem>, public Receiver<Collision> {
-    void onConfigure(mustache::World&, mustache::SystemConfig& config) override {
+struct Collision { Entity left, right; };
+```
+
+Emit:
+```cpp
+world.events().post(Collision{first, second});
+```
+
+Subscribe:
+```cpp
+struct DebugSystem : public System<DebugSystem>, Receiver<Collision> {
+    void onConfigure(World&, SystemConfig&) override {
         world.events().subscribe<Collision>(this);
-        // you can use unsubscribe(); to stop getting events
     }
-    void onEvent(const Collision &collision) {
-        Logger{}.debug("entities collided: %d and %d", collision.first.id().toInt(), collision.second.id().toInt());
-    }
+    void onEvent(const Collision &event) override {}
 };
 ```
 
-You can also create subscriber by providing callback:
+Lambda-style:
 ```cpp
-// sub is a std::unique_ptr<Receiver<Collision> >, you can use sub.reset() to unsubscribe
-auto sub = event_manager.subscribe<Collision>([](const Collision& event){
-    // some logic
-});
-
+auto sub = event_manager.subscribe<Collision>([](const Collision& event){ });
 ```
 
 ## Integration
 
-You can use mustache in you projects by doing the following steps
-1. Clone or copy sources into your project eg. `cd third_party && git submodule add https://github.com/kirillochnev/mustache.git`
-2. Add mustache subdirectory with cmake `add_subdirectory(third_party/mustache)`
-3. Link mustache to your project `target_link_libraries(${PROJECT_NAME} mustache)`
+```cmake
+add_subdirectory(third_party/mustache)
+target_link_libraries(${PROJECT_NAME} mustache)
+```
 
 ## Performance
 
-The proposed entity-component system is incredibly fast to iterate entities and components, this is a fact. Some compilers make a lot of optimizations because of how mustache works, some others aren't that good. In general, if we consider real world cases, mustache is somewhere between a bit and much faster than many of the other solutions around, although I couldn't check them all for obvious reasons.
-
-Let's make a little benchmark.
-
-For this benchmark we will compare some ECS frameworks and classic OOP
-* [mustache](https://github.com/kirillochnev/mustache)
-* [mustache binding to LuaJit](https://github.com/kirillochnev/mustache-lua)
-* [EnTT (using owning groups)](https://github.com/skypjack/entt)
-* [EntityX](https://github.com/alecthomas/entityx)
-* [OpenEcs](https://github.com/Gronis/OpenEcs)
-* OOP
-* OOP with object pool
-
-We create entities with 2 components
-
-```cpp
-struct Position {
-    glm::vec<3, int32_t> value {0, 0, 0};
-};
-
-struct Velocity {
-    int32_t value { 1 };
-};
-```
-
-And call the next function for them
-
-```cpp
-inline void updatePositionFunction(Position& position, const Velocity& velocity) {
-    constexpr glm::vec<3, int32_t > forward {1, 1, 1};
-    position.value += forward * velocity.value;
-}
-    
-```
-
 Create time:
 ![Create time](doc/create.png "Benchmark Results: Create entities")
-_(lower is faster)_
-
 
 Update time:
-![Create time](doc/update.png "Benchmark Results: Create entities")
-_(lower is faster)_
+![Update time](doc/update.png "Benchmark Results: Update entities")
 
 ## Profiling
 
-Mustache has integration with [EasyProfiler](https://github.com/yse/easy_profiler).
-To enable profiling build mustache with cmake option `MUSTACHE_BUILD_WITH_EASY_PROFILER=ON`.
-You can choose profile depth by set `MUSTACHE_PROFILER_LVL` to 0, 1, 2 or 3.
+Enable with:
+```bash
+cmake -DMUSTACHE_BUILD_WITH_EASY_PROFILER=ON
+```
 
-This profiling result of mustache unit-tests:
+Then use EasyProfiler viewer:
 
 ![Profiling result](doc/test_frofiling_result.png "Tests profiling result")
+
