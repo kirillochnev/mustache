@@ -14,3 +14,7 @@ add_executable(mustache_example
 
 target_link_libraries(mustache_example mustache)
 
+
+
+add_executable(example_component_add_remove_events component_add_remove_events.cpp)
+target_link_libraries(example_component_add_remove_events mustache)
