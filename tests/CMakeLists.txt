@@ -47,6 +47,7 @@ add_executable(${PROJECT_NAME}
         world_storage.cpp
         shared_component.cpp
         mutate_while_iteration.cpp
+        reworked_component_data_storage.cpp
         c_api.cpp
 )
 

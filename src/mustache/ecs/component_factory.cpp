@@ -44,7 +44,7 @@ namespace {
                 components_info.resize(next_component_id.toInt() + 1);
             }
             components_info[next_component_id.toInt()] = info;
-            Logger{}.debug("New component: %s, id: %d", info.name, next_component_id.toInt());
+//            Logger{}.debug("New component: %s, id: %d", info.name, next_component_id.toInt());
             IdType return_value = next_component_id;
             ++next_component_id;
             return return_value;

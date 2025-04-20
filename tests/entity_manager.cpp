@@ -3,18 +3,46 @@
 #include <gtest/gtest.h>
 
 #include <map>
-
+#include <sstream>
 namespace {
     std::map<void*, std::string> created_components;
+    uint32_t _counter_ = 0;
+    void emplaceComponent(void* ptr, const std::string& str) {
+//        std::cout << "Component was added: " << ptr << std::endl;
 
+        ++_counter_;
+        const auto find_res = created_components.find(ptr);
+        if (find_res == created_components.end()) {
+            created_components.emplace(ptr, str);
+        } else {
+            throw std::runtime_error("Can not add " + str + " map already has it with name: " + find_res->second);
+        }
+    }
     template<size_t _I>
     struct ComponentWithCheck {
+        ComponentWithCheck(const ComponentWithCheck& oth) {
+            emplaceComponent(this, "ComponentWithCheck" + std::to_string(_I));
+        }
+        ComponentWithCheck(ComponentWithCheck&& oth) {
+            emplaceComponent(this, "ComponentWithCheck" + std::to_string(_I));
+        }
         ComponentWithCheck() {
-            created_components.emplace(this, "ComponentWithCheck" + std::to_string(_I));
+            emplaceComponent(this, "ComponentWithCheck" + std::to_string(_I));
         }
         ~ComponentWithCheck() {
+            if (created_components.find(this) == created_components.end()) {
+                std::cout << "Can not remove " << this << std::endl;
+                std::flush(std::cout);
+                exit(1);
+            }
+//            std::cout << "Component was removed: " << this << std::endl;
+            assert(_counter_ == created_components.size());
+            --_counter_;
             created_components.erase(this);
+            assert(_counter_ == created_components.size());
         }
+        ComponentWithCheck& operator=(ComponentWithCheck&&) = default;
+        ComponentWithCheck& operator=(const ComponentWithCheck&) = default;
     };
     template<size_t>
     struct PodComponent {
@@ -27,31 +55,32 @@ namespace {
 }
 
 TEST(EntityManager, create) {
+    constexpr uint32_t step_count = 100;
     ASSERT_EQ(created_components.size(), 0);
     {
         mustache::World world{mustache::WorldId::make(0)};
         std::vector<mustache::Entity> entity_array;
         const auto create_for_arch = [&entity_array, &world](mustache::Archetype &archetype) {
-            for (uint32_t i = 0; i < 100; ++i) {
+            for (uint32_t i = 0; i < step_count; ++i) {
                 entity_array.push_back(world.entities().create(archetype));
             }
         };
-        auto &arch0 = world.entities().getArchetype<ComponentWithCheck<0> >();
-        auto &arch1 = world.entities().getArchetype<ComponentWithCheck<0>, ComponentWithCheck<1> >();
-        auto &arch2 = world.entities().getArchetype<ComponentWithCheck<0>, ComponentWithCheck<1>, PodComponent<0> >();
-        auto &arch3 = world.entities().getArchetype<PodComponent<0> >();
+        auto& arch0 = world.entities().getArchetype<ComponentWithCheck<0> >();
+        auto& arch1 = world.entities().getArchetype<ComponentWithCheck<0>, ComponentWithCheck<1> >();
+        auto& arch2 = world.entities().getArchetype<ComponentWithCheck<0>, ComponentWithCheck<1>, PodComponent<0> >();
+        auto& arch3 = world.entities().getArchetype<PodComponent<0> >();
 
         create_for_arch(arch0);
-        ASSERT_EQ(created_components.size(), 100);
+        ASSERT_EQ(created_components.size(), step_count);
 
         create_for_arch(arch1);
-        ASSERT_EQ(created_components.size(), 300); // 100 for Component1 and 100 for Component2
+        ASSERT_EQ(created_components.size(), 3 * step_count); // 100 for Component1 and 100 for Component2
 
         create_for_arch(arch2);
-        ASSERT_EQ(created_components.size(), 500); // 100 for Component1 and 100 for Component2
+        ASSERT_EQ(created_components.size(), 5 * step_count); // 100 for Component1 and 100 for Component2
 
         create_for_arch(arch3);
-        ASSERT_EQ(created_components.size(), 500);
+        ASSERT_EQ(created_components.size(), 5 * step_count);
     }
     ASSERT_EQ(created_components.size(), 0);
 }

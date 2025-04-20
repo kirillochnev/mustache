@@ -7,6 +7,7 @@
 #include <mustache/ecs/component_factory.hpp>
 #include <mustache/ecs/new_component_data_storage.hpp>
 #include <mustache/ecs/default_component_data_storage.hpp>
+#include <mustache/ecs/stable_latency_component_data_storage.hpp>
 
 #include <cstring>
 
@@ -20,11 +21,11 @@ Archetype::Archetype(World& world, ArchetypeIndex id, const ComponentIdMask& mas
         operation_helper_{world.memoryManager(), mask},
         version_storage_{world.memoryManager(), mask.componentsCount(), chunk_size, makeComponentMask(mask)},
 //        data_storage_{std::make_unique<NewComponentDataStorage>(mask, world_.memoryManager())},
-        data_storage_{std::make_unique<DefaultComponentDataStorage>(mask, world_.memoryManager())},
+        data_storage_{std::make_unique<StableLatencyComponentDataStorage>(mask, world_.memoryManager())},
         entities_{world.memoryManager()},
         id_{id} {
     MUSTACHE_PROFILER_BLOCK_LVL_0(__FUNCTION__);
-    Logger{}.debug("Archetype version chunk size: %d", chunk_size);
+//    Logger{}.debug("Archetype version chunk size: %d", chunk_size);
 }
 
 Archetype::~Archetype() {
@@ -154,7 +155,6 @@ void Archetype::externalMove(Entity entity, Archetype& prev_archetype, Archetype
     MUSTACHE_PROFILER_BLOCK_LVL_2(__FUNCTION__);
 
     const auto index = pushBack(entity);
-
     ComponentIndex component_index = ComponentIndex::make(0);
     const auto source_view = prev_archetype.getElementView(prev_index);
     const auto dest_view = getElementView(index.toArchetypeIndex());
@@ -162,6 +162,7 @@ void Archetype::externalMove(Entity entity, Archetype& prev_archetype, Archetype
         auto prev_ptr = source_view.getData<FunctionSafety::kSafe>(prev_archetype.getComponentIndex<FunctionSafety::kSafe>(info.id));
         if (prev_ptr != nullptr) {
             auto component_ptr = dest_view.getData<FunctionSafety::kUnsafe>(component_index);
+//            Logger{}.debug("[[externalMove]] %p -> %p", prev_ptr, component_ptr);
             info.move(component_ptr, prev_ptr);
         }
         else {

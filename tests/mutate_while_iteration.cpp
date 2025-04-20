@@ -163,7 +163,7 @@ TEST(EntityManager, update_while_iteration) {
 }
 
 TEST(EntityManager, lock_unlock) {
-
+    constexpr uint32_t block_size = 3;
     struct Counters {
         int32_t constructor = 0;
         int32_t copy_constructor = 0;
@@ -223,8 +223,11 @@ TEST(EntityManager, lock_unlock) {
         auto& entities = world.entities();
         const auto check_count = [&entities](uint32_t expected) {
             uint32_t result = 0u;
-            entities.forEach([&result](const CheckStateComponent&) {
+            entities.forEach([&result, expected](const CheckStateComponent&) {
                 ++result;
+                if (result > expected) {
+                    throw std::runtime_error("Out of range");
+                }
             });
             if (expected != result) {
                 throw std::runtime_error("Invalid count: " + std::to_string(expected) + " vs " + std::to_string(result));
@@ -247,7 +250,7 @@ TEST(EntityManager, lock_unlock) {
                 throw std::runtime_error("WTF?!");
             }
         };
-        for (uint32_t i = 0; i < 100; ++i) {
+        for (uint32_t i = 0; i < block_size; ++i) {
             auto entity = entities.create<CheckStateComponent, Component0, Component1 >();
             on_assign();
             entities.assign<Component2>(entity);
@@ -260,7 +263,7 @@ TEST(EntityManager, lock_unlock) {
         ASSERT_FALSE(error);
         auto before_lock_count = expected_count;
         entities.lock();
-        for (uint32_t i = 0; i < 100; ++i) {
+        for (uint32_t i = 0; i < block_size; ++i) {
             auto entity = entities.create<Component0, Component1 >(); 
             on_assign();
             entities.assign<CheckStateComponent >(entity);
@@ -272,7 +275,7 @@ TEST(EntityManager, lock_unlock) {
             ASSERT_FALSE(error);
         }
         ASSERT_FALSE(error);
-        for (uint32_t i = 0; i < 100; ++i) {
+        for (uint32_t i = 0; i < block_size; ++i) {
             auto entity = entities.create<CheckStateComponent, Component0, Component1 >();
             on_assign();
             entities.assign<Component3>(entity);

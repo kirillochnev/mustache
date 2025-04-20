@@ -81,6 +81,7 @@ namespace mustache {
     };
 
     struct MUSTACHE_EXPORT ComponentInfo {
+        // TODO: make functions works with N components in 1 call
         using Constructor = Functor<void (void*, const Entity&, World&) >;
         using CopyFunction = Functor<void (void*, const void*) >;
         using MoveFunction = Functor<void (void* dest, void* source) >;

@@ -52,7 +52,7 @@ namespace mustache {
                 context_{file, function, line} {
 
         }
-        bool isDebugEnabled() const noexcept {
+        static constexpr bool isDebugEnabled() noexcept {
             return false;
         }
         template <typename... _ARGS>
@@ -65,11 +65,10 @@ namespace mustache {
         }
 
         template <typename... _ARGS>
-        void debug(_ARGS&&... args) const {
-            if(!isDebugEnabled()) {
-                return;
+        void debug(_ARGS&&... args  [[maybe_unused]]) const {
+            if constexpr (isDebugEnabled()) {
+                onMsg(LogLevel::kDebug, std::forward<_ARGS>(args)...);
             }
-            onMsg(LogLevel::kDebug, std::forward<_ARGS>(args)...);
         }
 
         template <typename... _ARGS>

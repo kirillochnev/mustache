@@ -46,11 +46,11 @@ namespace mustache {
             return size_ == 0u;
         }
 
-        MUSTACHE_INLINE void incSize() noexcept {
+        MUSTACHE_INLINE virtual void incSize() noexcept {
             ++size_;
         }
 
-        MUSTACHE_INLINE void decrSize() noexcept {
+        MUSTACHE_INLINE virtual void decrSize() noexcept {
             --size_;
         }
 

@@ -57,6 +57,7 @@ add_library(${PROJECT_NAME} ${MUSTACHE_LIB_TYPE}
     ${mustache_SOURCE_DIR}/src/mustache/utils/container_queue.hpp
     ${mustache_SOURCE_DIR}/src/mustache/utils/container_deque.hpp
     ${mustache_SOURCE_DIR}/src/mustache/utils/container_vector.hpp
+    ${mustache_SOURCE_DIR}/src/mustache/utils/stable_latency_storage.hpp
 
 
     ${mustache_SOURCE_DIR}/src/mustache/utils/dll_export.h
@@ -117,6 +118,8 @@ add_library(${PROJECT_NAME} ${MUSTACHE_LIB_TYPE}
     ${mustache_SOURCE_DIR}/src/mustache/ecs/base_component_data_storage.hpp
     ${mustache_SOURCE_DIR}/src/mustache/ecs/default_component_data_storage.cpp
     ${mustache_SOURCE_DIR}/src/mustache/ecs/default_component_data_storage.hpp
+    ${mustache_SOURCE_DIR}/src/mustache/ecs/stable_latency_component_data_storage.cpp
+    ${mustache_SOURCE_DIR}/src/mustache/ecs/stable_latency_component_data_storage.hpp
     ${mustache_SOURCE_DIR}/src/mustache/ecs/new_component_data_storage.cpp
     ${mustache_SOURCE_DIR}/src/mustache/ecs/new_component_data_storage.hpp
     ${mustache_SOURCE_DIR}/src/mustache/ecs/event_manager.cpp

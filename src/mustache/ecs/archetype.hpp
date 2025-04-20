@@ -213,7 +213,7 @@ namespace mustache {
         const SharedComponentsInfo shared_components_info_;
         ArchetypeOperationHelper operation_helper_;
         VersionStorage version_storage_;
-        std::unique_ptr<DefaultComponentDataStorage> data_storage_;
+        std::unique_ptr<BaseComponentDataStorage> data_storage_;
         ArrayWrapper<Entity, ArchetypeEntityIndex, true> entities_;
         const ArchetypeIndex id_;
     };

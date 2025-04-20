@@ -5,8 +5,10 @@
 #pragma once
 
 #include <mustache/utils/span.hpp>
+#include <mustache/utils/logger.hpp>
 #include <cstdint>
 #include <cstddef>
+#include <cstring>
 #include <utility>
 #include <array>
 
@@ -40,7 +42,7 @@ namespace mustache {
         }
 
         [[nodiscard]] Size capacity() const noexcept {
-            return capacityFirst() + capacitySecond();
+            return max(capacityFirst(), capacitySecond());
         }
 
         [[nodiscard]] bool needGrow() const noexcept {
@@ -78,6 +80,49 @@ namespace mustache {
     template<bool _Const, typename _Storage>
     class StableLatencyStorageIterator;
 
+    template<typename T, typename Size>
+    struct StableLatencyStorageBuffer {
+        T* data_ = nullptr;
+        ~StableLatencyStorageBuffer() {
+            clear();
+        }
+        const T* data() const noexcept {
+            return data_;
+        }
+        T* data() noexcept {
+            return data_;
+        }
+        bool empty() const noexcept {
+            return data_ == nullptr;
+        }
+        void resize(Size size, Size alignment = alignof(T)) {
+            clear();
+            const std::size_t total_size = sizeof(T) * size;
+            const std::size_t aligned_size = (total_size + alignment - 1) & ~(alignment - 1);
+
+            data_ = static_cast<T*>(aligned_alloc(alignment, aligned_size));
+//            Logger{}.hideContext().debug("[[Resize]] allocated memory %p -> %p", data_, data_ + size);
+
+//                std::cout << "memory allocated for "<< size << " items. begin: " << data_ << ", end: " << &data_[size] << " | ";
+        }
+        void clear() {
+//            Logger{}.hideContext().debug("[[CLEAR]] released memory: %p", data_);
+
+            free(data_);
+            data_ = nullptr;
+        }
+        operator T*() noexcept {
+            return data_;
+        }
+        operator const T*() const noexcept {
+            return data_;
+        }
+
+        static void swap(StableLatencyStorageBuffer& a, StableLatencyStorageBuffer& b) noexcept {
+            std::swap(a.data_, b.data_);
+        }
+    };
+
     template <typename T, typename _SizeType = std::size_t>
     class StableLatencyStorage : public StableLatencyStorageBase<StableLatencyStorage<T, _SizeType>, _SizeType> {
 
@@ -100,11 +145,12 @@ namespace mustache {
         using element_type = T;
         using iterator = StableLatencyStorageIterator<false, StorageType>;
         using const_iterator = StableLatencyStorageIterator<true, StorageType>;
+        static constexpr Size initial_capacity = 32;
         enum BufferName : Size {
             kFirst = Size(0ull),
             kSecond = ~kFirst
         };
-        explicit StableLatencyStorage(Size capacity = 32): capacity_ {capacity} {
+        explicit StableLatencyStorage(Size capacity = initial_capacity): capacity_ {capacity} {
 //            std::cout << "[Reallocate Chunks] before: capacity: {" << 0 << "; " << capacitySecondImpl() << "}  | ";
             buffers_[0].resize(capacity);
 //            std::cout << "after: capacity: {" << capacityFirstImpl() << "; " << capacitySecondImpl() << "}" << std::endl;
@@ -182,7 +228,7 @@ namespace mustache {
 //            std::flush(std::cout);
             if (!buffers_[1].empty()) {
                 CArray::swap(buffers_[0], buffers_[1]);
-                capacity_ *= 2;
+                capacity_ = (capacity_ == 0ull) ? initial_capacity : (capacity_ * 2ull);
             }
             buffers_[1].resize(capacity_ * 2);
 //            std::cout << "after: capacity: {" << capacityFirstImpl() << "; " << capacitySecondImpl() << "}" << std::endl;
@@ -327,44 +373,7 @@ namespace mustache {
             return buffers_[1].empty() ? 0 : capacity_ * 2;
         }
 
-        struct CArray {
-            T* data_ = nullptr;
-            ~CArray() {
-                clear();
-            }
-            const T* data() const noexcept {
-                return data_;
-            }
-            T* data() noexcept {
-                return data_;
-            }
-            bool empty() const noexcept {
-                return data_ == nullptr;
-            }
-            void resize(Size size) {
-                clear();
-                const std::size_t total_size = sizeof(T) * size;
-                const std::size_t alignment = alignof(T);
-                const std::size_t aligned_size = (total_size + alignment - 1) & ~(alignment - 1);
-
-                data_ = static_cast<T*>(aligned_alloc(alignment, aligned_size));
-//                std::cout << "memory allocated for "<< size << " items. begin: " << data_ << ", end: " << &data_[size] << " | ";
-            }
-            void clear() {
-                free(data_);
-                data_ = nullptr;
-            }
-            operator T*() noexcept {
-                return data_;
-            }
-            operator const T*() const noexcept {
-                return data_;
-            }
-
-            static void swap(CArray& a, CArray& b) noexcept {
-                std::swap(a.data_, b.data_);
-            }
-        };
+        using CArray = StableLatencyStorageBuffer<T, Size>;
         CArray buffers_[2];
         Size capacity_;
     };

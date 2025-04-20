@@ -36,7 +36,7 @@ DefaultComponentDataStorage::DefaultComponentDataStorage(const ComponentIdMask& 
 
         chunk_size_ = offset.alignAs(chunk_align_).toInt();
     }
-    Logger{}.debug("New ComponentDataStorage has been created, components: %s | chunk capacity: %d",
+    Logger{}.debug("DefaultComponentDataStorage has been created, components: %s | chunk capacity: %d",
                   mask.toString().c_str(), chunkCapacity().toInt());
 }
 
