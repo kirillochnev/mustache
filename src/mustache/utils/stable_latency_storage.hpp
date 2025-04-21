@@ -5,7 +5,6 @@
 #pragma once
 
 #include <mustache/utils/span.hpp>
-#include <mustache/utils/logger.hpp>
 #include <cstdint>
 #include <cstddef>
 #include <cstring>
@@ -99,15 +98,9 @@ namespace mustache {
             clear();
             const std::size_t total_size = sizeof(T) * size;
             const std::size_t aligned_size = (total_size + alignment - 1) & ~(alignment - 1);
-
             data_ = static_cast<T*>(aligned_alloc(alignment, aligned_size));
-//            Logger{}.hideContext().debug("[[Resize]] allocated memory %p -> %p", data_, data_ + size);
-
-//                std::cout << "memory allocated for "<< size << " items. begin: " << data_ << ", end: " << &data_[size] << " | ";
         }
         void clear() {
-//            Logger{}.hideContext().debug("[[CLEAR]] released memory: %p", data_);
-
             free(data_);
             data_ = nullptr;
         }

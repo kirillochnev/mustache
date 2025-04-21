@@ -3,54 +3,55 @@
 //
 
 #include "stable_latency_component_data_storage.hpp"
+#include <mustache/utils/memory_manager.hpp>
+#include <mustache/utils/profiler.hpp>
 #include "mustache/utils/logger.hpp"
 #include "component_factory.hpp"
 #include <cassert>
 
 using namespace mustache;
 namespace {
-    constexpr size_t initial_capacity = 16 * 1024;
+    constexpr size_t initial_capacity = 1;
 }
 
-StableLatencyComponentDataStorage::StableLatencyComponentDataStorage(const ComponentIdMask& mask, MemoryManager&):
-    capacity_{initial_capacity} {
-    MUSTACHE_PROFILER_BLOCK_LVL_0(__FUNCTION__);
-    if (!mask.isEmpty()) {
-        component_infos_.reserve(mask.componentsCount());
-
-        auto offset = ComponentOffset::make(0u);
-        mask.forEachItem([this, &offset](ComponentId id) {
-            const auto& info = ComponentFactory::instance().componentInfo(id);
-            if (offset.toInt() == 0) {
-                block_align_ = static_cast<uint32_t>(info.align);
-            } else {
-                offset = offset.alignAs(static_cast<uint32_t>(info.align));
-            }
-            ComponentDataInfo data_info;
-            data_info.offset = offset.toInt();
-            data_info.size = info.size;
-            data_info.move = info.functions.move_constructor;
-            data_info.destructor = info.functions.destroy;
-            component_infos_.push_back(data_info);
-            offset = offset.add(info.size);
-        });
-
-        block_size_ = offset.alignAs(block_align_).toInt();
+// Реализация inline-методов и конструктора
+StableLatencyComponentDataStorage::StableLatencyComponentDataStorage(
+        const ComponentIdMask& mask,
+        MemoryManager& memory_manager):
+        capacity_(initial_capacity),
+        buffers_{Buffer{memory_manager}, Buffer{memory_manager}} {
+    MUSTACHE_PROFILER_BLOCK_LVL_0("StableLatencyComponentDataStorage::ctor");
+    // Построение локальной информации и вычисление смещений внутри блока
+    size_t offset = 0;
+    block_align_ = 0;
+    for (auto cid : mask.items()) {
+        const auto& info = ComponentFactory::instance().componentInfo(cid);
+        if (offset == 0) {
+            block_align_ = static_cast<uint32_t>(info.align);
+        } else {
+            offset = (offset + info.align - 1) & ~(info.align - 1);
+        }
+        Meta meta {
+                {nullptr, nullptr}, info.size, offset,
+                info.functions.move_constructor_and_destroy
+        };
+        meta_.push_back(meta);
+        offset += info.size;
     }
-    buffers_[0].resize(capacity_ * block_size_, block_align_);
-//    Logger{}.debug("StableLatencyComponentDataStorage has been created, components: %s | initial capacity: %d",
-//                   mask.toString().c_str(), capacity_);
+    block_size_ = (offset + block_align_ - 1) & ~(block_align_ - 1);
+
+    buffers_[0].resize(static_cast<uint32_t>(capacity_ * block_size_), block_align_);
+    precomputeBases();
 }
 
-void StableLatencyComponentDataStorage::grow() {
-    MUSTACHE_PROFILER_BLOCK_LVL_1(__FUNCTION__);
-    if (!buffers_[1].empty()) {
-        Buffer::swap(buffers_[0], buffers_[1]);
-        capacity_ = (capacity_ == 0ull) ? initial_capacity : (capacity_ * 2ull);
+void StableLatencyComponentDataStorage::clear(bool free_chunks) {
+    size_ = 0;
+    migration_pos_ = 0;
+    capacity_ = 0;
+    if (free_chunks) {
+        buffers_[0].clear();
+        buffers_[1].clear();
     }
-
-    buffers_[1].resize( capacity_ * 2 * block_size_, block_align_);
-    migration_pos_ = size_;
 }
 
 void StableLatencyComponentDataStorage::reserve(size_t new_capacity) {
@@ -58,10 +59,46 @@ void StableLatencyComponentDataStorage::reserve(size_t new_capacity) {
         size_ = static_cast<uint32_t >(new_capacity);
         return;
     }
-//    Logger{}.debug("[[INSERT]] new size %d", new_capacity);
-//    assert(new_capacity == size_ + 1);
+
     while (size_ < new_capacity) {
         incSize();
+    }
+    precomputeBases();
+}
+
+void StableLatencyComponentDataStorage::incSize() noexcept {
+    if (needGrow()) grow();
+    if (isMigrationStage()) {
+        migrationSteps(migrationStepsCount());
+    } else {
+        ++migration_pos_;
+    }
+    ++size_;
+}
+
+void StableLatencyComponentDataStorage::decrSize() noexcept {
+    --size_;
+    migration_pos_ = std::min(size_, migration_pos_);
+}
+
+bool StableLatencyComponentDataStorage::isMigrationStage() const noexcept {
+    return size_ >= capacity_;
+}
+
+bool StableLatencyComponentDataStorage::needGrow() const noexcept {
+    return buffers_[1].empty() ? (size_ >= capacity_) : (size_ >= 2 * capacity_);
+}
+
+uint32_t StableLatencyComponentDataStorage::migrationStepsCount() noexcept {
+    return 1;
+}
+
+void StableLatencyComponentDataStorage::precomputeBases() noexcept {
+    const size_t cap1 = static_cast<size_t>(capacity_);
+    const size_t cap2 = buffers_[1].empty() ? cap1 : cap1 * 2;
+    for (auto& meta : meta_) {
+        meta.base[0] = buffers_[0].data_ + meta.offset * cap1;
+        meta.base[1] = buffers_[1].empty() ? nullptr : buffers_[1].data_ + meta.offset * cap2;
     }
 }
 
@@ -71,32 +108,42 @@ void StableLatencyComponentDataStorage::emplace(ComponentStorageIndex position) 
     reserve(next.toInt());
 }
 
-bool StableLatencyComponentDataStorage::migrationSteps(StableLatencyComponentDataStorage::Size count) {
+void StableLatencyComponentDataStorage::grow() {
+    if (!buffers_[1].empty()) {
+        Buffer::swap(buffers_[0], buffers_[1]);
+        capacity_ = capacity_ == 0 ? initial_capacity : capacity_ * 2;
+    }
+    buffers_[1].resize(static_cast<uint32_t>(capacity_ * 2 * block_size_), block_align_);
+    migration_pos_ = size_;
+    precomputeBases();
+}
+
+bool StableLatencyComponentDataStorage::migrationSteps(uint32_t count) {
     if (migration_pos_ == 0 || buffers_[1].empty()) {
         return false;
     }
     count = count == 0 ? migration_pos_ : std::min(count, migration_pos_);
-    const auto migration_start = migration_pos_ - count;
-//    Logger{}.debug("\t[[MIGRATION]] steps: %d, migration_pos_: %d, migration_start: %d", count, migration_pos_, migration_start);
-    for (const auto& info : component_infos_) {
-        const auto component_arr_offset_source = info.offset * capacity_;
-        const auto component_arr_offset_dest = info.offset * capacity_ * 2;
-        const auto component_arr_begin_source = buffers_[0].data_ + component_arr_offset_source;
-        const auto component_arr_begin_dest = buffers_[1].data_ + component_arr_offset_dest;
-
-        auto source = component_arr_begin_source + info.size * migration_start;
-        auto dest = component_arr_begin_dest + info.size * migration_start;
-//                auto source = buffers_[0].data_ + (info.offset * capacity_ + migration_start) * info.size;
-//                auto dest = buffers_[1].data_ + (2 * info.offset * capacity_ + migration_start) * info.size;
-        for (Size i = 0; i < count; ++i) {
-            info.move(dest, source);
-            if (info.destructor) {
-                info.destructor(source);
-            }
-            dest += info.size;
-            source += info.size;
+    uint32_t start = migration_pos_ - count;
+    for (auto& meta : meta_) {
+        std::byte* source = meta.base[0] + meta.stride * start;
+        std::byte* dest   = meta.base[1] + meta.stride * start;
+        for (uint32_t i = 0; i < count; ++i) {
+            meta.move_and_destroy(dest, source);
+            dest   += meta.stride;
+            source += meta.stride;
         }
     }
     migration_pos_ -= count;
     return migration_pos_ == 0;
+}
+
+void StableLatencyComponentDataStorage::Buffer::resize(size_t total_size, size_t alignment) {
+    clear();
+    const std::size_t aligned_size = (total_size + alignment - 1) & ~(alignment - 1);
+    data_ = static_cast<std::byte*>(memory_manager_->allocate(aligned_size, alignment));
+}
+
+void StableLatencyComponentDataStorage::Buffer::clear() {
+    memory_manager_->deallocate(data_);
+    data_ = nullptr;
 }
