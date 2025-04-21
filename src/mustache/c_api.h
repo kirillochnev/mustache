@@ -58,6 +58,8 @@ typedef struct {
 
     void (* move_constructor)(void*, void*);
 
+    void (* move_constructor_and_destroy_source)(void*, void*);
+
     void (* destroy)(void*);
 } TypeInfoFunctions;
 

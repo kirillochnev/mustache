@@ -46,6 +46,9 @@ void* mustache::MemoryManager::allocate(size_t size, size_t align MEMORY_MANAGER
     file_to_size[location] += size;
     ptr_to_file[ptr] = location;
 #endif
+    if (ptr == nullptr) {
+        ptr = malloc(size);
+    }
     return ptr;
 }
 

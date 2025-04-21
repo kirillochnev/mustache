@@ -101,6 +101,7 @@ namespace converter {
         type_info.functions.copy = info.functions.copy;
         type_info.functions.move = info.functions.move;
         type_info.functions.move_constructor = info.functions.move_constructor;
+        type_info.functions.move_constructor_and_destroy = info.functions.move_constructor_and_destroy_source;
         type_info.functions.destroy = info.functions.destroy;
         if (info.default_value != nullptr) {
             type_info.default_value.resize(info.size);

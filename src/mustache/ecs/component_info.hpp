@@ -100,6 +100,7 @@ namespace mustache {
             CopyFunction copy;
             MoveFunction move;
             MoveFunction move_constructor;
+            MoveFunction move_constructor_and_destroy;
             Destructor destroy;
             IsEqual compare;
             BeforeRemove before_remove;
@@ -219,6 +220,24 @@ namespace mustache {
             }
         }
         template<typename T>
+        static void componentMoveConstructorAndDestroy([[maybe_unused]] void* dest, [[maybe_unused]] void* source) {
+            if constexpr (std::is_move_constructible_v<T>) {
+                new(dest) T{ std::move(*static_cast<T*>(source)) };
+            }
+            else {
+                if constexpr (std::is_default_constructible_v<T>) {
+                    T* ptr = new(dest) T{};
+                    *std::launder(ptr) = std::move(*static_cast<T*>(source));
+                }
+                else {
+                    error(type_name<T>() + " is not move constructible");
+                }
+            }
+            if constexpr (!std::is_trivially_destructible_v<T>) {
+                std::destroy_at(reinterpret_cast<T*>(source));
+            }
+        }
+        template<typename T>
         static bool componentComparator([[maybe_unused]] const void* lhs, [[maybe_unused]] const void* rhs) {
             if constexpr (detail::testOperatorEq<T>(nullptr)) {
                 return *static_cast<const T*>(lhs) == *static_cast<const T*>(rhs);
@@ -242,6 +261,7 @@ namespace mustache {
                         &copyComponent<T>,
                         &moveComponent<T>,
                         &componentMoveConstructor<T>,
+                        &componentMoveConstructorAndDestroy<T>,
                         std::is_trivially_destructible<T>::value ? ComponentInfo::Destructor{} : &componentDestructor<T>,
                         &componentComparator<T>,
                         detail::hasBeforeRemove<T>(nullptr) ? &beforeComponentRemove<T> : ComponentInfo::BeforeRemove{},
