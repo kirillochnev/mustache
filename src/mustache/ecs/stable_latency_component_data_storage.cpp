@@ -22,10 +22,8 @@ StableLatencyComponentDataStorage::StableLatencyComponentDataStorage(
         MemoryManager& memory_manager) :
         capacity_(0),
         buffers_{Buffer{memory_manager}, Buffer{memory_manager}} {
-
     MUSTACHE_PROFILER_BLOCK_LVL_0("StableLatencyComponentDataStorage::ctor");
 
-    // Построение локальной информации и вычисление смещений внутри блока
     size_t offset = 0;
     block_align_ = 0;
     uint32_t component_index = 0;
@@ -52,7 +50,7 @@ StableLatencyComponentDataStorage::StableLatencyComponentDataStorage(
                                  ComponentIndex::make(component_index++)};
     }
 
-    block_size_ = (offset + block_align_ - 1) & ~(block_align_ - 1);
+    block_size_ = (offset + block_align_ - 1ull) & ~(block_align_ - 1ull);
 
     if (block_size_ > 0) {
         const size_t default_allocation = std::max(

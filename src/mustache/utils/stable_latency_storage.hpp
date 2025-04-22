@@ -75,7 +75,6 @@ namespace mustache {
     };
 
 
-
     template<bool _Const, typename _Storage>
     class StableLatencyStorageIterator;
 
@@ -144,10 +143,7 @@ namespace mustache {
             kSecond = ~kFirst
         };
         explicit StableLatencyStorage(Size capacity = initial_capacity): capacity_ {capacity} {
-//            std::cout << "[Reallocate Chunks] before: capacity: {" << 0 << "; " << capacitySecondImpl() << "}  | ";
             buffers_[0].resize(capacity);
-//            std::cout << "after: capacity: {" << capacityFirstImpl() << "; " << capacitySecondImpl() << "}" << std::endl;
-
         }
         StableLatencyStorage(const StableLatencyStorage& rhs) {
             copyFrom(rhs);
@@ -217,30 +213,21 @@ namespace mustache {
         }
 
         void reallocateChunks() {
-//            std::cout << "[Reallocate Chunks] before: capacity: {" << capacityFirstImpl() << "; " << capacitySecondImpl() << "}  | ";
-//            std::flush(std::cout);
             if (!buffers_[1].empty()) {
                 CArray::swap(buffers_[0], buffers_[1]);
                 capacity_ = (capacity_ == 0ull) ? initial_capacity : (capacity_ * 2ull);
             }
             buffers_[1].resize(capacity_ * 2);
-//            std::cout << "after: capacity: {" << capacityFirstImpl() << "; " << capacitySecondImpl() << "}" << std::endl;
-//            std::flush(std::cout);
             migration_pos_ = size_;
         }
 
 
         template<typename... ARGS>
         void insertAt(Size index, ARGS&&... args) {
-//            std::cout << "[INSERT] ";
             if (buffers_[1].empty()) {
-//                std::cout << "Placement new at: " << buffers_[0].data_ + index << std::endl;
                 new (buffers_[0].data_ + index) T(std::forward<ARGS>(args)...);
-//                std::cout << "Set data[0][" << index << "] = " << T(args...) << std::endl;
             } else {
-//                std::cout << "Placement new at: " << buffers_[1].data_ + index << std::endl;
                 new (buffers_[1].data_ + index) T(std::forward<ARGS>(args)...);
-//                std::cout << "Set data[1][" << index << "] = " << T(args...) << std::endl;
             }
         }
 
@@ -258,7 +245,6 @@ namespace mustache {
             } else {
                 for (Size i = 0; i < count; ++i) {
                     dest[i] = std::move(source[i]);
-//                    std::cout << "Moving " << dest[i] << ", at " << offset + i << std::endl;
                 }
             }
             destroy(source, source + count);
@@ -281,8 +267,6 @@ namespace mustache {
         }
         T& operator[](Size index) noexcept {
             const Size buffer_index = index >= migration_pos_;
-//            std::cout << "Capacity: " << capacity_ << ", size: "
-//            << size_ << ", data[" << buffer_index << "][" << index << "] = " << buffers_[buffer_index][index] << std::endl;
             return buffers_[buffer_index][index];
         }
 
@@ -386,12 +370,10 @@ namespace mustache {
         using reference = value_type&;
         using iterator_category = std::random_access_iterator_tag;
 
-        // Конструкторы
         StableLatencyStorageIterator() noexcept : container_(nullptr), index_(0) {}
         StableLatencyStorageIterator(StableLatencyStorage* container, Size index) noexcept
                 : container_(container), index_(index) {}
 
-        // Операторы сравнения
         bool operator==(const StableLatencyStorageIterator& other) const noexcept {
             return container_ == other.container_ && index_ == other.index_;
         }
@@ -400,7 +382,6 @@ namespace mustache {
             return !(*this == other);
         }
 
-        // Доступ к элементу
         reference operator*() const noexcept {
             return (*container_)[index_];
         }
@@ -409,7 +390,6 @@ namespace mustache {
             return &(operator*());
         }
 
-        // Инкремент/декремент
         StableLatencyStorageIterator& operator++() noexcept {
             ++index_;
             return *this;
@@ -432,7 +412,6 @@ namespace mustache {
             return tmp;
         }
 
-        // Арифметические операции
         StableLatencyStorageIterator& operator+=(difference_type n) noexcept {
             index_ += n;
             return *this;
@@ -459,7 +438,6 @@ namespace mustache {
             return index_ - other.index_;
         }
 
-        // Операторы сравнения для случайного доступа
         bool operator<(const StableLatencyStorageIterator& other) const noexcept {
             return index_ < other.index_;
         }
@@ -476,7 +454,6 @@ namespace mustache {
             return !(*this < other);
         }
 
-        // Индексация
         reference operator[](difference_type n) const noexcept {
             return (*container_)[index_ + n];
         }

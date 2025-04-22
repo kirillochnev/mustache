@@ -30,9 +30,7 @@ namespace mustache {
         MUSTACHE_INLINE void* getDataUnsafe(ComponentIndex ci, ComponentStorageIndex idx) const noexcept final {
             const uint32_t comp = ci.toInt();
             const uint32_t i    = idx.toInt();
-            const uint32_t useHigh  = (i >= migration_pos_);
             const auto& meta       = meta_[comp];
-//            std::byte* base     = useHigh ? meta.base[1] : meta.base[0];
             return meta.base[i >= migration_pos_] + meta.stride * i;
         }
 
@@ -53,7 +51,6 @@ namespace mustache {
             return result;
         }
         MUSTACHE_INLINE std::pair<void*, ComponentIndex> getDataUnsafe(ComponentId id, ComponentStorageIndex idx) const noexcept {
-            fits_in_min_cache_lines<StableLatencyComponentDataStorage>::check();
             const uint32_t comp = id.toInt();
             const uint32_t i = idx.toInt();
             const auto& meta = get_meta_[comp];
@@ -126,4 +123,4 @@ namespace mustache {
         vector<Meta> meta_;
     };
 
-} // namespace mustache
+}

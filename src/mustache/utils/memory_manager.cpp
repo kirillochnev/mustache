@@ -21,17 +21,6 @@
 #include <sys/mman.h>
 #endif
 
-#if MEMORY_MANAGER_COLLECT_STATISTICS
-#define MEMORY_MANAGER_STATISTICS_ARG_DECL , const char* file, uint32_t line
-namespace {
-    size_t total_size = 0;
-    mustache::map<void*, std::string> ptr_to_file;
-    mustache::map<std::string, size_t> file_to_size;
-}
-#else
-#define MEMORY_MANAGER_STATISTICS_ARG_DECL
-#endif
-
 namespace {
     constexpr size_t page_size = 1 << 12;
     constexpr size_t large_page_size = 1 << 21;
@@ -41,7 +30,7 @@ namespace {
 
 using namespace mustache;
 
-void* MemoryManager::allocate(size_t size, size_t align MEMORY_MANAGER_STATISTICS_ARG_DECL) noexcept {
+void* MemoryManager::allocate(size_t size, size_t align) noexcept {
     MUSTACHE_PROFILER_BLOCK_LVL_3("MemoryManager::allocate");
 #ifdef _MSC_BUILD
 #define ALIGNED_ALLOC(size, align) _aligned_malloc(size, align)
@@ -50,7 +39,11 @@ void* MemoryManager::allocate(size_t size, size_t align MEMORY_MANAGER_STATISTIC
 #else
 #define ALIGNED_ALLOC(size, align) aligned_alloc(align, size)
 #endif
-
+    constexpr size_t min_align = 8;
+    if (align < min_align) {
+        align = min_align;
+        size = (size + align - 1) & ~(align - 1);
+    }
 #ifdef __APPLE__
     void* ptr = (align < 8) ? malloc(size) : ALIGNED_ALLOC(size, align);
 #else
@@ -59,12 +52,6 @@ void* MemoryManager::allocate(size_t size, size_t align MEMORY_MANAGER_STATISTIC
 
 #undef ALIGNED_ALLOC
 
-#if MEMORY_MANAGER_COLLECT_STATISTICS
-    total_size += size;
-    const auto location = file + std::string(":") + std::to_string(line);
-    file_to_size[location] += size;
-    ptr_to_file[ptr] = location;
-#endif
     if (ptr == nullptr) {
         ptr = malloc(size);
     }
@@ -78,38 +65,15 @@ void* MemoryManager::allocateAndClear(size_t size, size_t align) noexcept {
     return result;
 }
 
-void MemoryManager::deallocate(void* ptr MEMORY_MANAGER_STATISTICS_ARG_DECL) noexcept {
+void MemoryManager::deallocate(void* ptr) noexcept {
     MUSTACHE_PROFILER_BLOCK_LVL_3("MemoryManager::deallocate");
     if (ptr) {
-#if MEMORY_MANAGER_COLLECT_STATISTICS
-        (void )file;
-        (void ) line;
-        const auto size = malloc_usable_size(ptr);
-        total_size -= size;
-        file_to_size[ptr_to_file[ptr]] -= size;
-#endif
-
 #ifdef _MSC_BUILD
         _aligned_free(ptr);
 #else
         free(ptr);
 #endif
-
     }
-}
-
-void MemoryManager::showStatistic() const noexcept {
-    MUSTACHE_PROFILER_BLOCK_LVL_3("MemoryManager::showStatistic");
-#if MEMORY_MANAGER_COLLECT_STATISTICS
-    for (const auto& pair : file_to_size) {
-        if (pair.second > 0) {
-            const auto mbytes = static_cast<float>(pair.second) / 1024.0f / 1024.f;
-            Logger{}.info("File: %s, size: %dMB", pair.first.c_str(), mbytes);
-        }
-    }
-#else
-    Logger{}.error("Set MEMORY_MANAGER_COLLECT_STATISTICS 1");
-#endif
 }
 
 void* MemoryManager::allocateSmart(size_t size, size_t align, bool allow_pages, bool allow_large_pages) noexcept {

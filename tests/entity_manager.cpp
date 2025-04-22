@@ -55,7 +55,7 @@ namespace {
 }
 
 TEST(EntityManager, create) {
-    constexpr uint32_t step_count = 100;
+    static constexpr uint32_t step_count = 100;
     ASSERT_EQ(created_components.size(), 0);
     {
         mustache::World world{mustache::WorldId::make(0)};
