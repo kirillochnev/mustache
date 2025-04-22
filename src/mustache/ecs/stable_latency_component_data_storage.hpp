@@ -1,7 +1,9 @@
 // stable_latency_component_data_storage_optimized.hpp
 #pragma once
 
-#include <mustache/utils/stable_latency_storage.hpp>
+
+#include <mustache/utils/default_settings.hpp>
+#include <mustache/utils/array_wrapper.hpp>
 #include <mustache/ecs/base_component_data_storage.hpp>
 #include <mustache/ecs/component_factory.hpp>
 #include <mustache/ecs/component_mask.hpp>
@@ -13,8 +15,7 @@ namespace mustache {
 
     class MemoryManager;
 
-/// Оптимизированное хранилище с предвычисленными метаданными
-    class StableLatencyComponentDataStorage final : public BaseComponentDataStorage {
+    class alignas(128) StableLatencyComponentDataStorage final : public BaseComponentDataStorage {
     public:
         StableLatencyComponentDataStorage(const ComponentIdMask& mask, MemoryManager& mmgr);
         ~StableLatencyComponentDataStorage() = default;
@@ -41,6 +42,23 @@ namespace mustache {
             }
             return nullptr;
         }
+        MUSTACHE_INLINE std::pair<void*, ComponentIndex> getDataSafe(ComponentId id, ComponentStorageIndex idx) const noexcept {
+            std::pair<void*, ComponentIndex> result = {nullptr, ComponentIndex{}};
+            if (get_meta_.size() > id.toInt()) {
+                const uint32_t comp = id.toInt();
+                const uint32_t i = idx.toInt();
+                const auto& meta = get_meta_[comp];
+                result = {meta.base[i >= migration_pos_] + meta.stride * i, meta.index};
+            }
+            return result;
+        }
+        MUSTACHE_INLINE std::pair<void*, ComponentIndex> getDataUnsafe(ComponentId id, ComponentStorageIndex idx) const noexcept {
+            fits_in_min_cache_lines<StableLatencyComponentDataStorage>::check();
+            const uint32_t comp = id.toInt();
+            const uint32_t i = idx.toInt();
+            const auto& meta = get_meta_[comp];
+            return {meta.base[i >= migration_pos_] + meta.stride * i, meta.index};
+        }
 
         uint32_t distToChunkEnd(ComponentStorageIndex index) const noexcept override {
             if (index.toInt() < migration_pos_) {
@@ -54,18 +72,24 @@ namespace mustache {
         void decrSize() noexcept override;
 
     private:
+        struct alignas(32) GetMeta {
+            std::array<std::byte*, 2> base;
+            uint32_t   stride;
+            ComponentIndex index;
+        };
+
         struct Meta {
             std::array<std::byte*, 2> base;
             size_t    stride;
             size_t offset;
             ComponentInfo::MoveFunction move_and_destroy;
+            ComponentId id;
         };
         struct Buffer {
             std::byte* data_ = nullptr;
             MemoryManager* memory_manager_ = nullptr;
             explicit Buffer(MemoryManager& manager):
                     memory_manager_{&manager} {
-
             }
             ~Buffer() {
                 clear();
@@ -93,14 +117,13 @@ namespace mustache {
         void grow();
         bool migrationSteps(uint32_t count = 0);
 
+        vector<GetMeta> get_meta_;
         uint32_t migration_pos_ = 0;
-        uint32_t capacity_;
-        std::vector<Meta> meta_;
+        uint32_t capacity_ = 0;
         std::array<Buffer, 2> buffers_;
         uint32_t block_align_ = 0;
         size_t block_size_  = 0;
+        vector<Meta> meta_;
     };
-
-
 
 } // namespace mustache

@@ -5,35 +5,36 @@
 #include <mustache/utils/default_settings.hpp>
 
 namespace mustache {
-template<typename T>
-class Allocator;
+    template<typename T>
+    class Allocator;
 
 #define MEMORY_MANAGER_COLLECT_STATISTICS 0
 #if MEMORY_MANAGER_COLLECT_STATISTICS
-#define MEMORY_MANAGER_STATISTICS_ARG_DECL , const char* file = MUSTACHE_FILE, uint32_t line = MUSTACHE_LINE
+    #define MEMORY_MANAGER_STATISTICS_ARG_DECL , const char* file = MUSTACHE_FILE, uint32_t line = MUSTACHE_LINE
 #define MEMORY_MANAGER_STATISTICS_FORWARD_ARG , file, line
 #else
 #define MEMORY_MANAGER_STATISTICS_ARG_DECL
 #define MEMORY_MANAGER_STATISTICS_FORWARD_ARG
 
 #endif
-class MUSTACHE_EXPORT MemoryManager : mustache::Uncopiable {
+    class MUSTACHE_EXPORT MemoryManager : mustache::Uncopiable {
     public:
-        void* allocate(size_t size, size_t align = 0 MEMORY_MANAGER_STATISTICS_ARG_DECL) noexcept;
-        void* allocateAndClear(size_t size, size_t align = 0) noexcept;
+        [[nodiscard]] size_t pageSize(bool large = false) const noexcept;
+        [[nodiscard]] void* allocate(size_t size, size_t align = 0 MEMORY_MANAGER_STATISTICS_ARG_DECL) noexcept;
+        [[nodiscard]] void* allocateAndClear(size_t size, size_t align = 0) noexcept;
+        [[nodiscard]] void* allocateSmart(size_t size, size_t align = 0, bool allow_pages = true, bool allow_large_pages = true) noexcept;
+        void deallocateSmart(void* ptr) noexcept;
         void deallocate(void* ptr MEMORY_MANAGER_STATISTICS_ARG_DECL) noexcept;
         void showStatistic() const noexcept;
-    template<typename T>
-    Allocator<T> allocator() {
-        return Allocator<T>{*this};
-    }
+        template<typename T>
+        Allocator<T> allocator() {
+            return Allocator<T>{*this};
+        }
 
-    template<typename T>
-    operator Allocator<T>() noexcept {
-        return Allocator<T>(*this);
-    }
-
-    private:
+        template<typename T>
+        operator Allocator<T>() noexcept {
+            return Allocator<T>(*this);
+        }
     };
 
     template<typename T>
@@ -42,11 +43,11 @@ class MUSTACHE_EXPORT MemoryManager : mustache::Uncopiable {
         Allocator() = default;
 
         Allocator(const Allocator& oth):
-            manager_{oth.manager_} {
+                manager_{oth.manager_} {
 
         }
         Allocator(Allocator&& oth):
-            manager_{oth.manager_} {
+                manager_{oth.manager_} {
 
         }
 
@@ -67,7 +68,7 @@ class MUSTACHE_EXPORT MemoryManager : mustache::Uncopiable {
         }
 
         constexpr Allocator(MemoryManager& manager):
-            manager_{&manager} {
+                manager_{&manager} {
 
         }
 

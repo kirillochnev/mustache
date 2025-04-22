@@ -2,45 +2,69 @@
 // Created by kirill on 19.04.25.
 //
 
+
 #include "stable_latency_component_data_storage.hpp"
 #include <mustache/utils/memory_manager.hpp>
 #include <mustache/utils/profiler.hpp>
-#include "mustache/utils/logger.hpp"
+#include <mustache/utils/logger.hpp>
 #include "component_factory.hpp"
 #include <cassert>
+#include <algorithm>
 
 using namespace mustache;
+
 namespace {
-    constexpr size_t initial_capacity = 1;
+    constexpr size_t min_initial_capacity = 1;
 }
 
-// Реализация inline-методов и конструктора
 StableLatencyComponentDataStorage::StableLatencyComponentDataStorage(
         const ComponentIdMask& mask,
-        MemoryManager& memory_manager):
-        capacity_(initial_capacity),
+        MemoryManager& memory_manager) :
+        capacity_(0),
         buffers_{Buffer{memory_manager}, Buffer{memory_manager}} {
+
     MUSTACHE_PROFILER_BLOCK_LVL_0("StableLatencyComponentDataStorage::ctor");
+
     // Построение локальной информации и вычисление смещений внутри блока
     size_t offset = 0;
     block_align_ = 0;
-    for (auto cid : mask.items()) {
-        const auto& info = ComponentFactory::instance().componentInfo(cid);
+    uint32_t component_index = 0;
+    for (auto id : mask.items()) {
+        const auto& info = ComponentFactory::instance().componentInfo(id);
         if (offset == 0) {
             block_align_ = static_cast<uint32_t>(info.align);
         } else {
             offset = (offset + info.align - 1) & ~(info.align - 1);
         }
         Meta meta {
-                {nullptr, nullptr}, info.size, offset,
-                info.functions.move_constructor_and_destroy
+                {nullptr, nullptr},
+                info.size,
+                offset,
+                info.functions.move_constructor_and_destroy,
+                id
         };
         meta_.push_back(meta);
         offset += info.size;
+        if (get_meta_.size() <= id.toInt()) {
+            get_meta_.resize(id.toInt() + 1);
+        }
+        get_meta_[id.toInt()] = {meta.base, static_cast<uint32_t>(meta.stride),
+                                 ComponentIndex::make(component_index++)};
     }
+
     block_size_ = (offset + block_align_ - 1) & ~(block_align_ - 1);
 
-    buffers_[0].resize(static_cast<uint32_t>(capacity_ * block_size_), block_align_);
+    if (block_size_ > 0) {
+        const size_t default_allocation = std::max(
+                min_initial_capacity,
+                (memory_manager.pageSize() / block_size_)
+        );
+        capacity_ = static_cast<uint32_t>(default_allocation);
+    } else {
+        capacity_ = static_cast<uint32_t>(memory_manager.pageSize());
+    }
+    const size_t initial_bytes = capacity_ * block_size_;
+    buffers_[0].resize(initial_bytes, block_align_);
     precomputeBases();
 }
 
@@ -96,9 +120,12 @@ uint32_t StableLatencyComponentDataStorage::migrationStepsCount() noexcept {
 void StableLatencyComponentDataStorage::precomputeBases() noexcept {
     const size_t cap1 = static_cast<size_t>(capacity_);
     const size_t cap2 = buffers_[1].empty() ? cap1 : cap1 * 2;
+    uint32_t component_index = 0;
     for (auto& meta : meta_) {
         meta.base[0] = buffers_[0].data_ + meta.offset * cap1;
         meta.base[1] = buffers_[1].empty() ? nullptr : buffers_[1].data_ + meta.offset * cap2;
+        get_meta_[meta.id.toInt()] = {meta.base, static_cast<uint32_t>(meta.stride),
+                                      ComponentIndex::make(component_index++)};
     }
 }
 
@@ -111,9 +138,12 @@ void StableLatencyComponentDataStorage::emplace(ComponentStorageIndex position) 
 void StableLatencyComponentDataStorage::grow() {
     if (!buffers_[1].empty()) {
         Buffer::swap(buffers_[0], buffers_[1]);
-        capacity_ = capacity_ == 0 ? initial_capacity : capacity_ * 2;
+        capacity_ = capacity_ == 0 ? min_initial_capacity : capacity_ * 2;
     }
-    buffers_[1].resize(static_cast<uint32_t>(capacity_ * 2 * block_size_), block_align_);
+
+    const size_t new_bytes = capacity_ * 2 * block_size_;
+    buffers_[1].resize(new_bytes, block_align_);
+
     migration_pos_ = size_;
     precomputeBases();
 }
@@ -140,10 +170,15 @@ bool StableLatencyComponentDataStorage::migrationSteps(uint32_t count) {
 void StableLatencyComponentDataStorage::Buffer::resize(size_t total_size, size_t alignment) {
     clear();
     const std::size_t aligned_size = (total_size + alignment - 1) & ~(alignment - 1);
-    data_ = static_cast<std::byte*>(memory_manager_->allocate(aligned_size, alignment));
+    data_ = static_cast<std::byte*>(memory_manager_->allocateSmart(
+            aligned_size,
+            alignment,
+            false,
+            false
+    ));
 }
 
 void StableLatencyComponentDataStorage::Buffer::clear() {
-    memory_manager_->deallocate(data_);
+    memory_manager_->deallocateSmart(data_);
     data_ = nullptr;
 }

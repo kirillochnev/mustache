@@ -12,6 +12,7 @@
 #include <mustache/ecs/archetype_operation_helper.hpp>
 #include <mustache/ecs/base_component_data_storage.hpp>
 #include <mustache/ecs/default_component_data_storage.hpp>
+#include <mustache/ecs/stable_latency_component_data_storage.hpp>
 
 #include <stdexcept>
 #include <cstdint>
@@ -99,12 +100,21 @@ namespace mustache {
 
         template<FunctionSafety _Safety = FunctionSafety::kDefault>
         const void* getConstComponent(ComponentIndex component_index, ArchetypeEntityIndex index) const noexcept {
-            return data_storage_->getData<_Safety>(component_index, ComponentStorageIndex::fromArchetypeIndex(index));
+            return data_storage_.getData<_Safety>(component_index, ComponentStorageIndex::fromArchetypeIndex(index));
+        }
+
+        template<FunctionSafety _Safety = FunctionSafety::kDefault>
+        MUSTACHE_INLINE std::pair<void*, ComponentIndex> getComponentNoMarkDirty(ComponentId id, ArchetypeEntityIndex index) const noexcept {
+            if constexpr (isSafe(_Safety)) {
+                return data_storage_.getDataSafe(id, ComponentStorageIndex::fromArchetypeIndex(index));
+            } else {
+                return data_storage_.getDataUnsafe(id, ComponentStorageIndex::fromArchetypeIndex(index));
+            }
         }
 
         template<FunctionSafety _Safety = FunctionSafety::kDefault>
         void* getComponentNoMarkDirty(ComponentIndex component_index, ArchetypeEntityIndex index) noexcept {
-            return data_storage_->getData<_Safety>(component_index, ComponentStorageIndex::fromArchetypeIndex(index));
+            return data_storage_.getData<_Safety>(component_index, ComponentStorageIndex::fromArchetypeIndex(index));
         }
 
         template<FunctionSafety _Safety = FunctionSafety::kDefault>
@@ -176,7 +186,7 @@ namespace mustache {
 
         template<FunctionSafety _Safety = FunctionSafety::kDefault>
         void* getComponent(ComponentIndex component, ArchetypeEntityIndex index) const noexcept {
-            return data_storage_->getData<_Safety>(component, ComponentStorageIndex::fromArchetypeIndex(index));
+            return data_storage_.getData<_Safety>(component, ComponentStorageIndex::fromArchetypeIndex(index));
         }
 
         friend ElementView;
@@ -208,20 +218,21 @@ namespace mustache {
 
         void cloneEntity(Entity source, Entity dest, ArchetypeEntityIndex index, CloneEntityMap& map);
 
+        StableLatencyComponentDataStorage data_storage_;
+//        std::unique_ptr<StableLatencyComponentDataStorage> data_storage_;
+        ArrayWrapper<Entity, ArchetypeEntityIndex, true> entities_;
+        ArchetypeOperationHelper operation_helper_;
         World& world_;
         const ComponentIdMask mask_;
         const SharedComponentsInfo shared_components_info_;
-        ArchetypeOperationHelper operation_helper_;
         VersionStorage version_storage_;
-        std::unique_ptr<BaseComponentDataStorage> data_storage_;
-        ArrayWrapper<Entity, ArchetypeEntityIndex, true> entities_;
         const ArchetypeIndex id_;
     };
 
     template<FunctionSafety _Safety>
     void* Archetype::getComponent(ComponentIndex component_index, ArchetypeEntityIndex index,
                                   WorldVersion version) noexcept {
-        auto res = data_storage_->getData<_Safety>(component_index, ComponentStorageIndex::fromArchetypeIndex(index));
+        auto res = data_storage_.getData<_Safety>(component_index, ComponentStorageIndex::fromArchetypeIndex(index));
         if (res != nullptr && versionStorage().enabledMask().has(component_index)) {
             markComponentDirty(component_index, index, version);
         }

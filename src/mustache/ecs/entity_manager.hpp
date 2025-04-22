@@ -33,16 +33,18 @@ namespace mustache {
     using ArchetypeChunkSizeFunction = std::function<ArchetypeChunkSize (const ComponentIdMask&)>;
 
 
-    struct EntityLocationInWorld {
+    struct alignas(32) EntityLocationInWorld {
         constexpr static Archetype* kDefaultArchetype = nullptr;
         EntityLocationInWorld() = default;
-        EntityLocationInWorld(ArchetypeEntityIndex i, Archetype* arch ) noexcept :
+        EntityLocationInWorld(Entity e, ArchetypeEntityIndex i = ArchetypeEntityIndex::null(), Archetype* arch = kDefaultArchetype) noexcept :
+                entity{e},
                 index{i},
                 archetype{arch} {
-
+            fits_in_min_cache_lines<EntityLocationInWorld>::check();
         }
-        ArchetypeEntityIndex index = ArchetypeEntityIndex::make(0u);
-        Archetype* archetype = kDefaultArchetype;
+        Entity entity;
+        ArchetypeEntityIndex index;
+        Archetype* archetype;
     };
 
     class MUSTACHE_EXPORT EntityManager : public Uncopiable {
@@ -527,10 +529,10 @@ namespace mustache {
 
         MUSTACHE_INLINE void releaseEntityIdUnsafe(Entity entity) noexcept {
             const auto id = entity.id();
-            if (!entities_.has(id)) {
-                entities_.resize(id.next().toInt());
+            if (!locations_.has(id)) {
+                locations_.resize(id.next().toInt());
             }
-            entities_[id].reset(empty_slots_ ? next_slot_ : id.next(), entity.version().next());
+            locations_[id].entity.reset(empty_slots_ ? next_slot_ : id.next(), entity.version().next());
             next_slot_ = id;
             ++empty_slots_;
         }
@@ -546,9 +548,9 @@ namespace mustache {
             // you need to store this entity in entities_ in onUnlock()
             const auto id = EntityId::make(next_entity_id_++);
             Entity entity;
-            if (entities_.has(id)) {
+            if (locations_.has(id)) {
                 // version array can not be resized if entity manager is locked.
-                entity.reset(id, entities_[id].version().next(), this_world_id_);
+                entity.reset(id, locations_[id].entity.version().next(), this_world_id_);
             }
             else {
                 entity.reset(id, EntityVersion::make(0u), this_world_id_);
@@ -625,6 +627,11 @@ namespace mustache {
                 auto& location = locations_[e.id()];
                 location.archetype = archetype;
                 location.index = index;
+//                if (archetype) {
+//                    location.mask = archetype->mask_;
+//                } else {
+//                    location.mask = {};
+//                }
             }
         }
 
@@ -639,7 +646,6 @@ namespace mustache {
         EntityId next_slot_ = EntityId::make(0);
 
         uint32_t empty_slots_{0};
-        ArrayWrapper<Entity, EntityId, true> entities_;
         ArrayWrapper<EntityLocationInWorld, EntityId, true> locations_;
         mustache::set<Entity, std::less<Entity>, Allocator<Entity> > marked_for_delete_;
         WorldId this_world_id_;
@@ -663,7 +669,7 @@ namespace mustache {
     bool EntityManager::isEntityValid(Entity entity) const noexcept {
         const auto id = entity.id();  // it is ok to get id for no-valid entity, null id will be returned
         if (entity.isNull() || entity.worldId() != this_world_id_ ||
-            !entities_.has(id) || entities_[id].version() != entity.version()) {
+            !locations_.has(id) || locations_[id].entity != entity) {
             return false;
         }
         return true;
@@ -693,16 +699,14 @@ namespace mustache {
         if (!isLocked()) {
             Entity entity;
             if (!empty_slots_) {
-                entity.reset(EntityId::make(entities_.size()), EntityVersion::make(0), this_world_id_);
-                entities_.push_back(entity);
-                locations_.emplace_back();
+                entity.reset(EntityId::make(locations_.size()), EntityVersion::make(0), this_world_id_);
+                locations_.emplace_back().entity = entity;
             } else {
                 const auto id = next_slot_;
-                const auto version = entities_[id].version();
-                next_slot_ = entities_[id].id();
+                const auto version = locations_[id].entity.version();
+                next_slot_ = locations_[id].entity.id();
                 entity.reset(id, version, this_world_id_);
-                entities_[id] = entity;
-                locations_[id] = EntityLocationInWorld{};
+                locations_[id] = EntityLocationInWorld{entity};
                 --empty_slots_;
             }
             return entity;
@@ -792,31 +796,23 @@ namespace mustache {
     auto EntityManager::getComponent(Entity entity, ComponentId component_id) const noexcept {
         using ResultType = typename std::conditional<_Const, const void*, void*>::type;
         if constexpr(isSafe(_Safety)) {
-            if (!isEntityValid(entity)) {
+            if (!locations_.has(entity.id())) {
                 return static_cast<ResultType>(nullptr);
             }
         }
-
         const auto& location = locations_[entity.id()];
-        const auto arch = location.archetype;
-        if constexpr(isSafe(_Safety)) {
-            if (arch == nullptr) {
-                return static_cast<ResultType>(nullptr);
+        ResultType result = nullptr;
+        if (!isSafe(_Safety) || location.entity == entity) {
+            const auto arch = location.archetype;
+            const auto ptr_index = arch->getComponentNoMarkDirty(component_id, location.index);
+            if constexpr (!_Const) {
+                if ((!isSafe(_Safety) || ptr_index.second.isValid()) && arch->versionControlEnabled(ptr_index.second)) {
+                    arch->markComponentDirty(ptr_index.second, location.index, world_version_);
+                }
             }
+            result = const_cast<ResultType>(ptr_index.first);
         }
-        const auto index = arch->getComponentIndex<_Safety> (component_id);
-        if constexpr(isSafe(_Safety)) {
-            if (!index.isValid()) {
-                return static_cast<ResultType>(nullptr);
-            }
-        }
-        const auto result = arch->getComponentNoMarkDirty<FunctionSafety::kUnsafe>(index, location.index);
-        if constexpr (!_Const) {
-            if (arch->versionControlEnabled(index)) {
-                arch->markComponentDirty(index, location.index, world_version_);
-            }
-        }
-        return const_cast<ResultType>(result);
+        return result;
     }
 
     template<typename T, FunctionSafety _Safety>
