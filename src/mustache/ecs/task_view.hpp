@@ -16,31 +16,26 @@ namespace mustache {
         ArchetypeEntityIndex first_entity = ArchetypeEntityIndex::make(0u);
     };
 
-    struct MUSTACHE_EXPORT ArrayView : private ElementView {
+    struct MUSTACHE_EXPORT ArrayView {
         using FilrerResult = WorldFilterResult::ArchetypeFilterResult;
-
-
-
         void updateBlock() {
             if (dist_to_end_ > 0) {
-                const auto index_in_archetype = globalIndex().toInt();
-
-                dist_to_block_end_ = filter_result_->blocks[current_block_].end.toInt() - index_in_archetype;
+                dist_to_block_end_ = filter_result_->blocks[current_block_].end.toInt() - index_in_archetype.toInt();
                 if (dist_to_block_end_ == 0u) {
                     ++current_block_;
                     const auto& block = filter_result_->blocks[current_block_];
-                    *this += block.begin.toInt() - index_in_archetype;
+                    index_in_archetype = ArchetypeEntityIndex::make(index_in_archetype.toInt() + block.begin.toInt() - index_in_archetype.toInt());
                     dist_to_block_end_ = block.end.toInt() - block.begin.toInt();
                 }
-                array_size_ = std::min(dist_to_block_end_, std::min(distToChunkEnd(), dist_to_end_));
+                array_size_ = std::min(dist_to_block_end_, std::min(archetype()->distToChunkEnd(index_in_archetype), dist_to_end_));
             }
         }
 
         ArrayView(const WorldFilterResult& filter_result, TaskArchetypeIndex archetype_index,
                   ArchetypeEntityIndex first_entity, uint32_t size, WorldFilterResult::BlockIndex block_index):
-                ElementView{filter_result.filtered_archetypes[archetype_index.toInt()].archetype->getElementView(first_entity)},
+                index_in_archetype{first_entity},
                 current_block_{block_index},
-                dist_to_end_ {std::min(size, archetype_->size() - first_entity.toInt())},
+                dist_to_end_ {std::min(size, filter_result.filtered_archetypes[archetype_index.toInt()].archetype->size() - first_entity.toInt())},
                 filter_result_ {&filter_result.filtered_archetypes[archetype_index.toInt()]} {
             updateBlock();
         }
@@ -52,14 +47,14 @@ namespace mustache {
 
         ArrayView& operator++() noexcept {
             dist_to_end_ -= array_size_;
-            *this += array_size_;
+            index_in_archetype = ArchetypeEntityIndex::make(index_in_archetype.toInt() + array_size_);
             updateBlock();
             return *this;
         }
-
-        using ElementView::getData;
-        using ElementView::getEntity;
-        Archetype* archetype() const noexcept {
+        [[nodiscard]] auto entityIndex() const noexcept {
+            return index_in_archetype;
+        }
+        [[nodiscard]] Archetype* archetype() const noexcept {
             return filter_result_->archetype;
         }
         [[nodiscard]] ComponentArraySize arraySize() const noexcept {
@@ -85,6 +80,7 @@ namespace mustache {
             return ArrayView{filter_result, archetype_index, first_entity, size, block_index};
         }
     private:
+        ArchetypeEntityIndex index_in_archetype = ArchetypeEntityIndex::make(0u);
         WorldFilterResult::BlockIndex current_block_ = WorldFilterResult::BlockIndex::make(0u);
         uint32_t array_size_ = 0u;
         uint32_t dist_to_end_ = 0u;

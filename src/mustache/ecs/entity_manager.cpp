@@ -339,14 +339,12 @@ void EntityManager::applyCommandPack(TemporalStorage& storage, size_t begin, siz
         const auto location = locations_[entity.id()];
         archetype.externalMove(entity, *location.archetype, location.index, final_mask);
     }
-
-    auto view = archetype.getElementView(locations_[entity.id()].index);
     for (size_t i = begin; i < end; ++i) {
         const auto& command = storage.actions_[i];
         if (command.action != TemporalStorage::Action::kAssignComponent) {
             continue;
         }
-        auto dest = view.getData(archetype.getComponentIndex(command.component_id));
+        auto dest = archetype.getData<FunctionSafety::kUnsafe>(archetype.getComponentIndex(command.component_id), locations_[entity.id()].index);
         const auto& component_functions = ComponentFactory::instance().componentInfo(command.component_id).functions;
         component_functions.move_constructor(dest, command.ptr);
         if (component_functions.after_assign) {

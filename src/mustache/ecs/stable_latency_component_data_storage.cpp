@@ -67,6 +67,7 @@ StableLatencyComponentDataStorage::StableLatencyComponentDataStorage(
 }
 
 void StableLatencyComponentDataStorage::clear(bool free_chunks) {
+    MUSTACHE_PROFILER_BLOCK_LVL_0(__FUNCTION__);
     size_ = 0;
     migration_pos_ = 0;
     capacity_ = 0;

@@ -98,9 +98,21 @@ namespace converter {
 
         type_info.functions.create = convert(info.functions.create);
 
+        const auto copy_pod = [size = info.size](void* dest, const void* source) noexcept {
+            std::memcpy(dest, source, size);
+        };
         type_info.functions.copy = info.functions.copy;
+        if (!type_info.functions.copy) {
+            type_info.functions.copy = copy_pod;
+        }
         type_info.functions.move = info.functions.move;
+        if (!type_info.functions.move) {
+            type_info.functions.move = copy_pod;
+        }
         type_info.functions.move_constructor = info.functions.move_constructor;
+        if (!type_info.functions.move_constructor) {
+            type_info.functions.move_constructor = copy_pod;
+        }
         type_info.functions.move_constructor_and_destroy = info.functions.move_constructor_and_destroy_source;
         type_info.functions.destroy = info.functions.destroy;
         if (info.default_value != nullptr) {
@@ -250,10 +262,12 @@ void clearWorldEntities(World* world) {
 }
 
 void destroyWorld(World* world) {
+    mustache::Logger{}.info("destroying world: %p | id: %d", world, world ? convert(world)->id().toInt() : mustache::WorldId::kNull);
     delete convert(world);
 }
 
 ComponentId registerComponent(TypeInfo info) {
+    mustache::Logger{}.info("registerComponent [%s]", info.name);
     return mustache::ComponentFactory::instance().componentId(convert(info)).toInt();
 }
 
@@ -288,26 +302,35 @@ ComponentPtr getComponent(World* world, Entity entity, ComponentId component_id,
 
 Job* makeJob(JobDescriptor info) {
     auto job = new mustache::NonTemplateJob{};
+    job->use_fast_run_for_current_thread = !(info.check_update
+            || info.check_update_size > 0
+            || info.on_job_begin
+            || info.on_job_end);
+
     job->callback = convert(info.callback, convert(job));
     job->job_name = info.name;
     job->component_requests.resize(info.component_info_arr_size);
     job->job_begin = convert(info.on_job_begin, convert(job));
     job->job_end = convert(info.on_job_end, convert(job));
-//    mustache::Logger{}.info("Args count: %d", info.component_info_arr_size);
     for (uint32_t i = 0; i < info.component_info_arr_size; ++i) {
-        auto t = info.component_info_arr[i];
-//        mustache::Logger{}.info("%d) Id: %d, Required: %d, Const: %d", i, t.component_id, t.is_required, t.is_const);
         job->component_requests[i] = convert(info.component_info_arr[i]);
     }
     for (uint32_t i = 0; i < info.check_update_size; ++i) {
         job->version_check_mask.set(convert(info.check_update[i]), true);
     }
-//    mustache::Logger{}.info("New job has been create, name: [%s], ptr: %p", info.name, job);
+
+    job->initComponentMasks();
     return convert(job);
 }
 
-void runJob(Job* job, World* world, JobRunMode mode) {
-    convert(job)->run(*convert(world), convert(mode));
+void runJob(Job* job_c, World* world_c, JobRunMode mode_c) {
+    auto job = convert(job_c);
+    const auto mode = convert(mode_c);
+    if (mode == mustache::JobRunMode::kCurrentThread && job->use_fast_run_for_current_thread) {
+        job->fastRunCurrentThread(*convert(world_c));
+    } else {
+        job->run(*convert(world_c), mode);
+    }
 }
 
 void destroyJob(Job* job) {

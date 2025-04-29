@@ -14,9 +14,7 @@
 #include <mustache/ecs/default_component_data_storage.hpp>
 #include <mustache/ecs/stable_latency_component_data_storage.hpp>
 
-#include <stdexcept>
 #include <cstdint>
-#include <string>
 
 namespace mustache {
 
@@ -24,26 +22,6 @@ namespace mustache {
     class Archetype;
     class EntityManager;
     struct CloneEntityMap;
-
-    // NOTE: element view does not update component versions
-    struct MUSTACHE_EXPORT ElementView : public DataStorageIterator {
-        using DataStorageIterator::DataStorageIterator;
-
-        ElementView(const DataStorageIterator& view, const Archetype& archetype):
-                DataStorageIterator{view},
-                archetype_{&archetype} {
-
-        }
-
-        template<FunctionSafety _Safety = FunctionSafety::kSafe>
-        MUSTACHE_INLINE Entity* getEntity() const;
-
-
-        template<FunctionSafety _Safety = FunctionSafety::kSafe>
-        MUSTACHE_INLINE const SharedComponentTag* getSharedComponent(SharedComponentIndex index) const noexcept;
-
-        const Archetype* archetype_ = nullptr;
-    };
 
     using ArchetypeFilterParam = MaskAndVersion;
 
@@ -96,7 +74,10 @@ namespace mustache {
         [[nodiscard]] const ComponentIdMask& componentMask() const noexcept;
 
         template<FunctionSafety _Safety = FunctionSafety::kDefault>
-        MUSTACHE_INLINE Entity* entityAt(ArchetypeEntityIndex index);
+        MUSTACHE_INLINE Entity* entityAt(ArchetypeEntityIndex index) noexcept;
+
+        template<FunctionSafety _Safety = FunctionSafety::kDefault>
+        MUSTACHE_INLINE const Entity* entityAt(ArchetypeEntityIndex index) const noexcept;
 
         template<FunctionSafety _Safety = FunctionSafety::kDefault>
         const void* getConstComponent(ComponentIndex component_index, ArchetypeEntityIndex index) const noexcept {
@@ -119,8 +100,6 @@ namespace mustache {
 
         template<FunctionSafety _Safety = FunctionSafety::kDefault>
         void* getComponent(ComponentIndex component_index, ArchetypeEntityIndex index, WorldVersion version) noexcept;
-
-        [[nodiscard]] ElementView getElementView(ArchetypeEntityIndex index) const noexcept;
 
         [[nodiscard]] WorldVersion getComponentVersion(ArchetypeEntityIndex index, ComponentId id) const noexcept;
 
@@ -170,7 +149,25 @@ namespace mustache {
             version_storage_.setVersion(world_version, chunk_index);
         }
 
+        [[nodiscard]] MUSTACHE_INLINE auto distToChunkEnd(ComponentStorageIndex index) const noexcept {
+            return data_storage_.distToChunkEnd(index);
+        }
+
+        [[nodiscard]] MUSTACHE_INLINE auto distToChunkEnd(ArchetypeEntityIndex index) const noexcept {
+            return distToChunkEnd(ComponentStorageIndex::fromArchetypeIndex(index));
+        }
+
+        template<FunctionSafety Safety/* = FunctionSafety::kDefault*/>
+        [[nodiscard]] auto getData(ComponentIndex component_index, ComponentStorageIndex index) const noexcept {
+            return data_storage_.getData<Safety>(component_index, index);
+        }
+
+        template<FunctionSafety Safety/* = FunctionSafety::kDefault*/>
+        [[nodiscard]] auto getData(ComponentIndex component_index, ArchetypeEntityIndex index) const noexcept {
+            return getData<Safety>(component_index, ComponentStorageIndex::fromArchetypeIndex(index));
+        }
     private:
+
         [[nodiscard]] auto& versionStorage() noexcept {
             return version_storage_;
         }
@@ -189,7 +186,6 @@ namespace mustache {
             return data_storage_.getData<_Safety>(component, ComponentStorageIndex::fromArchetypeIndex(index));
         }
 
-        friend ElementView;
         friend EntityManager;
 
         [[nodiscard]] ComponentStorageIndex pushBack(Entity entity);
@@ -213,7 +209,7 @@ namespace mustache {
          * returns new entity at index.
          */
         void remove(Entity entity, ArchetypeEntityIndex index, const ComponentIdMask& skip_on_remove_call);
-        void callDestructor(const ElementView& view);
+        void callDestructor(ArchetypeEntityIndex index);
         void callOnRemove(ArchetypeEntityIndex index, const ComponentIdMask& components_to_be_removed);
 
         void cloneEntity(Entity source, Entity dest, ArchetypeEntityIndex index, CloneEntityMap& map);
@@ -241,13 +237,23 @@ namespace mustache {
     }
 
     template<FunctionSafety _Safety>
-    Entity* Archetype::entityAt(ArchetypeEntityIndex index) {
+    const Entity* Archetype::entityAt(ArchetypeEntityIndex index) const noexcept {
         if constexpr (isSafe(_Safety)) {
             if (!index.isValid() || !entities_.has(index)) {
                 return nullptr;
             }
         }
-        return entities_.data() + index.toInt();
+        return &entities_[index];
+    }
+
+    template<FunctionSafety _Safety>
+    Entity* Archetype::entityAt(ArchetypeEntityIndex index) noexcept {
+        if constexpr (isSafe(_Safety)) {
+            if (!index.isValid() || !entities_.has(index)) {
+                return nullptr;
+            }
+        }
+        return &entities_[index];
     }
 
     template<FunctionSafety _Safety>
@@ -283,15 +289,5 @@ namespace mustache {
     bool Archetype::getSharedComponents(std::tuple<ARGS...>& out) const {
         out = std::make_tuple(static_cast<ARGS>(getSharedComponent(sharedComponentIndex<ARGS>()))...);
         return true;
-    }
-
-    template<FunctionSafety _Safety>
-    MUSTACHE_INLINE const SharedComponentTag* ElementView::getSharedComponent(SharedComponentIndex index) const noexcept {
-        return archetype_->template getSharedComponent<_Safety>(index);
-    }
-
-    template<FunctionSafety _Safety>
-    Entity* ElementView::getEntity() const {
-        return const_cast<Archetype*>(archetype_)->entityAt(global_index_.toArchetypeIndex());
     }
 }

@@ -1,6 +1,4 @@
-// stable_latency_component_data_storage_optimized.hpp
 #pragma once
-
 
 #include <mustache/utils/default_settings.hpp>
 #include <mustache/utils/array_wrapper.hpp>
@@ -14,27 +12,26 @@
 namespace mustache {
 
     class MemoryManager;
-
-    class alignas(128) StableLatencyComponentDataStorage final : public BaseComponentDataStorage {
+    class MUSTACHE_EXPORT StableLatencyComponentDataStorage {
     public:
         StableLatencyComponentDataStorage(const ComponentIdMask& mask, MemoryManager& mmgr);
         ~StableLatencyComponentDataStorage() = default;
 
-        uint32_t capacity() const noexcept override {
+        uint32_t capacity() const noexcept {
             return capacity_ + (buffers_[1].empty() ? 0 : capacity_);
         }
 
-        void reserve(size_t new_capacity) override;
-        void clear(bool free_chunks) override;
+        void reserve(size_t new_capacity);
+        void clear(bool free_chunks);
 
-        MUSTACHE_INLINE void* getDataUnsafe(ComponentIndex ci, ComponentStorageIndex idx) const noexcept final {
+        MUSTACHE_INLINE void* getDataUnsafe(ComponentIndex ci, ComponentStorageIndex idx) const noexcept {
             const uint32_t comp = ci.toInt();
             const uint32_t i    = idx.toInt();
             const auto& meta       = meta_[comp];
             return meta.base[i >= migration_pos_] + meta.stride * i;
         }
 
-        MUSTACHE_INLINE void* getDataSafe(ComponentIndex ci, ComponentStorageIndex idx) const noexcept override {
+        MUSTACHE_INLINE void* getDataSafe(ComponentIndex ci, ComponentStorageIndex idx) const noexcept {
             if (idx.toInt() < size_ && !ci.isNull() && ci.toInt() < meta_.size()) {
                 return getDataUnsafe(ci, idx);
             }
@@ -57,16 +54,37 @@ namespace mustache {
             return {meta.base[i >= migration_pos_] + meta.stride * i, meta.index};
         }
 
-        uint32_t distToChunkEnd(ComponentStorageIndex index) const noexcept override {
+        template<FunctionSafety _Safety = FunctionSafety::kDefault>
+        MUSTACHE_INLINE void* getData(ComponentIndex component_index, ComponentStorageIndex index) const noexcept {
+            if constexpr (isSafe(_Safety)) {
+                return getDataSafe(component_index, index);
+            } else {
+                return getDataUnsafe(component_index, index);
+            }
+        }
+
+        [[nodiscard]] MUSTACHE_INLINE ComponentStorageIndex lastItemIndex() const noexcept {
+            return ComponentStorageIndex::make(size_ - 1);
+        }
+
+        [[nodiscard]] MUSTACHE_INLINE uint32_t size() const noexcept {
+            return size_;
+        }
+
+        [[nodiscard]] MUSTACHE_INLINE bool isEmpty() const noexcept {
+            return size_ == 0u;
+        }
+
+        uint32_t distToChunkEnd(ComponentStorageIndex index) const noexcept {
             if (index.toInt() < migration_pos_) {
                 return migration_pos_ - index.toInt();
             }
             return size_ - index.toInt();
         }
 
-        void emplace(ComponentStorageIndex pos) override;
-        void incSize() noexcept override;
-        void decrSize() noexcept override;
+        void emplace(ComponentStorageIndex pos);
+        void incSize() noexcept;
+        void decrSize() noexcept;
 
     private:
         struct alignas(32) GetMeta {
@@ -113,7 +131,7 @@ namespace mustache {
         [[nodiscard]] static uint32_t migrationStepsCount() noexcept;
         void grow();
         bool migrationSteps(uint32_t count = 0);
-
+        uint32_t size_ = 0;
         vector<GetMeta> get_meta_;
         uint32_t migration_pos_ = 0;
         uint32_t capacity_ = 0;
@@ -122,5 +140,4 @@ namespace mustache {
         size_t block_size_  = 0;
         vector<Meta> meta_;
     };
-
 }

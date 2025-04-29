@@ -22,7 +22,7 @@ namespace {
         mutable std::mutex mutex;
 
         void validate(ComponentInfo& info) {
-            const auto str = "Component " + info.name + " is not valid, next functions are missed:\n";
+            auto str = "Component " + info.name + " is not valid, next functions are missed:\n";
             auto& functions = info.functions;
             std::string missed;
             if (!functions.copy) {
@@ -47,7 +47,9 @@ namespace {
             }
 
             if (!missed.empty()) {
-                throw std::runtime_error(str + missed);
+                str += missed;
+                Logger{}.error("Error: [%s]", str.c_str());
+                throw std::runtime_error(str);
             }
         }
 
@@ -73,7 +75,6 @@ namespace {
                 components_info.resize(next_component_id.toInt() + 1);
             }
             components_info[next_component_id.toInt()] = info_copy;
-//            Logger{}.debug("New component: %s, id: %d", info.name, next_component_id.toInt());
             IdType return_value = next_component_id;
             ++next_component_id;
             return return_value;
@@ -81,7 +82,11 @@ namespace {
         const ComponentInfo& componentInfo(IdType id) const noexcept {
             MUSTACHE_PROFILER_BLOCK_LVL_3(__FUNCTION__);
             std::unique_lock lock {mutex};
-            return components_info[id.toInt()];
+            if (id.toInt() < components_info.size()) {
+                return components_info[id.toInt()];
+            }
+            static const ComponentInfo invalid {0, 0, "Component not found", 0, {}, {}};
+            return invalid;
         }
 
     };
