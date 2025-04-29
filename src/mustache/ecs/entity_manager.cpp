@@ -255,24 +255,6 @@ void EntityManager::markDirty(Entity entity, ComponentId component_id) noexcept 
     }
 }
 
-void EntityManager::onLock() {
-    MUSTACHE_PROFILER_BLOCK_LVL_0(__FUNCTION__ );
-    next_entity_id_ = static_cast<uint32_t >(locations_.size());
-}
-
-void EntityManager::onUnlock() {
-    MUSTACHE_PROFILER_BLOCK_LVL_0(__FUNCTION__);
-    if (isLocked()) {
-        throw std::runtime_error("Entity manager must be unlocked");
-    }
-    if (was_temporal_storage_used_.exchange(false)) {
-        for (auto& storage: temporal_storages_) {
-            applyStorage(storage);
-            storage.clear();
-        }
-    }
-}
-
 void EntityManager::applyCommandPack(TemporalStorage& storage, size_t begin, size_t end) {
     MUSTACHE_PROFILER_BLOCK_LVL_2(__FUNCTION__);
 

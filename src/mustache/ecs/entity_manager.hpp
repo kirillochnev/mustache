@@ -537,8 +537,20 @@ namespace mustache {
             ++empty_slots_;
         }
 
-        void onLock();
-        void onUnlock();
+        MUSTACHE_INLINE void onLock() noexcept {
+            MUSTACHE_PROFILER_BLOCK_LVL_0(__FUNCTION__ );
+            next_entity_id_ = static_cast<uint32_t >(locations_.size());
+        }
+
+        MUSTACHE_INLINE void onUnlock() noexcept {
+            MUSTACHE_PROFILER_BLOCK_LVL_0(__FUNCTION__);
+            if (was_temporal_storage_used_.exchange(false)) {
+                for (auto& storage: temporal_storages_) {
+                    applyStorage(storage);
+                    storage.clear();
+                }
+            }
+        }
 
         void applyStorage(TemporalStorage& storage);
         void applyCommandPack(TemporalStorage& storage, size_t begin, size_t end);

@@ -200,25 +200,39 @@ namespace mustache {
         }
 
         template<typename T>
-        static void moveComponent(void* dest, void* source) {
-            *static_cast<T*>(dest) = std::move(*static_cast<T*>(source));
-        }    
-
-        template<typename T>
-        static void componentMoveConstructor([[maybe_unused]] void* dest, [[maybe_unused]] void* source) {
-            if constexpr (std::is_move_constructible_v<T>) {
-                new(dest) T{ std::move(*static_cast<T*>(source)) };
-            }
-            else {
-                if constexpr (std::is_default_constructible_v<T>) {
-                    T* ptr = new(dest) T{};
-                    *std::launder(ptr) = std::move(*static_cast<T*>(source));
-                }
-                else {
-                    error(type_name<T>() + " is not move constructible");
+        static void moveComponent(void* dest_void, void* source_void) {
+            auto dest = static_cast<T*>(dest_void);
+            auto source = static_cast<T*>(source_void);
+            if (dest != source) {
+                if constexpr (std::is_move_assignable_v<T>) {
+                    *dest = std::move(*source);
+                } else {
+                    if constexpr (!std::is_trivially_destructible_v<T>) {
+                        std::destroy(dest);
+                    }
+                    new(dest) T(std::move(source));
                 }
             }
         }
+
+        template<typename T>
+        static void componentMoveConstructor([[maybe_unused]] void* dest_void, [[maybe_unused]] void* source_void) {
+            auto dest = static_cast<T*>(dest_void);
+            auto source = static_cast<T*>(source_void);
+            if (source != dest) {
+                if constexpr (std::is_move_constructible_v<T>) {
+                    new(dest) T{std::move(*source)};
+                } else {
+                    if constexpr (std::is_default_constructible_v<T>) {
+                        T* ptr = new(dest) T{};
+                        *ptr = std::move(*source);
+                    } else {
+                        error(type_name<T>() + " is not move constructible");
+                    }
+                }
+            }
+        }
+
         template<typename T>
         static void componentMoveConstructorAndDestroy([[maybe_unused]] void* dest, [[maybe_unused]] void* source) {
             if constexpr (std::is_move_constructible_v<T>) {
