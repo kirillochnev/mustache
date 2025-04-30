@@ -83,8 +83,20 @@ namespace mustache {
         }
 
         template<FunctionSafety _Safety = FunctionSafety::kDefault>
-        void* getComponentNoMarkDirty(ComponentIndex component_index, ArchetypeEntityIndex index) noexcept {
+        void* getComponentNoMarkDirty(ComponentIndex component_index, ArchetypeEntityIndex index) const noexcept {
             return data_storage_->getData<_Safety>(component_index, ComponentStorageIndex::fromArchetypeIndex(index));
+        }
+
+        template<FunctionSafety _Safety = FunctionSafety::kDefault>
+        [[nodiscard]] std::pair<void*, ComponentIndex> getComponentNoMarkDirty(ComponentId id, ArchetypeEntityIndex index) const noexcept {
+            const auto component_index = getComponentIndex<_Safety>(id);
+            return std::make_pair(getComponentNoMarkDirty<_Safety>(component_index, index), component_index);
+            // TODO: update when data storage will have getData with ComponentId
+//            if constexpr (isSafe(_Safety)) {
+//                return data_storage_.getDataSafe(id, ComponentStorageIndex::fromArchetypeIndex(index));
+//            } else {
+//                return data_storage_.getDataUnsafe(id, ComponentStorageIndex::fromArchetypeIndex(index));
+//            }
         }
 
         template<FunctionSafety _Safety = FunctionSafety::kDefault>

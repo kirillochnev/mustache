@@ -40,6 +40,7 @@ namespace mustache {
                 entity{e},
                 index{i},
                 archetype{arch} {
+
         }
         Entity entity;
         ArchetypeEntityIndex index;
@@ -806,31 +807,23 @@ namespace mustache {
     auto EntityManager::getComponent(Entity entity, ComponentId component_id) const noexcept {
         using ResultType = typename std::conditional<_Const, const void*, void*>::type;
         if constexpr(isSafe(_Safety)) {
-            if (!isEntityValid(entity)) {
+            if (!locations_.has(entity.id())) {
                 return static_cast<ResultType>(nullptr);
             }
         }
-
         const auto& location = locations_[entity.id()];
-        const auto arch = location.archetype;
-        if constexpr(isSafe(_Safety)) {
-            if (arch == nullptr) {
-                return static_cast<ResultType>(nullptr);
+        ResultType result = nullptr;
+        if (!isSafe(_Safety) || location.entity == entity) {
+            const auto arch = location.archetype;
+            const auto ptr_index = arch->getComponentNoMarkDirty(component_id, location.index);
+            if constexpr (!_Const) {
+                if ((!isSafe(_Safety) || ptr_index.second.isValid()) && arch->versionControlEnabled(ptr_index.second)) {
+                    arch->markComponentDirty(ptr_index.second, location.index, world_version_);
+                }
             }
+            result = const_cast<ResultType>(ptr_index.first);
         }
-        const auto index = arch->getComponentIndex<_Safety> (component_id);
-        if constexpr(isSafe(_Safety)) {
-            if (!index.isValid()) {
-                return static_cast<ResultType>(nullptr);
-            }
-        }
-        const auto result = arch->getComponentNoMarkDirty<FunctionSafety::kUnsafe>(index, location.index);
-        if constexpr (!_Const) {
-            if (arch->versionControlEnabled(index)) {
-                arch->markComponentDirty(index, location.index, world_version_);
-            }
-        }
-        return const_cast<ResultType>(result);
+        return result;
     }
 
     template<typename T, FunctionSafety _Safety>
