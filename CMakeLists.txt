@@ -77,6 +77,8 @@ add_library(${PROJECT_NAME} ${MUSTACHE_LIB_TYPE}
     ${mustache_SOURCE_DIR}/src/mustache/utils/index_like.hpp
     ${mustache_SOURCE_DIR}/src/mustache/utils/fast_private_impl.hpp
     ${mustache_SOURCE_DIR}/src/mustache/utils/array_wrapper.hpp
+    ${mustache_SOURCE_DIR}/src/mustache/utils/span.hpp
+    ${mustache_SOURCE_DIR}/src/mustache/utils/stable_latency_storage.hpp
     ${mustache_SOURCE_DIR}/src/mustache/utils/invoke.hpp
     ${mustache_SOURCE_DIR}/src/mustache/utils/crc32.hpp
     ${mustache_SOURCE_DIR}/src/mustache/ecs/entity.cpp

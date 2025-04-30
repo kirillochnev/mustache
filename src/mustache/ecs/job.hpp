@@ -7,8 +7,8 @@
 #include <mustache/ecs/entity_manager.hpp>
 #include <mustache/ecs/job_arg_parcer.hpp>
 #include <mustache/utils/profiler.hpp>
-
 #include <cstdint>
+#include <chrono>
 
 namespace mustache {
 
@@ -27,6 +27,14 @@ namespace mustache {
         MUSTACHE_INLINE static void incPtrs(_Ptr& ptr, _Other&... other) {
             ptr += _Count;
             incPtrs<_Count>(other...);
+        }
+
+        MUSTACHE_INLINE static void incPtrsRuntimeCount(size_t) {
+        }
+        template<typename _Ptr, typename... _Other>
+        MUSTACHE_INLINE static void incPtrsRuntimeCount(size_t count, _Ptr& ptr, _Other&... other) {
+            ptr += count;
+            incPtrsRuntimeCount(count, other...);
         }
         MUSTACHE_INLINE static void incInvocationIndex(JobInvocationIndex& invocation_index) noexcept {
             if constexpr(Info::FunctionInfo::Position::job_invocation >= 0) {
@@ -108,57 +116,14 @@ namespace mustache {
         }
 
         template<JobUnroll _Unroll, typename _F, typename... _ARGS>
-        static void forEachInArrays(World& world, _F&& function,
-                                    JobInvocationIndex& invocation_index, size_t count, _ARGS&&... args) {
-            if constexpr (!needUnroll<_Unroll, _ARGS...>()) {
-                for (size_t i = 0u; i < count; ++i) {
-                    invoke(function, world, invocation_index, args[i]...);
-                    incInvocationIndex(invocation_index);
-                }
-            } else {
-                const size_t size = count / 4u;
-                // TODO: find the way to make compiler unroll this loop
-                for (size_t i = 0u; i < size; ++i) {
-                    invoke(function, world, invocation_index, args[0]...);
-                    incInvocationIndex(invocation_index);
-
-                    invoke(function, world, invocation_index, args[1]...);
-                    incInvocationIndex(invocation_index);
-
-                    invoke(function, world, invocation_index, args[2]...);
-                    incInvocationIndex(invocation_index);
-
-                    invoke(function, world, invocation_index, args[3]...);
-                    incInvocationIndex(invocation_index);
-
-                    incPtrs<4u>(args...);
-                }
-
-                using TailFunction = void (*)(const _F&, World&, JobInvocationIndex&, _ARGS&...);
-                static constexpr TailFunction tails[4] {
-                        [](const _F&, World&, JobInvocationIndex&, _ARGS&...) {},
-                        [](const _F& f, World& _world, JobInvocationIndex& ii, _ARGS&... _pointers) {
-                            invoke(f, _world, ii, _pointers[0]...);
-                            incInvocationIndex(ii);
-                        },
-                        [](const _F& f, World& _world, JobInvocationIndex& ii, _ARGS&... _pointers) {
-                            invoke(f, _world, ii, _pointers[0]...);
-                            incInvocationIndex(ii);
-
-                            invoke(f, _world, ii, _pointers[1]...);
-                            incInvocationIndex(ii);
-                        },
-                        [](const _F& f, World& _world, JobInvocationIndex& ii, _ARGS&... _pointers) {
-                            invoke(f, _world, ii, _pointers[0]...);
-                            incInvocationIndex(ii);
-
-                            invoke(f, _world, ii, _pointers[1]...);
-                            incInvocationIndex(ii);
-
-                            invoke(f, _world, ii, _pointers[2]...);
-                            incInvocationIndex(ii);
-                        }};
-                tails[count % 4](function, world, invocation_index, args...);
+        static void forEachInArrays([[maybe_unused]] World& world, [[maybe_unused]] _F&& function,
+                                    [[maybe_unused]] JobInvocationIndex& invocation_index,
+                                    [[maybe_unused]] size_t count,
+                                    [[maybe_unused]] _ARGS&& __restrict... args) {
+            MUSTACHE_UNROLL(4)
+            for (size_t i = 0u; i < count; ++i) {
+                invoke(function, world, invocation_index, args[i]...);
+                incInvocationIndex(invocation_index);
             }
         }
     };
@@ -242,23 +207,65 @@ namespace mustache {
         }
 
     };
-    // task with no filter stage
-
+    // task with no filter stage, single thread only
     template<typename _Function, JobUnroll _Unroll = JobUnroll::kAuto>
     class SimpleTask {
     private:
+        static constexpr uint32_t target_calibration_count = 10;
+        static constexpr double memory_bound_threshold = 10.0;
+        static constexpr uint32_t memory_bound_max_task_size = std::numeric_limits<uint32_t >::max();
         using Info = JobInfo<_Function>;
         ComponentFactory* factory;
         ComponentIdMask component_id_mask;
+        uint32_t max_task_size = 0;
+        double gb_per_second = 0.0;
+        uint32_t calibrations_done = 0;
+
+        template<typename _F, typename EntityComponentHandlers, size_t... _I>
+        void invokeForTasksInChunk(World& world, _F&& function, JobInvocationIndex& invocation_index, uint32_t chunk_size,
+                                   EntityComponentHandlers handlers, const std::index_sequence<_I...>&) {
+            auto rest = chunk_size;
+            while (rest > 0u) {
+                auto task_size = rest;
+                if (max_task_size > 0 && max_task_size < rest) {
+                    task_size = max_task_size;
+                }
+                JobHelper<_Function>::template forEachInArrays<_Unroll>(world, function, invocation_index, task_size, std::get<_I>(handlers)...);
+                rest -= task_size;
+                JobHelper<_Function>::incPtrsRuntimeCount(max_task_size, std::get<_I>(handlers)...);
+            }
+        }
+
+        template<typename _F, typename EntityComponentHandlers, size_t... _I>
+        void invokeForChunkAndCalibrate(World& world, _F&& function, JobInvocationIndex& invocation_index, uint32_t chunk_size,
+                                        EntityComponentHandlers handlers, const std::index_sequence<_I...>&) {
+            using FunctionInfo = typename Info::FunctionInfo;
+            constexpr size_t total_components_size = std::max(static_cast<size_t>(1ull), FunctionInfo::totalUniqueComponentsSize());
+            using Clock = std::chrono::high_resolution_clock;
+            const auto begin = Clock::now();
+            JobHelper<_Function>::template forEachInArrays<_Unroll>(world, function, invocation_index, chunk_size, std::get<_I>(handlers)...);
+            const auto end = Clock::now();
+            const auto ns = std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count();
+            const auto bytes_processed = total_components_size * (chunk_size);
+            gb_per_second += static_cast<double >(bytes_processed) / static_cast<double >(ns);
+            if (++calibrations_done >= target_calibration_count) {
+                gb_per_second /= target_calibration_count;
+                if (gb_per_second > memory_bound_threshold) {
+                    max_task_size = memory_bound_max_task_size;
+                } else {
+                    constexpr size_t max_components_size = std::max(static_cast<size_t>(1ull), FunctionInfo::maxUniqueComponentSize());
+                    constexpr auto prefetch_len = 64 * MemoryManager::cache_line_size;
+                    constexpr auto computed_max_task_size = static_cast<uint32_t >(prefetch_len / max_components_size);
+                    constexpr uint32_t min_max_task_size = 128u;
+                    max_task_size = std::max(min_max_task_size, computed_max_task_size);
+                }
+            }
+        }
 
         template<typename _F, size_t... _I, size_t... _SI>
         void runWithIndexSequence(World& world, _F&& function,
                                   std::index_sequence<_I...>&&, std::index_sequence<_SI...>&&) {
             using FunctionInfo = typename Info::FunctionInfo;
-            constexpr auto max_component_size = FunctionInfo::maxUniqueComponentSize();
-            const auto page_size = MemoryManager::pageSize();
-            [[maybe_unused]] const auto max_chunk_size = std::max(static_cast<size_t>(1ull), page_size / max_component_size);
-
             auto& entities = world.entities();
             const auto archetypes_count = entities.getArchetypesCount();
             if (archetypes_count < 1) {
@@ -283,6 +290,8 @@ namespace mustache {
             invocation_index.entity_index = ParallelTaskGlobalItemIndex::make(0);
             invocation_index.thread_id = ThreadId::make(0);
             bool was_locked = false;
+            using Clock = std::chrono::high_resolution_clock;
+            Clock::time_point begin;
             for (size_t ai = 0; ai < archetypes_count; ++ai) {
                 const auto archetype_index = ArchetypeIndex::make(ai);
                 auto& arch = entities.getArchetype<Safety>(archetype_index);
@@ -303,14 +312,21 @@ namespace mustache {
 
                 ArchetypeEntityIndex cur_index = ArchetypeEntityIndex::make(0);
                 constexpr auto safety = FunctionSafety::kUnsafe;
+                static constexpr auto handlers_is = std::make_index_sequence<sizeof...(_I) + sizeof...(_SI) + 1>();
+                constexpr size_t total_components_size = std::max(static_cast<size_t>(1ull), FunctionInfo::totalUniqueComponentsSize());
+                constexpr size_t bytes_to_calibrate = MemoryManager::page_size;
+                constexpr size_t entities_to_calibrate = bytes_to_calibrate / total_components_size;
                 while (entities_to_process > 0) {
-                    const auto chunk_size = std::min(arch.distToChunkEnd(cur_index), static_cast<uint32_t>(max_chunk_size));
-//                    const auto chunk_size = arch.distToChunkEnd(cur_index);
-                    JobHelper<_Function>::template forEachInArrays<_Unroll>(world, function, invocation_index, chunk_size, arch.entityAt<safety>(cur_index),
-                                                                            JobHelper<_Function>::template getComponentHandler<_I>(arch, cur_index, component_indexes[_I])...,
-                                                                            JobHelper<_Function>::makeShared(std::get<_SI>(shared_components))...
-                    );
 
+                    auto handlers = std::make_tuple(arch.entityAt<safety>(cur_index),
+                                                    JobHelper<_Function>::template getComponentHandler<_I>(arch, cur_index, component_indexes[_I])...,
+                                                    JobHelper<_Function>::makeShared(std::get<_SI>(shared_components))...);
+                    const auto chunk_size = arch.distToChunkEnd(cur_index);
+                    if (max_task_size != 0 || chunk_size < entities_to_calibrate) {
+                        invokeForTasksInChunk(world, function, invocation_index, chunk_size, handlers, handlers_is);
+                    } else {
+                        invokeForChunkAndCalibrate(world, function, invocation_index, chunk_size, handlers, handlers_is);
+                    }
                     entities_to_process -= chunk_size;
                     cur_index = ArchetypeEntityIndex::make(cur_index.toInt() + chunk_size);
                 }

@@ -10,6 +10,8 @@ namespace mustache {
 
     class MUSTACHE_EXPORT MemoryManager : mustache::Uncopiable {
     public:
+        static const size_t cache_size_l1d;
+        static constexpr size_t cache_line_size = 64;
         static constexpr size_t page_size = 1 << 12;
         static constexpr size_t large_page_size = 1 << 21;
 

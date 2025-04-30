@@ -21,12 +21,57 @@
 #include <sys/mman.h>
 #endif
 
+#ifdef _MSC_VER
+#include <intrin.h>
+  void cpuid(int info[4], int leaf, int subleaf) {
+      __cpuidex(info, leaf, subleaf);
+  }
+#else
+#include <cpuid.h>
+void cpuid(int info[4], int leaf, int subleaf) {
+    __cpuid_count(leaf, subleaf,
+                  reinterpret_cast<unsigned int&>(info[0]),
+                  reinterpret_cast<unsigned int&>(info[1]),
+                  reinterpret_cast<unsigned int&>(info[2]),
+                  reinterpret_cast<unsigned int&>(info[3]));
+}
+#endif
+
+
 namespace {
+
+    std::size_t get_l1d_cache_size() {
+        int info[4];
+        std::size_t cache_size = 0;
+
+        // Leaf 4, subleaf = 0,1,2... перебираем все кэши
+        for (int i = 0;; ++i) {
+            cpuid(info, 4, i);
+            int cache_type = info[0] & 0x1F;
+            if (cache_type == 0)  // 0 = no more caches
+                break;
+
+            int level      = (info[0] >> 5) & 0x7;
+            bool isData    = cache_type == 1;
+            if (level == 1 && isData) {
+                int line_size     = (info[1] & 0xFFF) + 1;
+                int partitions    = ((info[1] >> 12) & 0x3FF) + 1;
+                int ways          = ((info[1] >> 22) & 0x3FF) + 1;
+                int sets          = info[2] + 1;
+                cache_size = std::size_t(line_size) * static_cast<size_t>(partitions * ways * sets);
+                break;
+            }
+        }
+        return cache_size;  // в байтах
+    }
+
     std::mutex pages_mutex;
     std::unordered_map<void*, size_t> pages;
 }
 
 using namespace mustache;
+
+const size_t MemoryManager::cache_size_l1d = get_l1d_cache_size();
 
 void* MemoryManager::allocate(size_t size, size_t align) noexcept {
     MUSTACHE_PROFILER_BLOCK_LVL_3("MemoryManager::allocate");
