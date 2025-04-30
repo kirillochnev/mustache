@@ -81,6 +81,7 @@ namespace mustache {
     };
 
     struct MUSTACHE_EXPORT ComponentInfo {
+        // TODO: make functions works with N components in 1 call
         using Constructor = Functor<void (void*, const Entity&, World&) >;
         using CopyFunction = Functor<void (void*, const void*) >;
         using MoveFunction = Functor<void (void* dest, void* source) >;
@@ -99,6 +100,7 @@ namespace mustache {
             CopyFunction copy;
             MoveFunction move;
             MoveFunction move_constructor;
+            MoveFunction move_constructor_and_destroy;
             Destructor destroy;
             IsEqual compare;
             BeforeRemove before_remove;
@@ -198,12 +200,41 @@ namespace mustache {
         }
 
         template<typename T>
-        static void moveComponent(void* dest, void* source) {
-            *static_cast<T*>(dest) = std::move(*static_cast<T*>(source));
-        }    
+        static void moveComponent(void* dest_void, void* source_void) {
+            auto dest = static_cast<T*>(dest_void);
+            auto source = static_cast<T*>(source_void);
+            if (dest != source) {
+                if constexpr (std::is_move_assignable_v<T>) {
+                    *dest = std::move(*source);
+                } else {
+                    if constexpr (!std::is_trivially_destructible_v<T>) {
+                        std::destroy(dest);
+                    }
+                    new(dest) T(std::move(source));
+                }
+            }
+        }
 
         template<typename T>
-        static void componentMoveConstructor([[maybe_unused]] void* dest, [[maybe_unused]] void* source) {
+        static void componentMoveConstructor([[maybe_unused]] void* dest_void, [[maybe_unused]] void* source_void) {
+            auto dest = static_cast<T*>(dest_void);
+            auto source = static_cast<T*>(source_void);
+            if (source != dest) {
+                if constexpr (std::is_move_constructible_v<T>) {
+                    new(dest) T{std::move(*source)};
+                } else {
+                    if constexpr (std::is_default_constructible_v<T>) {
+                        T* ptr = new(dest) T{};
+                        *ptr = std::move(*source);
+                    } else {
+                        error(type_name<T>() + " is not move constructible");
+                    }
+                }
+            }
+        }
+
+        template<typename T>
+        static void componentMoveConstructorAndDestroy([[maybe_unused]] void* dest, [[maybe_unused]] void* source) {
             if constexpr (std::is_move_constructible_v<T>) {
                 new(dest) T{ std::move(*static_cast<T*>(source)) };
             }
@@ -215,6 +246,9 @@ namespace mustache {
                 else {
                     error(type_name<T>() + " is not move constructible");
                 }
+            }
+            if constexpr (!std::is_trivially_destructible_v<T>) {
+                std::destroy_at(reinterpret_cast<T*>(source));
             }
         }
         template<typename T>
@@ -241,6 +275,7 @@ namespace mustache {
                         &copyComponent<T>,
                         &moveComponent<T>,
                         &componentMoveConstructor<T>,
+                        &componentMoveConstructorAndDestroy<T>,
                         std::is_trivially_destructible<T>::value ? ComponentInfo::Destructor{} : &componentDestructor<T>,
                         &componentComparator<T>,
                         detail::hasBeforeRemove<T>(nullptr) ? &beforeComponentRemove<T> : ComponentInfo::BeforeRemove{},
