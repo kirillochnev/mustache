@@ -583,19 +583,19 @@ namespace mustache {
             constexpr bool call_default_constructor = !call_custom_constructor && !std::is_trivially_default_constructible<Component>::value;
             constexpr bool has_event = detail::hasAfterAssign<Component>(nullptr);
 
+            constexpr auto safety = FunctionSafety::kUnsafe;
             if constexpr (call_constructor || has_event) {
                 static const auto component_id = ComponentFactory::instance().registerComponent<Component>();
-                auto view = archetype.getElementView(entity_index);
-                const auto component_index = archetype.getComponentIndex<FunctionSafety::kUnsafe>(component_id);
-                auto ptr = view.getData(component_index);
+                const auto component_index = archetype.getComponentIndex<safety>(component_id);
+                auto ptr = archetype.getData<safety>(component_index, entity_index);
                 if constexpr (call_custom_constructor) {
                     new(ptr) Component{ std::get<_I>(tuple)... };
                 }
                 if constexpr (call_default_constructor) {
-                    ComponentInfo::componentConstructor<Component>(ptr, *view.getEntity(), world_);
+                    ComponentInfo::componentConstructor<Component>(ptr, *archetype.entityAt<safety>(entity_index), world_);
                 }
                 if constexpr (has_event) {
-                    ComponentInfo::afterComponentAssign<Component>(ptr, *view.getEntity(), world_);
+                    ComponentInfo::afterComponentAssign<Component>(ptr, *archetype.entityAt<safety>(entity_index), world_);
                 }
             }
         }

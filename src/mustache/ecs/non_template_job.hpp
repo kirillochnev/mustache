@@ -2,7 +2,6 @@
 
 namespace mustache {
     struct MUSTACHE_EXPORT NonTemplateJob : public BaseJob {
-
         using ComponentPtr = void*;
         using SharedComponentPtr = const void*;
 
@@ -21,9 +20,12 @@ namespace mustache {
         };
 
         void singleTask(World&, ArchetypeGroup archetype_group,
-                                        JobInvocationIndex invocation_index) override;
+                        JobInvocationIndex invocation_index) override;
 
     public:
+
+        void fastRunCurrentThread(World& world);
+
         ComponentIdMask checkMask() const noexcept override;
 
         ComponentIdMask updateMask() const noexcept override;
@@ -40,11 +42,17 @@ namespace mustache {
 
         uint32_t applyFilter(World& world) noexcept override;
 
-        ComponentIdMask version_check_mask;
-
         using Callback = std::function<void (ForEachArrayArgs)>;
         using TaskEvent = std::function<void (World&, TaskSize, ParallelTaskId)>;
         using JobEvent = std::function<void (World&, TasksCount, JobSize, JobRunMode)>;
+
+        void initComponentMasks();
+
+        ComponentIdMask required_mask;
+        SharedComponentIdMask required_shared;
+        ComponentIdMask update_mask;
+
+        ComponentIdMask version_check_mask;
 
         Callback callback;
         TaskEvent task_begin;
@@ -57,5 +65,6 @@ namespace mustache {
         mustache::vector<SharedComponentId> shared_component_ids;
         std::string job_name = "NonTemplateJob";
         bool require_entity = false;
+        bool use_fast_run_for_current_thread = false;
     };
 }

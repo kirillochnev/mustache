@@ -35,19 +35,19 @@ namespace mustache {
             }
         }
 
-        template<size_t _I, typename _View>
-        static auto getComponentHandler(_View&& view, ComponentIndex index) noexcept {
+        template<size_t _I>
+        static auto getComponentHandler(Archetype& archetype, ArchetypeEntityIndex index, ComponentIndex component) noexcept {
             constexpr auto Safety = FunctionSafety::kUnsafe;
 
             using ArgType = typename Info::FunctionInfo::template UniqueComponentType<_I>::type;
             using Component = typename ComponentType<ArgType>::type;
             if constexpr (IsComponentRequired<ArgType>::value) {
-                auto ptr = view.template getData<Safety>(index);
+                auto ptr = archetype.getData<Safety>(component, index);
                 return RequiredComponent<Component> {reinterpret_cast<Component*>(ptr)};
             } else {
                 void* ptr = nullptr;
-                if (!index.isNull()) {
-                    ptr = view.template getData<Safety>(index);
+                if (!component.isNull()) {
+                    ptr = archetype.getData<Safety>(component, index);
                 }
                 return OptionalComponent<Component> {reinterpret_cast<Component*>(ptr)};
             }
@@ -226,14 +226,15 @@ namespace mustache {
                 for (auto array : ArrayView::make(filter_result_, info.archetype_index,
                                                   info.first_entity, info.current_size)) {
 
+                    const auto index_in_archetype = array.entityIndex();
                     if constexpr (Info::FunctionInfo::Position::entity >= 0) {
                         forEachArrayGenerated(world, array.arraySize(), invocation_index,
-                                              RequiredComponent<Entity>(array.template getEntity<FunctionSafety::kUnsafe>()),
-                                              JobHelper<T>:: template getComponentHandler<_I>(array, component_indexes[_I])...,
+                                              RequiredComponent<Entity>(archetype.entityAt<FunctionSafety::kUnsafe>(index_in_archetype)),
+                                              JobHelper<T>::template getComponentHandler<_I>(archetype, index_in_archetype, component_indexes[_I])...,
                                               JobHelper<T>::makeShared(std::get<_SI>(shared_components))...);
                     } else {
                         forEachArrayGenerated(world, array.arraySize(), invocation_index,
-                                              JobHelper<T>:: template getComponentHandler<_I>(array, component_indexes[_I])...,
+                                              JobHelper<T>::template getComponentHandler<_I>(archetype, index_in_archetype, component_indexes[_I])...,
                                               JobHelper<T>::makeShared(std::get<_SI>(shared_components))...);
                     }
                 }
@@ -296,16 +297,17 @@ namespace mustache {
 
                 JobHelper<_Function>::template updateVersion<_I...>(world_version, arch, component_indexes);
 
-                auto view = arch.getElementView(ArchetypeEntityIndex::make(0));
+                ArchetypeEntityIndex cur_index = ArchetypeEntityIndex::make(0);
+                constexpr auto safety = FunctionSafety::kUnsafe;
                 while (entities_to_process > 0) {
-                    const auto chunk_size = view.distToChunkEnd();
-                    JobHelper<_Function>::template forEachInArrays<_Unroll>(world, function, invocation_index, chunk_size, view.getEntity(),
-                                                                            JobHelper<_Function>::template getComponentHandler<_I>(view, component_indexes[_I])...,
+                    const auto chunk_size = arch.distToChunkEnd(cur_index);
+                    JobHelper<_Function>::template forEachInArrays<_Unroll>(world, function, invocation_index, chunk_size, arch.entityAt<safety>(cur_index),
+                                                                            JobHelper<_Function>::template getComponentHandler<_I>(arch, cur_index, component_indexes[_I])...,
                                                                             JobHelper<_Function>::makeShared(std::get<_SI>(shared_components))...
                     );
 
                     entities_to_process -= chunk_size;
-                    view += chunk_size;
+                    cur_index = ArchetypeEntityIndex::make(cur_index.toInt() + chunk_size);
                 }
             }
             if (was_locked) {
