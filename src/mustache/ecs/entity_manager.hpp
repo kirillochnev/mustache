@@ -40,7 +40,6 @@ namespace mustache {
                 entity{e},
                 index{i},
                 archetype{arch} {
-
         }
         Entity entity;
         ArchetypeEntityIndex index;

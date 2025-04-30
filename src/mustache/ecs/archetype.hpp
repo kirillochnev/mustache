@@ -14,9 +14,7 @@
 #include <mustache/ecs/default_component_data_storage.hpp>
 #include <mustache/ecs/stable_latency_component_data_storage.hpp>
 
-#include <stdexcept>
 #include <cstdint>
-#include <string>
 
 namespace mustache {
 
@@ -76,50 +74,32 @@ namespace mustache {
         [[nodiscard]] const ComponentIdMask& componentMask() const noexcept;
 
         template<FunctionSafety _Safety = FunctionSafety::kDefault>
-        MUSTACHE_INLINE Entity* entityAt(ArchetypeEntityIndex index);
+        MUSTACHE_INLINE Entity* entityAt(ArchetypeEntityIndex index) noexcept;
+
+        template<FunctionSafety _Safety = FunctionSafety::kDefault>
+        MUSTACHE_INLINE const Entity* entityAt(ArchetypeEntityIndex index) const noexcept;
 
         template<FunctionSafety _Safety = FunctionSafety::kDefault>
         const void* getConstComponent(ComponentIndex component_index, ArchetypeEntityIndex index) const noexcept {
-            return data_storage_->getData<_Safety>(component_index, ComponentStorageIndex::fromArchetypeIndex(index));
+            return data_storage_.getData<_Safety>(component_index, ComponentStorageIndex::fromArchetypeIndex(index));
         }
 
         template<FunctionSafety _Safety = FunctionSafety::kDefault>
-        void* getComponentNoMarkDirty(ComponentIndex component_index, ArchetypeEntityIndex index) const noexcept {
-            return data_storage_->getData<_Safety>(component_index, ComponentStorageIndex::fromArchetypeIndex(index));
+        MUSTACHE_INLINE std::pair<void*, ComponentIndex> getComponentNoMarkDirty(ComponentId id, ArchetypeEntityIndex index) const noexcept {
+            if constexpr (isSafe(_Safety)) {
+                return data_storage_.getDataSafe(id, ComponentStorageIndex::fromArchetypeIndex(index));
+            } else {
+                return data_storage_.getDataUnsafe(id, ComponentStorageIndex::fromArchetypeIndex(index));
+            }
         }
 
         template<FunctionSafety _Safety = FunctionSafety::kDefault>
-        [[nodiscard]] std::pair<void*, ComponentIndex> getComponentNoMarkDirty(ComponentId id, ArchetypeEntityIndex index) const noexcept {
-            const auto component_index = getComponentIndex<_Safety>(id);
-            return std::make_pair(getComponentNoMarkDirty<_Safety>(component_index, index), component_index);
-            // TODO: update when data storage will have getData with ComponentId
-//            if constexpr (isSafe(_Safety)) {
-//                return data_storage_.getDataSafe(id, ComponentStorageIndex::fromArchetypeIndex(index));
-//            } else {
-//                return data_storage_.getDataUnsafe(id, ComponentStorageIndex::fromArchetypeIndex(index));
-//            }
+        void* getComponentNoMarkDirty(ComponentIndex component_index, ArchetypeEntityIndex index) noexcept {
+            return data_storage_.getData<_Safety>(component_index, ComponentStorageIndex::fromArchetypeIndex(index));
         }
 
         template<FunctionSafety _Safety = FunctionSafety::kDefault>
         void* getComponent(ComponentIndex component_index, ArchetypeEntityIndex index, WorldVersion version) noexcept;
-
-        [[nodiscard]] MUSTACHE_INLINE auto distToChunkEnd(ComponentStorageIndex index) const noexcept {
-            return data_storage_->distToChunkEnd(index);
-        }
-
-        [[nodiscard]] MUSTACHE_INLINE auto distToChunkEnd(ArchetypeEntityIndex index) const noexcept {
-            return distToChunkEnd(ComponentStorageIndex::fromArchetypeIndex(index));
-        }
-
-        template<FunctionSafety Safety/* = FunctionSafety::kDefault*/>
-        [[nodiscard]] auto getData(ComponentIndex component_index, ComponentStorageIndex index) const noexcept {
-            return data_storage_->getData<Safety>(component_index, index);
-        }
-
-        template<FunctionSafety Safety/* = FunctionSafety::kDefault*/>
-        [[nodiscard]] auto getData(ComponentIndex component_index, ArchetypeEntityIndex index) const noexcept {
-            return getData<Safety>(component_index, ComponentStorageIndex::fromArchetypeIndex(index));
-        }
 
         [[nodiscard]] WorldVersion getComponentVersion(ArchetypeEntityIndex index, ComponentId id) const noexcept;
 
@@ -169,7 +149,25 @@ namespace mustache {
             version_storage_.setVersion(world_version, chunk_index);
         }
 
+        [[nodiscard]] MUSTACHE_INLINE auto distToChunkEnd(ComponentStorageIndex index) const noexcept {
+            return data_storage_.distToChunkEnd(index);
+        }
+
+        [[nodiscard]] MUSTACHE_INLINE auto distToChunkEnd(ArchetypeEntityIndex index) const noexcept {
+            return distToChunkEnd(ComponentStorageIndex::fromArchetypeIndex(index));
+        }
+
+        template<FunctionSafety Safety/* = FunctionSafety::kDefault*/>
+        [[nodiscard]] auto getData(ComponentIndex component_index, ComponentStorageIndex index) const noexcept {
+            return data_storage_.getData<Safety>(component_index, index);
+        }
+
+        template<FunctionSafety Safety/* = FunctionSafety::kDefault*/>
+        [[nodiscard]] auto getData(ComponentIndex component_index, ArchetypeEntityIndex index) const noexcept {
+            return getData<Safety>(component_index, ComponentStorageIndex::fromArchetypeIndex(index));
+        }
     private:
+
         [[nodiscard]] auto& versionStorage() noexcept {
             return version_storage_;
         }
@@ -185,7 +183,7 @@ namespace mustache {
 
         template<FunctionSafety _Safety = FunctionSafety::kDefault>
         void* getComponent(ComponentIndex component, ArchetypeEntityIndex index) const noexcept {
-            return data_storage_->getData<_Safety>(component, ComponentStorageIndex::fromArchetypeIndex(index));
+            return data_storage_.getData<_Safety>(component, ComponentStorageIndex::fromArchetypeIndex(index));
         }
 
         friend EntityManager;
@@ -216,20 +214,21 @@ namespace mustache {
 
         void cloneEntity(Entity source, Entity dest, ArchetypeEntityIndex index, CloneEntityMap& map);
 
+        StableLatencyComponentDataStorage data_storage_;
+//        std::unique_ptr<StableLatencyComponentDataStorage> data_storage_;
+        ArrayWrapper<Entity, ArchetypeEntityIndex, true> entities_;
+        ArchetypeOperationHelper operation_helper_;
         World& world_;
         const ComponentIdMask mask_;
         const SharedComponentsInfo shared_components_info_;
-        ArchetypeOperationHelper operation_helper_;
         VersionStorage version_storage_;
-        std::unique_ptr<StableLatencyComponentDataStorage> data_storage_;
-        ArrayWrapper<Entity, ArchetypeEntityIndex, true> entities_;
         const ArchetypeIndex id_;
     };
 
     template<FunctionSafety _Safety>
     void* Archetype::getComponent(ComponentIndex component_index, ArchetypeEntityIndex index,
                                   WorldVersion version) noexcept {
-        auto res = data_storage_->getData<_Safety>(component_index, ComponentStorageIndex::fromArchetypeIndex(index));
+        auto res = data_storage_.getData<_Safety>(component_index, ComponentStorageIndex::fromArchetypeIndex(index));
         if (res != nullptr && versionStorage().enabledMask().has(component_index)) {
             markComponentDirty(component_index, index, version);
         }
@@ -238,7 +237,17 @@ namespace mustache {
     }
 
     template<FunctionSafety _Safety>
-    Entity* Archetype::entityAt(ArchetypeEntityIndex index) {
+    const Entity* Archetype::entityAt(ArchetypeEntityIndex index) const noexcept {
+        if constexpr (isSafe(_Safety)) {
+            if (!index.isValid() || !entities_.has(index)) {
+                return nullptr;
+            }
+        }
+        return &entities_[index];
+    }
+
+    template<FunctionSafety _Safety>
+    Entity* Archetype::entityAt(ArchetypeEntityIndex index) noexcept {
         if constexpr (isSafe(_Safety)) {
             if (!index.isValid() || !entities_.has(index)) {
                 return nullptr;
