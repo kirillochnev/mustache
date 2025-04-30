@@ -254,12 +254,16 @@ namespace mustache {
         template<typename _F, size_t... _I, size_t... _SI>
         void runWithIndexSequence(World& world, _F&& function,
                                   std::index_sequence<_I...>&&, std::index_sequence<_SI...>&&) {
+            using FunctionInfo = typename Info::FunctionInfo;
+            constexpr auto max_component_size = FunctionInfo::maxUniqueComponentSize();
+            const auto page_size = MemoryManager::pageSize();
+            [[maybe_unused]] const auto max_chunk_size = std::max(static_cast<size_t>(1ull), page_size / max_component_size);
+
             auto& entities = world.entities();
             const auto archetypes_count = entities.getArchetypesCount();
             if (archetypes_count < 1) {
                 return;
             }
-            using FunctionInfo = typename Info::FunctionInfo;
             constexpr auto Safety = FunctionSafety::kUnsafe;
             static const std::array<ComponentId, sizeof...(_I) > unique_ids {
                     factory->registerComponent<typename ComponentType<
@@ -300,7 +304,8 @@ namespace mustache {
                 ArchetypeEntityIndex cur_index = ArchetypeEntityIndex::make(0);
                 constexpr auto safety = FunctionSafety::kUnsafe;
                 while (entities_to_process > 0) {
-                    const auto chunk_size = arch.distToChunkEnd(cur_index);
+                    const auto chunk_size = std::min(arch.distToChunkEnd(cur_index), static_cast<uint32_t>(max_chunk_size));
+//                    const auto chunk_size = arch.distToChunkEnd(cur_index);
                     JobHelper<_Function>::template forEachInArrays<_Unroll>(world, function, invocation_index, chunk_size, arch.entityAt<safety>(cur_index),
                                                                             JobHelper<_Function>::template getComponentHandler<_I>(arch, cur_index, component_indexes[_I])...,
                                                                             JobHelper<_Function>::makeShared(std::get<_SI>(shared_components))...

@@ -10,7 +10,12 @@ namespace mustache {
 
     class MUSTACHE_EXPORT MemoryManager : mustache::Uncopiable {
     public:
-        [[nodiscard]] size_t pageSize(bool large = false) const noexcept;
+        static constexpr size_t page_size = 1 << 12;
+        static constexpr size_t large_page_size = 1 << 21;
+
+        [[nodiscard]] static constexpr size_t pageSize(bool large = false) noexcept {
+            return large ? large_page_size : page_size;
+        }
         [[nodiscard]] void* allocate(size_t size, size_t align = 0) noexcept;
         [[nodiscard]] void* allocateAndClear(size_t size, size_t align = 0) noexcept;
         [[nodiscard]] void* allocateSmart(size_t size, size_t align = 0, bool allow_pages = true, bool allow_large_pages = true) noexcept;

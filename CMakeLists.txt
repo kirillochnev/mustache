@@ -117,6 +117,8 @@ add_library(${PROJECT_NAME} ${MUSTACHE_LIB_TYPE}
     ${mustache_SOURCE_DIR}/src/mustache/ecs/base_component_data_storage.hpp
     ${mustache_SOURCE_DIR}/src/mustache/ecs/default_component_data_storage.cpp
     ${mustache_SOURCE_DIR}/src/mustache/ecs/default_component_data_storage.hpp
+    ${mustache_SOURCE_DIR}/src/mustache/ecs/stable_latency_component_data_storage.cpp
+    ${mustache_SOURCE_DIR}/src/mustache/ecs/stable_latency_component_data_storage.hpp
     ${mustache_SOURCE_DIR}/src/mustache/ecs/new_component_data_storage.cpp
     ${mustache_SOURCE_DIR}/src/mustache/ecs/new_component_data_storage.hpp
     ${mustache_SOURCE_DIR}/src/mustache/ecs/event_manager.cpp

@@ -22,8 +22,6 @@
 #endif
 
 namespace {
-    constexpr size_t page_size = 1 << 12;
-    constexpr size_t large_page_size = 1 << 21;
     std::mutex pages_mutex;
     std::unordered_map<void*, size_t> pages;
 }
@@ -126,6 +124,3 @@ void MemoryManager::deallocateSmart(void* ptr) noexcept {
     deallocate(ptr);
 }
 
-size_t MemoryManager::pageSize(bool large) const noexcept {
-    return large ? large_page_size : page_size;
-}

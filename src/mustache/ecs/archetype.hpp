@@ -12,6 +12,7 @@
 #include <mustache/ecs/archetype_operation_helper.hpp>
 #include <mustache/ecs/base_component_data_storage.hpp>
 #include <mustache/ecs/default_component_data_storage.hpp>
+#include <mustache/ecs/stable_latency_component_data_storage.hpp>
 
 #include <stdexcept>
 #include <cstdint>
@@ -220,7 +221,7 @@ namespace mustache {
         const SharedComponentsInfo shared_components_info_;
         ArchetypeOperationHelper operation_helper_;
         VersionStorage version_storage_;
-        std::unique_ptr<DefaultComponentDataStorage> data_storage_;
+        std::unique_ptr<StableLatencyComponentDataStorage> data_storage_;
         ArrayWrapper<Entity, ArchetypeEntityIndex, true> entities_;
         const ArchetypeIndex id_;
     };
