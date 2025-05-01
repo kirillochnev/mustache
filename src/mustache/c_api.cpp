@@ -141,7 +141,7 @@ namespace converter {
             result.update_after.insert(cfg.update_after[i]);
         }
         for (uint32_t i = 0; i < cfg.update_before_size; ++i) {
-            result.update_after.insert(cfg.update_before[i]);
+            result.update_before.insert(cfg.update_before[i]);
         }
         return result;
     }
@@ -152,6 +152,7 @@ namespace converter {
         result.update_group = cfg.update_group.c_str();
         result.update_after_size = static_cast<uint32_t >(cfg.update_after.size());
         result.update_before_size = static_cast<uint32_t >(cfg.update_before.size());
+
         if (result.update_after_size > 0) {
             result.update_after = new const char*[result.update_after_size];
             uint32_t i = 0;
@@ -159,7 +160,10 @@ namespace converter {
                 result.update_after[i] = str.c_str();
                 ++i;
             }
+        } else {
+            result.update_after = nullptr;
         }
+        
         if (result.update_before_size > 0) {
             result.update_before = new const char*[result.update_before_size];
             uint32_t i = 0;
@@ -167,7 +171,10 @@ namespace converter {
                 result.update_before[i] = str.c_str();
                 ++i;
             }
+        } else {
+            result.update_before = nullptr;
         }
+        
         return result;
     }
 }
@@ -286,23 +293,24 @@ ComponentPtr getComponent(World* world, Entity entity, ComponentId component_id,
 }
 
 Job* makeJob(JobDescriptor info) {
-    auto job = new mustache::NonTemplateJob{};
-    job->callback = convert(info.callback, convert(job));
+    if (!info.callback) {
+        mustache::Logger{}.error("Can not create job, err: callback is missing");
+        return nullptr;
+    }
+    auto job = std::make_unique<mustache::NonTemplateJob>();
+    job->callback = convert(info.callback, convert(job.get()));
     job->job_name = info.name;
+    job->job_begin = convert(info.on_job_begin, convert(job.get()));
+    job->job_end = convert(info.on_job_end, convert(job.get()));
     job->component_requests.resize(info.component_info_arr_size);
-    job->job_begin = convert(info.on_job_begin, convert(job));
-    job->job_end = convert(info.on_job_end, convert(job));
-//    mustache::Logger{}.info("Args count: %d", info.component_info_arr_size);
     for (uint32_t i = 0; i < info.component_info_arr_size; ++i) {
-        auto t = info.component_info_arr[i];
-//        mustache::Logger{}.info("%d) Id: %d, Required: %d, Const: %d", i, t.component_id, t.is_required, t.is_const);
         job->component_requests[i] = convert(info.component_info_arr[i]);
     }
     for (uint32_t i = 0; i < info.check_update_size; ++i) {
         job->version_check_mask.set(convert(info.check_update[i]), true);
     }
-//    mustache::Logger{}.info("New job has been create, name: [%s], ptr: %p", info.name, job);
-    return convert(job);
+    job->require_entity = info.entity_required;
+    return convert(job.release());
 }
 
 void runJob(Job* job, World* world, JobRunMode mode) {
