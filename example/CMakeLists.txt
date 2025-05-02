@@ -7,10 +7,17 @@ if (${CMAKE_SYSTEM_NAME} STREQUAL "Emscripten")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OTHER_FLAGS}")
 endif()
 
-add_executable(mustache_example
-        main.cpp
-        event_manager_bench.cpp
-)
+file(GLOB EXAMPLE_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
 
-target_link_libraries(mustache_example mustache)
+foreach(example_source ${EXAMPLE_SOURCES})
+    get_filename_component(example_filename ${example_source} NAME_WE)
+    set(target_name "example_${example_filename}")
 
+    add_executable(${target_name} ${example_source})
+    target_link_libraries(${target_name} mustache)
+    target_include_directories(${target_name} PRIVATE ${mustache_SOURCE_DIR}/src)
+
+    set_target_properties(${target_name} PROPERTIES
+            RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/examples"
+    )
+endforeach()
