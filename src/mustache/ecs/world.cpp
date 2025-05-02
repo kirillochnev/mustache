@@ -10,10 +10,10 @@ namespace {
 }
 
 World::World(const WorldContext& context, WorldId id):
-    id_{id},
-    context_{context},
-    entities_{*this},
-    world_storage_{*context.memory_manager} {
+        id_{id},
+        context_{context},
+        entities_{*this},
+        world_storage_{memoryManager()} {
     MUSTACHE_PROFILER_BLOCK_LVL_0("World::World()");
 }
 

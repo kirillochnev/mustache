@@ -21,6 +21,38 @@ namespace {
         mustache::vector<ComponentInfo> components_info;
         mutable std::mutex mutex;
 
+        void validate(ComponentInfo& info) {
+            auto str = "Component " + info.name + " is not valid, next functions are missed:\n";
+            auto& functions = info.functions;
+            std::string missed;
+            if (!functions.copy) {
+                missed += info.name + "& operator=(const " + info.name+ "&) // coping operator=";
+            }
+            if (!functions.move) {
+                if (!missed.empty()) {missed += "\n";}
+                missed += info.name + "& operator=(" + info.name+ "&&) // move operator=";
+            }
+            if (!functions.move_constructor) {
+                if (!missed.empty()) {missed += "\n";}
+                missed += info.name + "(" + info.name+ "&&) // move constructor";
+            }
+            if (!functions.move_constructor_and_destroy) {
+                functions.move_constructor_and_destroy = [move = functions.move,
+                                                          destroy = functions.destroy] (void* dest, void* src) {
+                    move(dest, src);
+                    if (destroy) {
+                        destroy(src);
+                    }
+                };
+            }
+
+            if (!missed.empty()) {
+                str += missed;
+                Logger{}.error("Error: [%s]", str.c_str());
+                throw std::runtime_error(str);
+            }
+        }
+
         IdType getId(const ComponentInfo& info) {
             MUSTACHE_PROFILER_BLOCK_LVL_3(__FUNCTION__);
             std::unique_lock lock {mutex};
@@ -33,18 +65,16 @@ namespace {
                 components_info[find_res->second.id.toInt()] = find_res->second.info;
                 return find_res->second.id;
             }
-            if (!info.default_value.empty() && info.default_value.size() != info.size) {
-                throw std::runtime_error("Invalid component default value for component: " + info.name);
-            }
-            type_map[info.name] = {
-                    info,
+            auto info_copy = info;
+            validate(info_copy);
+            type_map[info_copy.name] = {
+                    info_copy,
                     next_component_id
             };
             if (components_info.size() <= next_component_id.toInt()) {
                 components_info.resize(next_component_id.toInt() + 1);
             }
-            components_info[next_component_id.toInt()] = info;
-            Logger{}.debug("New component: %s, id: %d", info.name, next_component_id.toInt());
+            components_info[next_component_id.toInt()] = info_copy;
             IdType return_value = next_component_id;
             ++next_component_id;
             return return_value;
@@ -52,7 +82,11 @@ namespace {
         const ComponentInfo& componentInfo(IdType id) const noexcept {
             MUSTACHE_PROFILER_BLOCK_LVL_3(__FUNCTION__);
             std::unique_lock lock {mutex};
-            return components_info[id.toInt()];
+            if (id.toInt() < components_info.size()) {
+                return components_info[id.toInt()];
+            }
+            static const ComponentInfo invalid {0, 0, "Component not found", 0, {}, {}};
+            return invalid;
         }
 
     };

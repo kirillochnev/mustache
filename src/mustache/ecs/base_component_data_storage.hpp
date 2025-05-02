@@ -8,8 +8,6 @@
 
 namespace mustache {
 
-    class DataStorageIterator;
-
     class MUSTACHE_EXPORT BaseComponentDataStorage {
     public:
         virtual ~BaseComponentDataStorage() = default;
@@ -46,62 +44,15 @@ namespace mustache {
             return size_ == 0u;
         }
 
-        MUSTACHE_INLINE void incSize() noexcept {
+        MUSTACHE_INLINE virtual void incSize() noexcept {
             ++size_;
         }
 
-        MUSTACHE_INLINE void decrSize() noexcept {
+        MUSTACHE_INLINE virtual void decrSize() noexcept {
             --size_;
         }
-
-        MUSTACHE_INLINE DataStorageIterator getIterator(ComponentStorageIndex index) const noexcept;
 
     protected:
         uint32_t size_{0u};
     };
-
-    class MUSTACHE_EXPORT DataStorageIterator {
-    public:
-
-        [[nodiscard]] MUSTACHE_INLINE ComponentStorageIndex globalIndex() const noexcept {
-            return global_index_;
-        }
-
-        [[nodiscard]] MUSTACHE_INLINE bool isValid() const noexcept {
-            return globalIndex() <= storage_->lastItemIndex();
-        }
-
-        template<FunctionSafety _Safety = FunctionSafety::kSafe>
-        MUSTACHE_INLINE void* getData(ComponentIndex component_index) const noexcept {
-            return storage_->getData<_Safety>(component_index, global_index_);
-        }
-
-        MUSTACHE_INLINE DataStorageIterator& operator+=(uint32_t count) noexcept {
-            global_index_ = ComponentStorageIndex::make(global_index_.toInt() + count);
-            return *this;
-        }
-
-        MUSTACHE_INLINE DataStorageIterator& operator++() noexcept {
-            return (*this) += 1;
-        }
-
-        [[nodiscard]] MUSTACHE_INLINE uint32_t distToChunkEnd() const noexcept {
-            return storage_->distToChunkEnd(global_index_);
-        }
-    protected:
-        friend DataStorageIterator BaseComponentDataStorage::getIterator(ComponentStorageIndex index) const noexcept;
-
-        DataStorageIterator(const BaseComponentDataStorage& storage, ComponentStorageIndex index):
-                storage_{&storage},
-                global_index_{index} {
-
-        }
-
-        const BaseComponentDataStorage* storage_ = nullptr;
-        ComponentStorageIndex global_index_; // TODO: rename?
-    };
-
-    DataStorageIterator BaseComponentDataStorage::getIterator(ComponentStorageIndex index) const noexcept {
-        return DataStorageIterator{*this, index };
-    }
 }

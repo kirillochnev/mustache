@@ -58,3 +58,32 @@ namespace mustache {
 
     #define MUSTACHE_COPY_NOEXCEPT(exp)
 #endif // _MSC_BUILD
+
+#define MUSTACHE_STRINGIFY_HELPER(x) #x
+#define MUSTACHE_STRINGIFY(x)        MUSTACHE_STRINGIFY_HELPER(x)
+
+#if defined(_MSC_VER)
+// MSVC
+  #define MUSTACHE_IVDEP     __pragma(loop(ivdep))
+  #define MUSTACHE_UNROLL(N) __pragma(loop(unroll(N)))
+
+#elif defined(__clang__)
+// Clang/LLVM
+  #define MUSTACHE_IVDEP     _Pragma("clang loop vectorize(enable) interleave(enable)")
+  #define MUSTACHE_UNROLL(N) _Pragma(MUSTACHE_STRINGIFY(clang loop unroll_count(N)))
+
+#elif defined(__GNUC__)
+// GCC
+#define MUSTACHE_IVDEP     _Pragma("GCC ivdep")
+#define MUSTACHE_UNROLL(N) _Pragma(MUSTACHE_STRINGIFY(GCC unroll N))
+
+#elif defined(__INTEL_COMPILER)
+// Intel C/C++ Compiler
+  #define MUSTACHE_IVDEP     _Pragma("ivdep")
+  #define MUSTACHE_UNROLL(N) _Pragma(MUSTACHE_STRINGIFY(unroll N))
+
+#else
+  // Unknown compiler: no-op
+  #define MUSTACHE_IVDEP
+  #define MUSTACHE_UNROLL(N)
+#endif

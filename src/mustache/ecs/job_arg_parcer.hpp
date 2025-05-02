@@ -12,6 +12,7 @@
 
 #include <array>
 #include <cstdint>
+#include <type_traits>
 
 namespace mustache {
 
@@ -127,6 +128,33 @@ namespace mustache {
         static constexpr auto buildPositionsOf(const std::index_sequence<_I...>&) {
             return PositionOf<typename FC::template arg<_I>::type...>{};
         }
+
+        template <typename Tuple, std::size_t... I>
+        static constexpr std::array<std::size_t, sizeof...(I)>
+        tupleElementSizes(std::index_sequence<I...>) noexcept {
+            return { sizeof(std::tuple_element_t<I, Tuple>)... };
+        }
+
+        template <std::size_t... I>
+        static constexpr std::size_t maxUniqueComponentSizeImpl(std::index_sequence<I...>) noexcept {
+            auto sizes = tupleElementSizes<UniqueComponentsTypeTuple>(std::index_sequence<I...>{});
+            std::size_t m = 0;
+            for (auto s : sizes) {
+                if (s > m) m = s;
+            }
+            return m;
+        }
+
+        template <std::size_t... I>
+        static constexpr std::size_t totalUniqueComponentsSizeImpl(std::index_sequence<I...>) noexcept {
+            auto sizes = tupleElementSizes<UniqueComponentsTypeTuple>(std::index_sequence<I...>{});
+            std::size_t sum = 0;
+            for (auto s : sizes) {
+                sum += s;
+            }
+            return sum;
+        }
+
     public:
         using Position = decltype(buildPositionsOf(args_indexes));
 
@@ -267,6 +295,22 @@ namespace mustache {
         using AnyComponentsTypeTuple = typename decltype(buildArgsTuple(any_components_indexes))::type;
         using UniqueComponentsTypeTuple = typename decltype(buildArgsTuple(unique_components_indexes))::type;
         using SharedComponentsTypeTuple = typename decltype(buildArgsTuple(shared_components_indexes))::type;
+
+        [[nodiscard]] static constexpr std::size_t maxUniqueComponentSize() noexcept {
+            if constexpr (components_count == 0) {
+                return 0;
+            } else {
+                return maxUniqueComponentSizeImpl(std::make_index_sequence<components_count>{});
+            }
+        }
+
+        [[nodiscard]] static constexpr std::size_t totalUniqueComponentsSize() noexcept {
+            if constexpr (components_count == 0) {
+                return 0;
+            } else {
+                return totalUniqueComponentsSizeImpl(std::make_index_sequence<components_count>{});
+            }
+        }
 
         template<size_t I>
         struct AnyComponentType {
