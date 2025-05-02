@@ -211,8 +211,8 @@ namespace mustache {
     template<typename _Function, JobUnroll _Unroll = JobUnroll::kAuto>
     class SimpleTask {
     private:
-        static constexpr uint32_t target_calibration_count = 15;
-        static constexpr double memory_bound_threshold = 10.0;
+        static constexpr uint32_t target_calibration_count = 10;
+        static constexpr double memory_bound_threshold = 15.0;
         static constexpr uint32_t memory_bound_max_task_size = std::numeric_limits<uint32_t >::max();
         using Info = JobInfo<_Function>;
         ComponentFactory* factory;
@@ -314,7 +314,7 @@ namespace mustache {
                 constexpr auto safety = FunctionSafety::kUnsafe;
                 static constexpr auto handlers_is = std::make_index_sequence<sizeof...(_I) + sizeof...(_SI) + 1>();
                 constexpr size_t total_components_size = std::max(static_cast<size_t>(1ull), FunctionInfo::totalUniqueComponentsSize());
-                constexpr size_t bytes_to_calibrate = MemoryManager::page_size;
+                constexpr size_t bytes_to_calibrate = 4 * MemoryManager::page_size;
                 constexpr size_t entities_to_calibrate = bytes_to_calibrate / total_components_size;
                 while (entities_to_process > 0) {
 
