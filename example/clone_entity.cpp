@@ -9,6 +9,7 @@
 
 #include <vector>
 #include <string>
+#include <iostream>
 
 using namespace mustache;
 
@@ -20,7 +21,6 @@ struct Name {
 // Component to store child entities
 struct Children {
     std::vector<Entity> children;
-
     // Deep clone logic for children list
     static void clone(const CloneDest<Children>& dest, const CloneSource<Children>& src, CloneEntityMap& map, World& world) {
         new(dest.value) Children{};
@@ -63,10 +63,10 @@ struct Parent {
         }
 
         // Avoid duplicates: only add the new entity if it's not already present
-        const auto find_res = std::find(children->children.begin(), children->children.end(), dest.entity);
-        if (find_res == children->children.end()) {
+        //const auto find_res = std::find(children->children.begin(), children->children.end(), dest.entity);
+        //if (find_res == children->children.end()) {
             children->children.push_back(dest.entity);
-        }
+        //}
     }
 };
 
@@ -82,21 +82,33 @@ std::string getName(World& world, Entity e) {
 // Recursively print entity hierarchy
 void printTree(World& world, Entity entity, const std::string& prefix = "", bool is_last = true) {
     const auto name = world.entities().getComponent<const Name>(entity);
+
+#ifdef _WIN32
+    constexpr const char* branch = "+-- ";
+    constexpr const char* pipe = "|   ";
+    constexpr const char* space = "    ";
+#else
+    constexpr const char* branch = is_last ? "└─ " : "├─ ";
+    constexpr const char* pipe = "│  ";
+    constexpr const char* space = "   ";
+#endif
+
     Logger{}.hideContext().info("%s%s%s",
-                                prefix.c_str(),
-                                is_last ? "└─ " : "├─ ",
-                                name ? name->value.c_str() : ("Entity " + std::to_string(entity.id().toInt())).c_str()
+        prefix.c_str(),
+        branch,
+        name ? name->value.c_str() : ("Entity " + std::to_string(entity.id().toInt())).c_str()
     );
 
     const auto children = world.entities().getComponent<const Children>(entity);
     if (!children || children->children.empty()) return;
 
-    std::string new_prefix = prefix + (is_last ? "   " : "│  ");
+    std::string new_prefix = prefix + (is_last ? space : pipe);
     for (size_t i = 0; i < children->children.size(); ++i) {
         bool last = i == children->children.size() - 1;
         printTree(world, children->children[i], new_prefix, last);
     }
 }
+
 
 // Create example prefab: a car with 4 wheels, each with sub-colliders
 Entity createCar(World& world) {
@@ -133,9 +145,9 @@ int main() {
     auto car = createCar(world);
     auto scene_root = world.entities().begin()
             .assign<Name>("root")
-            .assign<Children>(Children{.children = {car} })
+        .assign<Children>(std::vector<Entity>{ car })
     .end();
-    world.entities().assign<Parent>(car, Parent {.parent = scene_root});
+    //world.entities().assign<Parent>(car, Parent{ scene_root });
 
     Logger{}.hideContext().info("----------- Before clone -----------");
     printTree(world, scene_root);

@@ -42,24 +42,24 @@ namespace mustache::ext {
     template<typename _Component>
     struct ComponentWithNotify<_Component, false, true> {
         static void beforeRemove(Entity entity, World& world) {
-            world.events().post<ComponentRemovedEvent<_Component> >({.entity = entity});
+            world.events().post<ComponentRemovedEvent<_Component> >({entity});
         }
     };
 
     template<typename _Component>
     struct ComponentWithNotify<_Component, true, false> {
         static void afterAssign(_Component* self, Entity entity, World& world) {
-            world.events().post<ComponentAssignEvent<_Component> >({.entity = entity, .component = self});
+            world.events().post<ComponentAssignEvent<_Component> >({entity, self});
         }
     };
 
     template<typename _Component>
     struct ComponentWithNotify<_Component, true, true> {
         static void afterAssign(_Component* self, Entity entity, World& world) {
-            world.events().post<ComponentAssignEvent<_Component> >({.entity = entity, .component = self});
+            world.events().post<ComponentAssignEvent<_Component> >({ entity, self});
         }
         static void beforeRemove(Entity entity, World& world) {
-            world.events().post<ComponentRemovedEvent<_Component> >({.entity = entity});
+            world.events().post<ComponentRemovedEvent<_Component> >({entity});
         }
     };
 
@@ -73,7 +73,7 @@ namespace mustache::ext {
     struct ComponentWithNotifyCommon<_Component, false, true> {
         static void beforeRemove(Entity entity, World& world) {
             static const auto id = ComponentFactory::instance().registerComponent<_Component>();
-            world.events().post<CommonComponentRemovedEvent>({.entity = entity, .component_id = id});
+            world.events().post<CommonComponentRemovedEvent>({entity, id});
         }
     };
 
@@ -81,7 +81,7 @@ namespace mustache::ext {
     struct ComponentWithNotifyCommon<_Component, true, false> {
         static void afterAssign(_Component* self, Entity entity, World& world) {
             static const auto id = ComponentFactory::instance().registerComponent<_Component>();
-            world.events().post<CommonComponentAssignedEvent>({.entity = entity, .component_id = id, .component_ptr = self});
+            world.events().post<CommonComponentAssignedEvent>({entity, id, self});
         }
     };
 
@@ -89,11 +89,11 @@ namespace mustache::ext {
     struct ComponentWithNotifyCommon<_Component, true, true> {
         static void beforeRemove(Entity entity, World& world) {
             static const auto id = ComponentFactory::instance().registerComponent<_Component>();
-            world.events().post<CommonComponentRemovedEvent>({.entity = entity, .component_id = id});
+            world.events().post<CommonComponentRemovedEvent>({entity, id});
         }
         static void afterAssign(_Component* self, Entity entity, World& world) {
             static const auto id = ComponentFactory::instance().registerComponent<_Component>();
-            world.events().post<CommonComponentAssignedEvent>({.entity = entity, .component_id = id, .component_ptr = self});
+            world.events().post<CommonComponentAssignedEvent>({entity, id, self});
         }
     };
 }
