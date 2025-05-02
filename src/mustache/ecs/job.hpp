@@ -211,7 +211,7 @@ namespace mustache {
     template<typename _Function, JobUnroll _Unroll = JobUnroll::kAuto>
     class SimpleTask {
     private:
-        static constexpr uint32_t target_calibration_count = 10;
+        static constexpr uint32_t target_calibration_count = 15;
         static constexpr double memory_bound_threshold = 10.0;
         static constexpr uint32_t memory_bound_max_task_size = std::numeric_limits<uint32_t >::max();
         using Info = JobInfo<_Function>;

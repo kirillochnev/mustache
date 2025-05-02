@@ -9,6 +9,7 @@
 #include <functional>
 #include <string>
 #include <cstddef>
+#include <memory>
 
 namespace mustache {
     namespace detail {
