@@ -2,6 +2,7 @@
 
 #include <mustache/utils/span.hpp>
 #include <mustache/utils/invoke.hpp>
+#include <mustache/utils/memory_manager.hpp>
 #include <mustache/utils/container_vector.hpp>
 #include <mustache/ecs/id_deff.hpp>
 
@@ -438,6 +439,7 @@ namespace mustache {
         }
 
         void set(_ItemType item, bool value) noexcept {
+            constexpr size_t elements_per_cache_line = MemoryManager::cache_line_size / sizeof(StaticBitset);
             const auto id = item.toInt();
             if (!isDynamic()) {
                 if (id < static_mask_size) {
@@ -447,15 +449,15 @@ namespace mustache {
                 if (!value) {
                     return;
                 }
-                // Переход в динамику
-                const size_t blocks = (id / bitset_size) + 1;
+                size_t blocks = (id / bitset_size) + 1;
+                blocks = ((blocks + elements_per_cache_line - 1) / elements_per_cache_line) * elements_per_cache_line;
                 reallocDynamicStorage(blocks);
                 dynamic_.array_[id / bitset_size].set(id % bitset_size, value);
             } else {
                 const size_t blocks = dynamic_.size();
-                const size_t need_blocks = (id / bitset_size) + 1;
-
+                size_t need_blocks = (id / bitset_size) + 1;
                 if (need_blocks > blocks) {
+                    need_blocks = ((need_blocks + elements_per_cache_line - 1) / elements_per_cache_line) * elements_per_cache_line;
                     reallocDynamicStorage(need_blocks, blocks);
                 }
 
