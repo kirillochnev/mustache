@@ -472,6 +472,51 @@ TEST(Job, iterate_and_check_value) {
     }
 }
 
+TEST(Job, change_detection) {
+    const uint32_t count = 10000;
+    mustache::World world;
+    world.entities().addChunkSizeFunction<Position>(1, 128);
+    std::vector<mustache::Entity> arr(count);
+    for (uint32_t i = 0; i < count; ++i) {
+        arr[i] = world.entities().create<Position, Velocity>();
+    }
+    struct ChangeDetection : mustache::PerEntityJob<ChangeDetection> {
+        uint32_t changed = 0;
+        void operator()(const Velocity&, const Position&) {
+            ++changed;
+        }
+        mustache::ComponentIdMask checkMask() const noexcept override {
+            return mustache::ComponentFactory::instance().makeMask<Position>();
+        }
+    };
+    ChangeDetection change_detection;
+    for (uint32_t i = 0; i < 100; ++i) {
+        world.update();
+        change_detection.changed = 0;
+        std::atomic<uint32_t >expected = 0;
+        if (i % 3 == 0) {
+            world.entities().forEach([&](const Velocity& vel, Position& pos) {
+                ++expected;
+                pos.x += vel.value;
+                pos.y += vel.value;
+                pos.z += vel.value;
+            });
+            ASSERT_EQ(expected, count);
+        } else if (i % 2) {
+            std::set<mustache::Entity> set;
+            const uint32_t changes = rand() % (arr.size() / 16) + 1;
+            for (uint32_t j = 0; j < changes; ++j) {
+                const auto e = arr[rand() % arr.size()];
+                world.entities().getComponent<Position>(e)->x += 1u;
+                set.emplace(e);
+            }
+            expected = set.size();
+        }
+        change_detection.run(world);
+        ASSERT_GE(change_detection.changed, expected);
+    }
+}
+
 TEST(Job, compilation) {
     mustache::World world;
     struct TestComponent0 {};
