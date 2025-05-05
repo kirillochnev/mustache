@@ -68,7 +68,7 @@ ArchetypeIndex Archetype::id() const noexcept {
 
 uint32_t Archetype::chunkCount() const noexcept {
     MUSTACHE_PROFILER_BLOCK_LVL_3(__FUNCTION__);
-    return static_cast<uint32_t>(entities_.size() / versionStorage().chunkSize());
+    return static_cast<uint32_t>(entities_.size() / versionStorage().chunkSize() + 1);
 }
 
 ChunkCapacity Archetype::chunkCapacity() const noexcept {
