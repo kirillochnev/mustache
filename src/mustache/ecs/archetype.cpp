@@ -264,7 +264,7 @@ void Archetype::remove(Entity entity_to_destroy, ArchetypeEntityIndex entity_ind
     MUSTACHE_PROFILER_BLOCK_LVL_2(__FUNCTION__);
 //    Logger{}.debug("Removing entity from: %s pos: %d", mask_.toString(), entity_index.toInt());
 
-    callOnRemove(entity_index, mask_.intersection(skip_on_remove_call.inverse()));
+    callOnRemove(entity_index, mask_.subtract(skip_on_remove_call));
 
     const auto last_index = data_storage_.lastItemIndex().toArchetypeIndex();
     if (entity_index == last_index) {

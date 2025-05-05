@@ -1037,7 +1037,7 @@ namespace mustache {
         }
         const auto& prev_location = locations_[entity.id()];
         auto prev_arch = prev_location.archetype;
-        const auto mask = skip_mask.merge(prev_arch->mask_).intersection(to_remove.inverse());
+        const auto mask = skip_mask.merge(prev_arch->mask_).subtract(to_remove);
         shared = shared.merge(prev_arch->sharedComponentInfo());
         auto& archetype = getArchetype(mask, shared);
         archetype.externalMove(entity, *prev_arch, prev_location.index, ComponentIdMask::null());
