@@ -191,7 +191,6 @@ uint32_t NonTemplateJob::applyFilter(World& world) noexcept {
 
 void NonTemplateJob::initComponentMasks() {
     required_mask = {};
-    const auto& factory = ComponentFactory::instance();
     for (const auto& request : component_requests) {
         required_mask.set(request.id, request.is_required);
     }

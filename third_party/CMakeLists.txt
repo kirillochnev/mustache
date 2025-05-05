@@ -1,17 +1,66 @@
-cmake_minimum_required(VERSION 3.10)
-project("")
-set(CMAKE_CXX_STANDARD 17)
+cmake_minimum_required(VERSION 3.14)
+project(mustache_profiler
+        VERSION ${PROJECT_VERSION}  # Берем версию из родительского проекта
+        LANGUAGES CXX
+)
+
+# Настройка версии по умолчанию, если не передана
+if(NOT DEFINED PROJECT_VERSION)
+    set(PROJECT_VERSION 0.2)
+endif()
 
 add_library(mustache_profiler INTERFACE)
+add_library(mustache::profiler ALIAS mustache_profiler)
 
 option(MUSTACHE_BUILD_WITH_EASY_PROFILER "Use easy profiler" OFF)
 
-if (MUSTACHE_BUILD_WITH_EASY_PROFILER)
-    target_compile_definitions(mustache_profiler INTERFACE -DMUSTACHE_BUILD_WITH_EASY_PROFILER=1)
-    add_subdirectory(easy_profiler)
-    set(EASY_PROFILER_NO_GUI ON CACHE BOOL "")
-    set(EASY_PROFILER_NO_SAMPLES ON CACHE BOOL "")
+if(MUSTACHE_BUILD_WITH_EASY_PROFILER)
+    target_compile_definitions(mustache_profiler INTERFACE MUSTACHE_BUILD_WITH_EASY_PROFILER=1)
+
+    include(FetchContent)
+
+    set(EASY_PROFILER_NO_GUI ON CACHE BOOL "Disable GUI components" FORCE)
+    set(EASY_PROFILER_NO_SAMPLES ON CACHE BOOL "Disable samples" FORCE)
+
+    FetchContent_Declare(
+            easy_profiler
+            GIT_REPOSITORY https://github.com/yse/easy_profiler.git
+            GIT_TAG        v2.1.0
+    )
+
+    FetchContent_MakeAvailable(easy_profiler)
+
     target_link_libraries(mustache_profiler INTERFACE easy_profiler)
-else()
-    target_compile_definitions(mustache_profiler INTERFACE -DBUILD_WITH_EASY_PROFILER=0)
-endif(MUSTACHE_BUILD_WITH_EASY_PROFILER)
+
+    install(TARGETS easy_profiler EXPORT mustache_profilerTargets
+            LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+            ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+            RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    )
+endif()
+
+install(TARGETS mustache_profiler EXPORT mustache_profilerTargets)
+install(EXPORT mustache_profilerTargets
+        FILE mustache_profilerTargets.cmake
+        NAMESPACE mustache::
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/mustache_profiler
+)
+
+include(CMakePackageConfigHelpers)
+configure_package_config_file(
+        ${CMAKE_CURRENT_SOURCE_DIR}/mustache_profilerConfig.cmake.in
+        ${CMAKE_CURRENT_BINARY_DIR}/mustache_profilerConfig.cmake
+        INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/mustache_profiler
+)
+
+write_basic_package_version_file(
+        ${CMAKE_CURRENT_BINARY_DIR}/mustache_profilerConfigVersion.cmake
+        VERSION ${PROJECT_VERSION}  # Теперь версия всегда определена
+        COMPATIBILITY SameMajorVersion
+)
+
+install(FILES
+        ${CMAKE_CURRENT_BINARY_DIR}/mustache_profilerConfig.cmake
+        ${CMAKE_CURRENT_BINARY_DIR}/mustache_profilerConfigVersion.cmake
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/mustache_profiler
+)

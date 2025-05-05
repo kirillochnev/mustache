@@ -1,0 +1,11 @@
+@PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+
+if(@MUSTACHE_BUILD_WITH_EASY_PROFILER@)
+    find_dependency(easy_profiler REQUIRED)
+endif()
+
+include("${CMAKE_CURRENT_LIST_DIR}/mustache_profilerTargets.cmake")
+
+check_required_components(mustache_profiler)
