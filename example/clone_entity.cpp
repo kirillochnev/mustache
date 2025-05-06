@@ -88,7 +88,7 @@ void printTree(World& world, Entity entity, const std::string& prefix = "", bool
     constexpr const char* pipe = "|   ";
     constexpr const char* space = "    ";
 #else
-    constexpr const char* branch = is_last ? "└─ " : "├─ ";
+    static const char* branch = is_last ? "└─ " : "├─ ";
     constexpr const char* pipe = "│  ";
     constexpr const char* space = "   ";
 #endif
@@ -141,6 +141,8 @@ Entity createCar(World& world) {
 }
 
 int main() {
+    MUSTACHE_PROFILER_START();
+    MUSTACHE_PROFILER_MAIN_THREAD();
     World world;
     auto car = createCar(world);
     auto scene_root = world.entities().begin()
@@ -155,6 +157,7 @@ int main() {
     Logger{}.hideContext().info("\n----------- After clone -----------");
     auto cloned_car = world.entities().clone(car);
     printTree(world, scene_root);
+    MUSTACHE_PROFILER_DUMP("example_clone.prof")
 
     /* expected output:
     ----------- Before clone -----------

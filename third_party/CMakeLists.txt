@@ -13,9 +13,19 @@ add_library(mustache_profiler INTERFACE)
 add_library(mustache::profiler ALIAS mustache_profiler)
 
 option(MUSTACHE_BUILD_WITH_EASY_PROFILER "Use easy profiler" OFF)
+set(MUSTACHE_PROFILER_LVL "0" CACHE STRING "Set profiler level (0 = off, 1 = basic(recommended), 2 = detailed, 3 = deep)")
+
+math(EXPR MUSTACHE_PROFILER_LVL_INT "${MUSTACHE_PROFILER_LVL}")
+if(MUSTACHE_PROFILER_LVL_INT GREATER 0)
+    set(MUSTACHE_BUILD_WITH_EASY_PROFILER ON CACHE BOOL "Use easy profiler" FORCE)
+endif()
+
 
 if(MUSTACHE_BUILD_WITH_EASY_PROFILER)
     target_compile_definitions(mustache_profiler INTERFACE MUSTACHE_BUILD_WITH_EASY_PROFILER=1)
+    if(MUSTACHE_PROFILER_LVL_INT GREATER 0)
+        target_compile_definitions(mustache_profiler INTERFACE MUSTACHE_PROFILER_LVL=${MUSTACHE_PROFILER_LVL})
+    endif()
 
     include(FetchContent)
 
