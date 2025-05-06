@@ -1,10 +1,8 @@
-#ifndef MUSTACHE_DLL_EXPORT_HPP
-#define MUSTACHE_DLL_EXPORT_HPP
+#pragma once
 
 #include "mustache_export.h"
-#ifdef _WIN32
-// TODO: fix this warning
-#pragma warning( disable : 4251 )
-#endif
 
-#endif //MUSTACHE_DLL_EXPORT_HPP
+// Disable warning C4251 only for old MSVC (before VS2019 16.3)
+#if defined(_MSC_VER) && (_MSC_VER < 1923)
+    #pragma warning(disable : 4251)
+#endif
