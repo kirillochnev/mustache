@@ -1,10 +1,9 @@
 cmake_minimum_required(VERSION 3.14)
 project(mustache_profiler
-        VERSION ${PROJECT_VERSION}  # Берем версию из родительского проекта
+        VERSION ${PROJECT_VERSION}
         LANGUAGES CXX
 )
 
-# Настройка версии по умолчанию, если не передана
 if(NOT DEFINED PROJECT_VERSION)
     set(PROJECT_VERSION 0.2)
 endif()
@@ -65,7 +64,7 @@ configure_package_config_file(
 
 write_basic_package_version_file(
         ${CMAKE_CURRENT_BINARY_DIR}/mustache_profilerConfigVersion.cmake
-        VERSION ${PROJECT_VERSION}  # Теперь версия всегда определена
+        VERSION ${PROJECT_VERSION}
         COMPATIBILITY SameMajorVersion
 )
 
