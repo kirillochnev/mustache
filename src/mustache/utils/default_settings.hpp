@@ -64,8 +64,8 @@ namespace mustache {
 
 #if defined(_MSC_VER)
 // MSVC
-  #define MUSTACHE_IVDEP     __pragma(loop(ivdep))
-  #define MUSTACHE_UNROLL(N) __pragma(loop(unroll(N)))
+  #define MUSTACHE_IVDEP     //__pragma(loop(ivdep))
+  #define MUSTACHE_UNROLL(N) //__pragma(loop(unroll(N)))
 
 #elif defined(__clang__)
 // Clang/LLVM

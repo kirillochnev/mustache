@@ -209,9 +209,9 @@ namespace mustache {
                     *dest = std::move(*source);
                 } else {
                     if constexpr (!std::is_trivially_destructible_v<T>) {
-                        std::destroy(dest);
+                        std::destroy_at(dest);
                     }
-                    new(dest) T(std::move(source));
+                    new(dest) T(std::move(*source));
                 }
             }
         }

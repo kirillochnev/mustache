@@ -30,10 +30,10 @@ namespace mustache {
         }
 
         T* get() {
-            return reinterpret_cast<T*>(&storage_);
+            return std::launder(reinterpret_cast<T*>(&storage_));
         }
         const T* get() const {
-            return reinterpret_cast<const T*>(&storage_);
+            return std::launder(reinterpret_cast<const T*>(&storage_));
         }
     private:
         std::aligned_storage_t<Size, Align> storage_;
