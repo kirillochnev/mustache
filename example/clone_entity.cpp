@@ -18,6 +18,7 @@ struct Name {
     std::string value;
 };
 
+
 // Component to store child entities
 struct Children {
     std::vector<Entity> children;
@@ -57,16 +58,9 @@ struct Parent {
         // This can happen when cloning part of the hierarchy — for example,
         // cloning a wheel while its parent car is not cloned.
         // In such cases, we must manually register the new child in the parent's Children list.
-        auto children = world.entities().getComponent<Children>(dest.value->parent);
-        if (children == nullptr) {
-            return; // Parent has no Children component, so nothing to update
-        }
-
-        // Avoid duplicates: only add the new entity if it's not already present
-        //const auto find_res = std::find(children->children.begin(), children->children.end(), dest.entity);
-        //if (find_res == children->children.end()) {
+        if (auto children = world.entities().getComponent<Children>(dest.value->parent)) {
             children->children.push_back(dest.entity);
-        //}
+        }
     }
 };
 
@@ -144,16 +138,16 @@ int main() {
     World world;
     auto car = createCar(world);
     auto scene_root = world.entities().begin()
-            .assign<Name>("root")
+        .assign<Name>("root")
         .assign<Children>(std::vector<Entity>{ car })
     .end();
-    //world.entities().assign<Parent>(car, Parent{ scene_root });
+    world.entities().assign<Parent>(car, Parent{ scene_root });
 
     Logger{}.hideContext().info("----------- Before clone -----------");
     printTree(world, scene_root);
 
     Logger{}.hideContext().info("\n----------- After clone -----------");
-    auto cloned_car = world.entities().clone(car);
+    world.entities().clone(car);
     printTree(world, scene_root);
 
     /* expected output:

@@ -31,6 +31,7 @@ namespace mustache {
 
         template <typename T>
         ComponentId registerComponent() const {
+        	static_assert(!std::is_abstract_v<T>);
             static const auto info = ComponentInfo::make<T>();
             static ComponentId result = componentId(info);
             if (!result.isValid()) {
@@ -137,3 +138,4 @@ namespace mustache {
     };
 
 }
+
