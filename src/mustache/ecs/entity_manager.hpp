@@ -1,6 +1,7 @@
 #pragma once
 
 #include <mustache/utils/uncopiable.hpp>
+#include <mustache/utils/construct_at.hpp>
 #include <mustache/utils/array_wrapper.hpp>
 #include <mustache/utils/container_map.hpp>
 #include <mustache/utils/container_set.hpp>
@@ -601,7 +602,7 @@ namespace mustache {
                 const auto component_index = archetype.getComponentIndex<safety>(component_id);
                 auto ptr = archetype.getData<safety>(component_index, entity_index);
                 if constexpr (call_custom_constructor) {
-                    new(ptr) Component{ std::get<_I>(tuple)... };
+					constructAt<Component>(ptr, std::get<_I>(tuple)...);
                 }
                 if constexpr (call_default_constructor) {
                     ComponentInfo::componentConstructor<Component>(ptr, *archetype.entityAt<safety>(entity_index), world_);
@@ -897,7 +898,7 @@ namespace mustache {
         constexpr bool use_custom_constructor = sizeof...(_ARGS) > 0;
         auto component_ptr = assign<use_custom_constructor>(e, component_id);
         if constexpr(use_custom_constructor) {
-            component_ptr = static_cast<void*>(new(component_ptr) T{std::forward<_ARGS>(args)...});
+            component_ptr = static_cast<void*>(constructAt<T>(component_ptr, std::forward<_ARGS>(args)...));
             ComponentInfo::afterComponentAssign<T>(component_ptr, e, world_);
         }
         return *reinterpret_cast<T*>(component_ptr);

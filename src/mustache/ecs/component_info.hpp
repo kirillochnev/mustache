@@ -3,6 +3,7 @@
 #include <mustache/utils/dll_export.h>
 #include <mustache/utils/type_info.hpp>
 #include <mustache/utils/index_like.hpp>
+#include <mustache/utils/construct_at.hpp>
 #include <mustache/utils/container_map.hpp>
 #include <mustache/utils/container_vector.hpp>
 
@@ -115,24 +116,24 @@ namespace mustache {
         template<typename T>
         static void componentConstructor(void *ptr, [[maybe_unused]] const Entity& entity, [[maybe_unused]] World& world) {
             if constexpr(std::is_constructible<T, World&, Entity>::value) {
-                new(ptr) T {world, entity};
+				constructAt<T>(ptr, world, entity);
                 return;
             }
             if constexpr(std::is_constructible<T, Entity, World&>::value) {
-                new(ptr) T {entity, world};
+                constructAt<T>(ptr, entity, world);
                 return;
             }
             if constexpr(std::is_constructible<T, World&>::value) {
-                new(ptr) T {world};
+                constructAt<T>(ptr, world);
                 return;
             }
             if constexpr(std::is_constructible<T, const Entity&>::value) {
-                new(ptr) T {entity};
+                constructAt<T>(ptr, entity);
                 return;
             }
             if constexpr(std::is_default_constructible<T>::value &&
                         !std::is_trivially_default_constructible<T>::value) {
-                new(ptr) T();
+				constructAt<T>(ptr);
                 return;
             }
         }
@@ -193,7 +194,7 @@ namespace mustache {
         template<typename T>
         static void copyComponent([[maybe_unused]] void* dest, [[maybe_unused]] const void* source) {
             if constexpr (std::is_copy_constructible_v<T>) {
-                new(dest) T{ *static_cast<const T*>(source) };
+				constructAt<T>(dest, *static_cast<const T*>(source));
             }
             else {
                 error(type_name<T>() + " is not copy constructible");
@@ -211,7 +212,7 @@ namespace mustache {
                     if constexpr (!std::is_trivially_destructible_v<T>) {
                         std::destroy_at(dest);
                     }
-                    new(dest) T(std::move(*source));
+					constructAt<T>(dest, std::move(*source));
                 }
             }
         }
@@ -222,10 +223,10 @@ namespace mustache {
             auto source = static_cast<T*>(source_void);
             if (source != dest) {
                 if constexpr (std::is_move_constructible_v<T>) {
-                    new(dest) T{std::move(*source)};
+					constructAt<T>(dest, std::move(*source));
                 } else {
                     if constexpr (std::is_default_constructible_v<T>) {
-                        T* ptr = new(dest) T{};
+                        T* ptr = constructAt<T>(dest);
                         *ptr = std::move(*source);
                     } else {
                         error(type_name<T>() + " is not move constructible");
@@ -237,11 +238,11 @@ namespace mustache {
         template<typename T>
         static void componentMoveConstructorAndDestroy([[maybe_unused]] void* dest, [[maybe_unused]] void* source) {
             if constexpr (std::is_move_constructible_v<T>) {
-                new(dest) T{ std::move(*static_cast<T*>(source)) };
+				constructAt<T>(dest, std::move(*static_cast<T*>(source)));
             }
             else {
                 if constexpr (std::is_default_constructible_v<T>) {
-                    T* ptr = new(dest) T{};
+                    T* ptr = constructAt<T>(dest);
                     *std::launder(ptr) = std::move(*static_cast<T*>(source));
                 }
                 else {

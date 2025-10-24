@@ -1,6 +1,7 @@
 #pragma once
 
 #include <mustache/utils/unused.hpp>
+#include <mustache/utils/construct_at.hpp>
 
 #include <new>
 #include <cstddef>
@@ -15,8 +16,8 @@ namespace mustache {
         explicit FastPimpl(ARGS&&... args) {
             static_assert(alignof(T) != 0 && ((Align % alignof(T)) == 0));
             static_assert(sizeof(T) <= Size);
-            unused(new(&storage_) T(std::forward<ARGS>(args)...));
-        }
+			constructAt<T>(&storage_, std::forward<ARGS>(args)...);
+		}
 
         ~FastPimpl() {
             get()->~T();

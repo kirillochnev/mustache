@@ -8,6 +8,7 @@
 #include <mustache/ecs/component_handler.hpp>
 
 #include <mustache/utils/uncopiable.hpp>
+#include <mustache/utils/construct_at.hpp>
 #include <mustache/utils/default_settings.hpp>
 
 namespace mustache {
@@ -103,7 +104,7 @@ namespace mustache {
             const static auto id = registerComponent<T>();
             if constexpr(sizeof...(ARGS) > 0) {
                 if constexpr(!std::is_trivially_default_constructible<T>::value) {
-                    data = new(data) T {std::forward<ARGS>(args)...};
+					data = constructAt<T>(data, std::forward<ARGS>(args)...);
                 }
                 ComponentInfo::afterComponentAssign<T>(data, e, world);
             } else {

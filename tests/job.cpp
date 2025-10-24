@@ -510,7 +510,7 @@ TEST(Job, change_detection) {
                 world.entities().getComponent<Position>(e)->x += 1u;
                 set.emplace(e);
             }
-            expected = set.size();
+            expected = static_cast<uint32_t>(set.size());
         }
         change_detection.run(world);
         ASSERT_GE(change_detection.changed, expected);

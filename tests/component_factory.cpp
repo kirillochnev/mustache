@@ -71,3 +71,21 @@ TEST(ComponentFactory, ComponentMaskIsMatch) {
     mask_1 = mustache::ComponentFactory::instance().makeMask<Component<3>, Component<2> >();
     ASSERT_FALSE(mask_0.isMatch(mask_1));
 }
+
+TEST(ComponentFactory, UpdateComponentInfo) {
+    static int32_t callCount = 0;
+    struct ComponentWithInfoUpdate {
+        static void updateComponentInfo(mustache::ComponentInfo& info) {
+            ++callCount;
+        }
+    };
+    callCount = 0;
+    ASSERT_EQ(callCount, 0);
+    mustache::ComponentInfo::make<ComponentWithInfoUpdate>();
+    ASSERT_EQ(callCount, 1);
+    mustache::ComponentFactory::instance().registerComponent<ComponentWithInfoUpdate>();
+    ASSERT_EQ(callCount, 1);
+    (void)mustache::ComponentFactory::instance().makeMask<ComponentWithInfoUpdate>();
+    ASSERT_EQ(callCount, 1);
+
+}
