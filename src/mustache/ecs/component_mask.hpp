@@ -143,7 +143,17 @@ namespace mustache {
             kSubtract
         };
 
-        static const StaticBitset static_data_mask;
+        static const StaticBitset& staticDataMask() noexcept {
+            static const auto result = []() {
+                StaticBitset tmp;
+                for (size_t i = 0; i < static_mask_size; ++i) {
+                    tmp.set(i, true);
+                }
+                return tmp;
+            }();
+            return result;
+        }
+
         static const StaticBitset one_mask;
 
         static constexpr StaticBitset zero_mask = StaticBitset{};
@@ -429,7 +439,7 @@ namespace mustache {
 
         [[nodiscard]] uint32_t componentsCount() const noexcept {
             if (!isDynamic()) {
-                return static_cast<uint32_t> ((static_mask_ & static_data_mask).count());
+                return static_cast<uint32_t> ((static_mask_ & staticDataMask()).count());
             }
             size_t count = 0;
             for (const auto& item : dynamic_.span()) {
@@ -524,7 +534,7 @@ namespace mustache {
             if (mask.isDynamic()) {
                 return EndlessSpan{mask.dynamic_.array_, mask.dynamic_.size(), tail, {}};
             } else {
-                return EndlessSpan{nullptr, 1, tail, mask.static_mask_ & static_data_mask};
+                return EndlessSpan{nullptr, 1, tail, mask.static_mask_ & staticDataMask()};
             }
         };
 
@@ -532,7 +542,7 @@ namespace mustache {
             const bool inverted_tail = static_mask_.test(inverted_tail_bit);
             StaticBitset* new_array = new StaticBitset[new_blocks]();
             const bool tail = static_mask_.test(inverted_tail_bit);
-            new_array[0] = static_mask_ & static_data_mask;
+            new_array[0] = static_mask_ & staticDataMask();
             for (size_t i = 0; i < old_blocks; ++i) {
                 new_array[i] = dynamic_.array_[i];
             }
@@ -587,14 +597,7 @@ namespace mustache {
             DynamicBlock dynamic_;
         };
     };
-    template<typename _ItemType>
-    const typename DynamicComponentMask<_ItemType>::StaticBitset DynamicComponentMask<_ItemType>::static_data_mask = []() {
-        StaticBitset result;
-        for (size_t i = 0; i < static_mask_size; ++i) {
-            result.set(i, true);
-        }
-        return result;
-    }();
+
     template<typename _ItemType>
     const typename DynamicComponentMask<_ItemType>::StaticBitset DynamicComponentMask<_ItemType>::one_mask = []() {
         return ~StaticBitset{};
