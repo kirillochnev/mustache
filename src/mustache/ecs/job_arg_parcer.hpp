@@ -171,7 +171,7 @@ namespace mustache {
         static constexpr size_t mutableComponentsCount() noexcept {
             size_t result = 0;
             for (const auto& info : args_info) {
-                if (info.type == info.type == ArgInfo::kComponent && info.is_mutable) {
+                if (info.type == ArgInfo::kComponent && info.is_mutable) {
                     ++result;
                 }
             }
